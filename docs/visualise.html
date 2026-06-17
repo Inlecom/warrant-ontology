@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>WARRaNT KG Ontology — Interactive Graph</title>
+<script src="https://cdn.jsdelivr.net/npm/n3@1.17.2/browser/n3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0d1117;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── header ── */
+header{background:#161b22;border-bottom:1px solid #30363d;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:10}
+header h1{font-size:15px;font-weight:600;color:#79c0ff;white-space:nowrap}
+.badge{font-size:11px;background:#1f3a5f;color:#79c0ff;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.sep{width:1px;height:20px;background:#30363d}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar label{font-size:12px;color:#8b949e}
+select,button{font-size:12px;background:#21262d;color:#e2e8f0;border:1px solid #30363d;border-radius:6px;padding:4px 10px;cursor:pointer}
+select:hover,button:hover{border-color:#58a6ff;background:#2d333b}
+button.active{border-color:#58a6ff;background:#1f3a5f;color:#79c0ff}
+button:disabled{opacity:0.4;cursor:default}
+.ml{margin-left:auto}
+
+/* ── legend ── */
+#legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:#8b949e}
+.litem{display:flex;align-items:center;gap:5px}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.lline{width:20px;height:2px;flex-shrink:0}
+
+/* ── main layout ── */
+#main{flex:1;display:flex;overflow:hidden;position:relative}
+
+/* ── landing ── */
+#landing{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;text-align:center;z-index:5;background:#0d1117}
+#landing h2{font-size:22px;color:#79c0ff}
+#landing p{font-size:13px;color:#8b949e;max-width:540px;line-height:1.7}
+.module-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:700px}
+.mbtn{font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid;cursor:pointer;transition:all .15s}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;width:100%}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:18px;cursor:pointer;transition:border-color .2s;text-align:left}
+.card:hover{border-color:#58a6ff}
+.card h3{font-size:13px;color:#58a6ff;margin-bottom:6px}
+.card p{font-size:12px;color:#6e7681;line-height:1.5}
+.hint{font-size:11px;color:#3d444d;max-width:540px}
+.section-label{font-size:11px;font-weight:600;color:#484f58;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+
+/* ── graph canvas ── */
+#canvas{flex:1;position:relative;overflow:hidden}
+svg{width:100%;height:100%}
+
+/* ── spinner ── */
+#spinner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:4;background:#0d1117;display:none}
+#spinner .ring{width:40px;height:40px;border:3px solid #21262d;border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#spinner p{font-size:13px;color:#8b949e}
+
+/* ── tooltip ── */
+#tooltip{position:absolute;pointer-events:none;background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px 12px;font-size:12px;color:#e2e8f0;max-width:220px;line-height:1.5;display:none;z-index:20;word-break:break-word}
+
+/* ── inspector panel ── */
+#inspector{width:300px;flex-shrink:0;background:#161b22;border-left:1px solid #30363d;display:none;flex-direction:column;overflow:hidden}
+#inspector header{padding:12px 14px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center}
+#inspector header span{font-size:13px;font-weight:600;color:#79c0ff}
+#inspector header button{background:none;border:none;color:#6e7681;font-size:16px;cursor:pointer;padding:0 4px}
+#inspector header button:hover{color:#e2e8f0;border:none}
+#inspector-body{padding:14px;overflow-y:auto;font-size:12px;line-height:1.7;flex:1}
+.irow{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start}
+.ilabel{color:#8b949e;min-width:90px;flex-shrink:0}
+.ival{color:#e2e8f0;word-break:break-word}
+.ival.mono{font-family:monospace;font-size:11px;color:#79c0ff}
+.itag{display:inline-block;background:#1f3a5f;color:#79c0ff;border-radius:4px;padding:1px 6px;margin:2px 2px 0 0;font-size:11px}
+.itag.dep{background:#3a1f1f;color:#f97583}
+.isec{font-size:11px;font-weight:600;color:#6e7681;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px}
+#inspector-body a{color:#58a6ff;text-decoration:none}
+#inspector-body a:hover{text-decoration:underline}
+
+/* ── stats bar ── */
+#stats{font-size:11px;color:#484f58;padding:4px 14px;border-top:1px solid #21262d;flex-shrink:0;display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WARRaNT KG Ontology</h1>
+  <span class="badge">v0.9-poc</span>
+  <div class="sep"></div>
+  <div class="toolbar">
+    <label>Module:</label>
+    <select id="module-select" onchange="loadModule(this.value)" disabled>
+      <option value="">— select —</option>
+      <option value="warrant-core">Core</option>
+      <option value="warrant-davom">DAVOM</option>
+      <option value="warrant-observation">Observation</option>
+      <option value="warrant-cdm">CDM</option>
+      <option value="warrant-assurance">Assurance</option>
+      <option value="warrant-di">DI</option>
+      <option value="warrant-scenario">Scenario</option>
+      <option value="warrant-mitigation">Mitigation</option>
+      <option value="warrant-digital-twin">Digital Twin</option>
+      <option value="all">— Full ontology —</option>
+      <optgroup label="Examples">
+        <option value="ex-gnss">LL4 · GNSS Failover</option>
+        <option value="ex-comm">LL4 · Comm Degradation</option>
+        <option value="ex-handover">LL4 · ROC Handover</option>
+        <option value="ex-fire">LL2 · Container Fire</option>
+        <option value="ex-spoofing">LL1 · ECDIS Spoofing</option>
+      </optgroup>
+    </select>
+    <input type="file" id="local-file" accept=".ttl" onchange="loadFile(this)" style="display:none"/>
+    <button onclick="document.getElementById('local-file').click()">📂 Open TTL</button>
+    <button id="fit-btn" onclick="fitGraph()" disabled>⊞ Fit</button>
+    <button id="labels-btn" onclick="toggleLabels()" disabled>🏷 Labels</button>
+  </div>
+  <div class="ml" id="legend" style="display:none">
+    <div class="litem"><div class="ldot" style="background:#58a6ff"></div> Class</div>
+    <div class="litem"><div class="ldot" style="background:#3fb950"></div> Individual</div>
+    <div class="litem"><div class="ldot" style="background:#d2a8ff"></div> Deprecated</div>
+    <div class="litem"><div class="ldot" style="background:#9cdcfe;border:1px solid #9cdcfe"></div> Instance (LL4)</div>
+    <div class="litem"><div class="ldot" style="background:#4ec9b0;border:1px solid #4ec9b0"></div> Instance (LL2)</div>
+    <div class="litem"><div class="ldot" style="background:#e8b84b;border:1px solid #e8b84b"></div> Instance (LL1)</div>
+    <div class="litem"><div class="lline" style="background:#6e7681"></div> subClassOf / type</div>
+    <div class="litem"><div class="lline" style="background:#f0883e"></div> domain/range</div>
+  </div>
+</header>
+
+<div id="main">
+  <!-- Landing -->
+  <div id="landing">
+    <h2>Interactive Ontology Graph</h2>
+    <p>Choose a module to explore. Classes are shown as circles, properties as edges. Click any node to inspect it.</p>
+    <div class="module-grid" id="module-grid"></div>
+    <div class="cards">
+      <div class="card" onclick="loadModule('all')">
+        <h3>Full Ontology (merged)</h3>
+        <p>All 9 modules combined — best for exploring cross-module relationships and the complete class hierarchy.</p>
+      </div>
+      <div class="card" onclick="document.getElementById('local-file').click()">
+        <h3>📂 Open local TTL</h3>
+        <p>Load any <code>.ttl</code> file from your computer — a module, example file, or custom graph.</p>
+      </div>
+    </div>
+
+    <div class="section-label">Living Lab Examples</div>
+    <div class="module-grid" id="example-grid"></div>
+
+    <p class="hint">Runs entirely in the browser. No internet connection required.</p>
+  </div>
+
+  <!-- Spinner -->
+  <div id="spinner">
+    <div class="ring"></div>
+    <p id="spinner-msg">Loading…</p>
+  </div>
+
+  <!-- Graph -->
+  <div id="canvas" style="display:none">
+    <svg id="svg"></svg>
+    <div id="tooltip"></div>
+  </div>
+
+  <!-- Inspector -->
+  <div id="inspector">
+    <header>
+      <span id="insp-title">Details</span>
+      <button onclick="closeInspector()">✕</button>
+    </header>
+    <div id="inspector-body"></div>
+    <div id="stats"></div>
+  </div>
+</div>
+
+<script>
+// ─── Namespace definitions ────────────────────────────────────────────────────
+const NS = {
+  warrant: 'https://warrant-project.eu/ontology/core#',
+  davom:   'https://warrant-project.eu/ontology/davom#',
+  obs:     'https://warrant-project.eu/ontology/observation#',
+  cdm:     'https://warrant-project.eu/ontology/cdm#',
+  assr:    'https://warrant-project.eu/ontology/assurance#',
+  di:      'https://warrant-project.eu/ontology/dependability-index#',
+  scen:    'https://warrant-project.eu/ontology/scenario#',
+  mit:     'https://warrant-project.eu/ontology/mitigation#',
+  dt:      'https://warrant-project.eu/ontology/digital-twin#',
+  // data namespaces (instance data)
+  ll1:     'https://warrant-project.eu/data/ll1#',
+  ll2:     'https://warrant-project.eu/data/ll2#',
+  ll3:     'https://warrant-project.eu/data/ll3#',
+  ll4:     'https://warrant-project.eu/data/ll4#',
+  owl:     'http://www.w3.org/2002/07/owl#',
+  rdf:     'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+  rdfs:    'http://www.w3.org/2000/01/rdf-schema#',
+  xsd:     'http://www.w3.org/2001/XMLSchema#',
+  skos:    'http://www.w3.org/2004/02/skos/core#',
+  dcterms: 'http://purl.org/dc/terms/',
+};
+
+const MODULE_COLORS = {
+  [NS.warrant]: '#58a6ff',
+  [NS.davom]:   '#3fb950',
+  [NS.obs]:     '#d29922',
+  [NS.cdm]:     '#f97583',
+  [NS.assr]:    '#bc8cff',
+  [NS.di]:      '#79c0ff',
+  [NS.scen]:    '#56d364',
+  [NS.mit]:     '#ffa657',
+  [NS.dt]:      '#d2a8ff',
+  // data namespaces — warm tones to distinguish instances from classes
+  [NS.ll1]:     '#e8b84b',
+  [NS.ll2]:     '#4ec9b0',
+  [NS.ll3]:     '#ce9178',
+  [NS.ll4]:     '#9cdcfe',
+};
+
+const MODULE_NAMES = {
+  [NS.warrant]: 'Core',    [NS.davom]: 'DAVOM',    [NS.obs]: 'Obs',
+  [NS.cdm]: 'CDM',         [NS.assr]: 'Assurance', [NS.di]: 'DI',
+  [NS.scen]: 'Scenario',   [NS.mit]: 'Mitigation', [NS.dt]: 'DigTwin',
+  [NS.ll1]: 'LL1',         [NS.ll2]: 'LL2',
+  [NS.ll3]: 'LL3',         [NS.ll4]: 'LL4',
+};
+
+const MODULE_FILES = {
+  'warrant-core':         '../ontology/warrant-core.ttl',
+  'warrant-davom':        '../ontology/warrant-davom.ttl',
+  'warrant-observation':  '../ontology/warrant-observation.ttl',
+  'warrant-cdm':          '../ontology/warrant-cdm.ttl',
+  'warrant-assurance':    '../ontology/warrant-assurance.ttl',
+  'warrant-di':           '../ontology/warrant-di.ttl',
+  'warrant-scenario':     '../ontology/warrant-scenario.ttl',
+  'warrant-mitigation':   '../ontology/warrant-mitigation.ttl',
+  'warrant-digital-twin': '../ontology/warrant-digital-twin.ttl',
+  'all':                  '../dist/warrant-all-merged.ttl',
+  // examples
+  'ex-gnss':        '../examples/example-gnss-failover.ttl',
+  'ex-comm':        '../examples/example-communication-degradation.ttl',
+  'ex-fire':        '../examples/example-smart-container-fire.ttl',
+  'ex-handover':    '../examples/example-roc-handover.ttl',
+  'ex-spoofing':    '../examples/example-ecdis-spoofing.ttl',
+};
+
+const MODULE_BTN_STYLE = {
+  'warrant-core':         {bg:'#1f3a5f', fg:'#58a6ff', br:'#2b5a9f'},
+  'warrant-davom':        {bg:'#1a3a1f', fg:'#3fb950', br:'#2a5a2f'},
+  'warrant-observation':  {bg:'#3a2f0f', fg:'#d29922', br:'#5a4f1f'},
+  'warrant-cdm':          {bg:'#3a1f1f', fg:'#f97583', br:'#5a2f2f'},
+  'warrant-assurance':    {bg:'#2a1f3a', fg:'#bc8cff', br:'#4a2f5a'},
+  'warrant-di':           {bg:'#1a2f3a', fg:'#79c0ff', br:'#2a4f5a'},
+  'warrant-scenario':     {bg:'#1a3a1f', fg:'#56d364', br:'#2a5a2f'},
+  'warrant-mitigation':   {bg:'#3a2a1f', fg:'#ffa657', br:'#5a3a2f'},
+  'warrant-digital-twin': {bg:'#2a1f3a', fg:'#d2a8ff', br:'#4a2f5a'},
+};
+
+const MODULE_LABELS = {
+  'warrant-core':'Core','warrant-davom':'DAVOM','warrant-observation':'Observation',
+  'warrant-cdm':'CDM','warrant-assurance':'Assurance','warrant-di':'DI',
+  'warrant-scenario':'Scenario','warrant-mitigation':'Mitigation','warrant-digital-twin':'Digital Twin',
+};
+
+// ─── Build landing module buttons ─────────────────────────────────────────────
+const grid = document.getElementById('module-grid');
+Object.entries(MODULE_LABELS).forEach(([key, label]) => {
+  const s = MODULE_BTN_STYLE[key];
+  const b = document.createElement('button');
+  b.className = 'mbtn';
+  b.textContent = label;
+  b.style.cssText = `background:${s.bg};color:${s.fg};border-color:${s.br}`;
+  b.onmouseover = () => b.style.background = s.br;
+  b.onmouseout  = () => b.style.background = s.bg;
+  b.onclick = () => loadModule(key);
+  grid.appendChild(b);
+});
+
+// ─── Build landing example buttons ───────────────────────────────────────────
+const EXAMPLE_BTNS = [
+  {key:'ex-gnss',     label:'LL4 · GNSS Failover',       bg:'#1a2f3a', fg:'#9cdcfe', br:'#2a4f6a'},
+  {key:'ex-comm',     label:'LL4 · Comm Degradation',     bg:'#1a2f3a', fg:'#9cdcfe', br:'#2a4f6a'},
+  {key:'ex-handover', label:'LL4 · ROC Handover',         bg:'#1a2f3a', fg:'#9cdcfe', br:'#2a4f6a'},
+  {key:'ex-fire',     label:'LL2 · Container Fire',       bg:'#1a3a35', fg:'#4ec9b0', br:'#2a5a4f'},
+  {key:'ex-spoofing', label:'LL1 · ECDIS Spoofing',       bg:'#3a2f10', fg:'#e8b84b', br:'#5a4f20'},
+];
+const egrid = document.getElementById('example-grid');
+EXAMPLE_BTNS.forEach(({key, label, bg, fg, br}) => {
+  const b = document.createElement('button');
+  b.className = 'mbtn';
+  b.textContent = label;
+  b.style.cssText = `background:${bg};color:${fg};border-color:${br}`;
+  b.onmouseover = () => b.style.background = br;
+  b.onmouseout  = () => b.style.background = bg;
+  b.onclick = () => loadModule(key);
+  egrid.appendChild(b);
+});
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let simulation, svg, g, showLabels = true;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function shorten(iri) {
+  for (const [prefix, ns] of Object.entries(NS)) {
+    if (iri.startsWith(ns)) return prefix + ':' + iri.slice(ns.length);
+  }
+  // data namespace
+  const m = iri.match(/data\/(\w+)#(.+)/);
+  if (m) return m[1] + ':' + m[2];
+  return iri.length > 60 ? '…' + iri.slice(-40) : iri;
+}
+
+function localName(iri) {
+  const s = shorten(iri);
+  return s.includes(':') ? s.split(':').pop() : s;
+}
+
+function nsColor(iri) {
+  for (const [ns, color] of Object.entries(MODULE_COLORS)) {
+    if (iri.startsWith(ns)) return color;
+  }
+  return '#6e7681';
+}
+
+function nsName(iri) {
+  for (const [ns, name] of Object.entries(MODULE_NAMES)) {
+    if (iri.startsWith(ns)) return name;
+  }
+  return '';
+}
+
+// ─── TTL loading ──────────────────────────────────────────────────────────────
+const EXAMPLE_LABELS = {
+  'ex-gnss':     'LL4 · GNSS Failover',
+  'ex-comm':     'LL4 · Comm Degradation',
+  'ex-handover': 'LL4 · ROC Handover',
+  'ex-fire':     'LL2 · Container Fire',
+  'ex-spoofing': 'LL1 · ECDIS Spoofing',
+};
+
+async function loadModule(key) {
+  if (!key) return;
+  const url = MODULE_FILES[key];
+  document.getElementById('module-select').value = key;
+  const label = MODULE_LABELS[key] || EXAMPLE_LABELS[key] || key;
+  showSpinner(`Loading ${label}…`);
+  try {
+    const isExample = key.startsWith('ex-');
+    let text;
+    if (isExample) {
+      // Load example + merged ontology together so instances resolve to classes
+      showSpinner(`Loading ${label} + ontology…`);
+      const [exRes, ontoRes] = await Promise.all([
+        fetch(url),
+        fetch('../dist/warrant-all-merged.ttl')
+      ]);
+      if (!exRes.ok)   throw new Error(`Example HTTP ${exRes.status}: ${url}`);
+      if (!ontoRes.ok) throw new Error(`Ontology HTTP ${ontoRes.status} — run: python scripts/merge_ontology.py`);
+      text = await ontoRes.text() + '\n' + await exRes.text();
+    } else {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      text = await res.text();
+    }
+    await renderTTL(text, label);
+  } catch(e) {
+    hideSpinner();
+    alert(`Could not load: ${e.message}\n\nMake sure the local server is running:\n  python -m http.server 8000\n  (from the repo root)`);
+  }
+}
+
+async function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  showSpinner(`Parsing ${file.name}…`);
+  const text = await file.text();
+  await renderTTL(text, file.name);
+  input.value = '';
+}
+
+// ─── RDF parsing ──────────────────────────────────────────────────────────────
+async function parseTTL(text) {
+  return new Promise((resolve, reject) => {
+    const parser = new N3.Parser();
+    const quads = [];
+    parser.parse(text, (err, quad, prefixes) => {
+      if (err) reject(err);
+      else if (quad) quads.push(quad);
+      else resolve(quads);
+    });
+  });
+}
+
+function buildGraph(quads) {
+  const OWL = NS.owl, RDF = NS.rdf, RDFS = NS.rdfs;
+
+  // Maps: iri → {label, comment, types, deprecated}
+  const entities = new Map();
+
+  function ent(iri) {
+    if (!entities.has(iri)) entities.set(iri, {iri, label:'', comment:'', types:new Set(), deprecated:false, domain:[], range:[]});
+    return entities.get(iri);
+  }
+
+  // First pass: collect types, labels, comments
+  for (const q of quads) {
+    const s = q.subject.value, p = q.predicate.value, o = q.object.value;
+    if (q.object.termType === 'NamedNode' || q.object.termType === 'BlankNode') {
+      if (p === RDF+'type') ent(s).types.add(o);
+    }
+    if (p === RDFS+'label' && (!q.object.language || q.object.language === 'en'))
+      ent(s).label = q.object.value;
+    if (p === RDFS+'comment' && (!q.object.language || q.object.language === 'en'))
+      ent(s).comment = q.object.value;
+    if (p === OWL+'deprecated' && q.object.value === 'true')
+      ent(s).deprecated = true;
+  }
+
+  // Determine node types
+  const classes = new Set();
+  const properties = new Set();
+  const individuals = new Set();
+
+  for (const [iri, e] of entities) {
+    if (e.types.has(OWL+'Class') || e.types.has(RDFS+'Class')) classes.add(iri);
+    if (e.types.has(OWL+'ObjectProperty') || e.types.has(OWL+'DatatypeProperty') ||
+        e.types.has(RDF+'Property')) properties.add(iri);
+    // Named individuals and controlled vocab
+    for (const t of e.types) {
+      if (classes.has(t) && !e.types.has(OWL+'Class')) individuals.add(iri);
+    }
+  }
+
+  // Edges
+  const edges = [];
+  const edgeSet = new Set();
+  function addEdge(s, t, type, label='') {
+    const key = `${s}|${t}|${type}`;
+    if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({source:s, target:t, type, label}); }
+  }
+
+  for (const q of quads) {
+    const s = q.subject.value, p = q.predicate.value, o = q.object.value;
+    if (q.object.termType !== 'NamedNode') continue;
+
+    if (p === RDFS+'subClassOf' && classes.has(s) && classes.has(o))
+      addEdge(s, o, 'subClassOf', 'subClassOf');
+
+    if (p === RDFS+'domain' && properties.has(s))
+      addEdge(s, o, 'domain', 'domain');
+
+    if (p === RDFS+'range' && properties.has(s))
+      addEdge(s, o, 'range', 'range');
+
+    if (p === RDF+'type' && individuals.has(s) && classes.has(o))
+      addEdge(s, o, 'instanceOf', 'a');
+  }
+
+  // Build nodes — skip blank nodes and pure annotation subjects
+  const nodeIRIs = new Set([...classes, ...properties]);
+  // add individuals that have edges
+  for (const iri of individuals) nodeIRIs.add(iri);
+
+  // Filter to things in a known namespace (skip owl:, rdf:, rdfs: built-ins)
+  const builtins = [NS.owl, NS.rdf, NS.rdfs, NS.xsd, NS.skos, NS.dcterms];
+  const dataNS   = [NS.ll1, NS.ll2, NS.ll3, NS.ll4];
+  const ontNS    = Object.values(NS).filter(ns =>
+    !builtins.includes(ns) && !dataNS.includes(ns) &&
+    !ns.startsWith('http://www.w3.org/ns/shacl'));
+
+  const filtered = new Set([...nodeIRIs].filter(iri => {
+    if (builtins.some(ns => iri.startsWith(ns))) return false;
+    if (iri.startsWith('http://www.w3.org/ns/shacl')) return false;
+    // always include data-namespace instances
+    if (dataNS.some(ns => iri.startsWith(ns))) return true;
+    // include ontology-namespace terms
+    if (ontNS.some(ns => iri.startsWith(ns))) return true;
+    return false;
+  }));
+
+  // Keep edges where both endpoints are in filtered set
+  const filteredEdges = edges.filter(e =>
+    filtered.has(e.source) && filtered.has(e.target)
+  );
+
+  const nodes = [...filtered].map(iri => {
+    const e = ent(iri);
+    let kind = 'class';
+    if (properties.has(iri)) kind = 'property';
+    else if (individuals.has(iri)) kind = 'individual';
+    return {
+      id: iri,
+      label: e.label || localName(iri),
+      fullLabel: e.label,
+      comment: e.comment,
+      kind,
+      deprecated: e.deprecated,
+      color: nsColor(iri),
+      module: nsName(iri),
+      types: [...e.types],
+    };
+  });
+
+  return {nodes, edges: filteredEdges};
+}
+
+// ─── D3 rendering ─────────────────────────────────────────────────────────────
+async function renderTTL(text, title) {
+  let quads;
+  try {
+    quads = await parseTTL(text);
+  } catch(e) {
+    hideSpinner();
+    alert('Parse error: ' + e.message);
+    return;
+  }
+
+  const {nodes, edges} = buildGraph(quads);
+  if (nodes.length === 0) {
+    hideSpinner();
+    alert('No OWL classes or properties found in this file.');
+    return;
+  }
+
+  showGraph();
+  drawGraph(nodes, edges, quads.length);
+}
+
+function drawGraph(nodes, edges, tripleCount) {
+  const svgEl = document.getElementById('svg');
+  svgEl.innerHTML = '';
+
+  const W = svgEl.clientWidth || 900;
+  const H = svgEl.clientHeight || 600;
+
+  svg = d3.select('#svg');
+
+  // Arrow markers
+  const defs = svg.append('defs');
+  [['subClassOf','#6e7681'],['domain','#f0883e'],['range','#f0883e'],['instanceOf','#6e7681']].forEach(([id, color]) => {
+    defs.append('marker').attr('id','arr-'+id).attr('viewBox','0 -4 8 8')
+      .attr('refX',14).attr('refY',0).attr('markerWidth',6).attr('markerHeight',6)
+      .attr('orient','auto')
+      .append('path').attr('d','M0,-4L8,0L0,4').attr('fill',color);
+  });
+
+  g = svg.append('g');
+
+  // Zoom
+  svg.call(d3.zoom().scaleExtent([0.1, 8]).on('zoom', e => g.attr('transform', e.transform)));
+
+  // Edge colour helper
+  const edgeColor = t => t === 'subClassOf' ? '#30363d' : t === 'instanceOf' ? '#3d444d' : '#f0883e';
+
+  // Links
+  const link = g.append('g').attr('class','links').selectAll('line')
+    .data(edges).join('line')
+    .attr('stroke', d => edgeColor(d.type))
+    .attr('stroke-width', d => d.type === 'subClassOf' ? 1.5 : 1)
+    .attr('stroke-dasharray', d => d.type === 'instanceOf' ? '4,3' : null)
+    .attr('marker-end', d => `url(#arr-${d.type})`);
+
+  // Edge labels (only domain/range)
+  const elabel = g.append('g').attr('class','elabels').selectAll('text')
+    .data(edges.filter(e => e.type === 'domain' || e.type === 'range')).join('text')
+    .attr('font-size', 8).attr('fill','#6e7681').attr('text-anchor','middle').attr('pointer-events','none')
+    .text(d => d.label);
+
+  // Node radius
+  const r = d => d.kind === 'property' ? 5 : d.kind === 'individual' ? 6 : 9;
+
+  // Nodes
+  const node = g.append('g').attr('class','nodes').selectAll('g')
+    .data(nodes).join('g')
+    .attr('cursor','pointer')
+    .call(d3.drag().on('start', dragStart).on('drag', dragged).on('end', dragEnd))
+    .on('click', (e, d) => { e.stopPropagation(); showInspector(d); })
+    .on('mouseover', (e, d) => {
+      const tt = document.getElementById('tooltip');
+      tt.style.display = 'block';
+      tt.innerHTML = `<b>${d.label}</b><br><span style="color:#8b949e;font-size:11px">${shorten(d.id)}</span>${d.comment ? '<br><span style="color:#6e7681;font-size:11px">'+d.comment.slice(0,120)+(d.comment.length>120?'…':'')+'</span>' : ''}`;
+    })
+    .on('mousemove', e => {
+      const tt = document.getElementById('tooltip');
+      tt.style.left = (e.offsetX + 14) + 'px';
+      tt.style.top  = (e.offsetY - 10) + 'px';
+    })
+    .on('mouseout', () => { document.getElementById('tooltip').style.display = 'none'; });
+
+  // Circle
+  node.append('circle')
+    .attr('r', r)
+    .attr('fill', d => d.deprecated ? '#3a1f1f' : d.kind === 'property' ? '#21262d' : d.color + '22')
+    .attr('stroke', d => d.deprecated ? '#6e2f2f' : d.color)
+    .attr('stroke-width', d => d.kind === 'property' ? 1.5 : 2)
+    .attr('stroke-dasharray', d => d.deprecated ? '3,2' : null);
+
+  // Property inner dot
+  node.filter(d => d.kind === 'property').append('circle')
+    .attr('r', 2).attr('fill', d => d.color);
+
+  // Labels
+  const labels = node.append('text')
+    .attr('x', d => r(d) + 4)
+    .attr('dy', '0.35em')
+    .attr('font-size', 10)
+    .attr('fill', d => d.deprecated ? '#6e4040' : '#c9d1d9')
+    .attr('pointer-events','none')
+    .text(d => d.label.length > 22 ? d.label.slice(0,20)+'…' : d.label)
+    .style('display', showLabels ? null : 'none');
+
+  // Click on background to deselect
+  svg.on('click', () => { closeInspector(); unhighlight(); });
+
+  // Simulation
+  simulation = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(edges).id(d => d.id).distance(d => d.type==='subClassOf'?80:60).strength(0.4))
+    .force('charge', d3.forceManyBody().strength(-180))
+    .force('center', d3.forceCenter(W/2, H/2))
+    .force('collide', d3.forceCollide(18))
+    .on('tick', () => {
+      link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+          .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+      elabel.attr('x',d=>(d.source.x+d.target.x)/2).attr('y',d=>(d.source.y+d.target.y)/2);
+      node.attr('transform',d=>`translate(${d.x},${d.y})`);
+    });
+
+  // Stats
+  const stats = document.getElementById('stats');
+  stats.style.display = 'block';
+  stats.textContent = `${nodes.filter(n=>n.kind==='class').length} classes · ${nodes.filter(n=>n.kind==='property').length} properties · ${nodes.filter(n=>n.kind==='individual').length} individuals · ${tripleCount} triples`;
+
+  hideSpinner();
+  document.getElementById('fit-btn').disabled = false;
+  document.getElementById('labels-btn').disabled = false;
+
+  // Auto-fit after stabilisation
+  setTimeout(fitGraph, 1800);
+}
+
+function dragStart(e, d) { if(!e.active) simulation.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
+function dragged(e, d)    { d.fx=e.x; d.fy=e.y; }
+function dragEnd(e, d)    { if(!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; }
+
+function fitGraph() {
+  if (!g) return;
+  const svgEl = document.getElementById('svg');
+  const W = svgEl.clientWidth, H = svgEl.clientHeight;
+  const bounds = g.node().getBBox();
+  if (!bounds.width) return;
+  const scale = Math.min(0.9, Math.min(W/bounds.width, H/bounds.height));
+  const tx = W/2 - scale*(bounds.x + bounds.width/2);
+  const ty = H/2 - scale*(bounds.y + bounds.height/2);
+  svg.transition().duration(600)
+     .call(d3.zoom().transform, d3.zoomIdentity.translate(tx,ty).scale(scale));
+}
+
+function toggleLabels() {
+  showLabels = !showLabels;
+  d3.selectAll('#canvas text').style('display', showLabels ? null : 'none');
+  document.getElementById('labels-btn').textContent = showLabels ? '🏷 Labels' : '🏷 Labels off';
+}
+
+function unhighlight() {
+  d3.selectAll('#canvas circle').attr('stroke-opacity', 1).attr('r', function(){
+    const n = d3.select(this.parentNode).datum();
+    return n ? (n.kind==='property'?5:n.kind==='individual'?6:9) : null;
+  });
+}
+
+// ─── Inspector ────────────────────────────────────────────────────────────────
+function showInspector(d) {
+  const panel = document.getElementById('inspector');
+  const body  = document.getElementById('inspector-body');
+  panel.style.display = 'flex';
+  document.getElementById('insp-title').textContent = d.label;
+
+  let html = '';
+
+  html += row('IRI', `<span class="ival mono">${shorten(d.id)}</span>`);
+  if (d.module) html += row('Module', `<span class="ival">${d.module}</span>`);
+  html += row('Kind', `<span class="ival">${d.kind}</span>`);
+  if (d.deprecated) html += row('Status', '<span class="itag dep">deprecated</span>');
+  if (d.fullLabel) html += row('Label', `<span class="ival">${d.fullLabel}</span>`);
+  if (d.comment) {
+    html += `<div class="isec">Description</div>`;
+    html += `<div style="color:#8b949e;font-size:12px;line-height:1.6;margin-bottom:8px">${d.comment}</div>`;
+  }
+  if (d.types.length) {
+    html += `<div class="isec">Types</div>`;
+    html += d.types.map(t => `<span class="itag">${shorten(t)}</span>`).join(' ');
+  }
+  html += `<div class="isec">Full IRI</div>`;
+  html += `<div style="font-family:monospace;font-size:10px;color:#6e7681;word-break:break-all">${d.id}</div>`;
+
+  body.innerHTML = html;
+}
+
+function row(label, val) {
+  return `<div class="irow"><span class="ilabel">${label}</span><span>${val}</span></div>`;
+}
+
+function closeInspector() {
+  document.getElementById('inspector').style.display = 'none';
+}
+
+// ─── UI transitions ───────────────────────────────────────────────────────────
+function showSpinner(msg) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('canvas').style.display  = 'none';
+  const sp = document.getElementById('spinner');
+  sp.style.display = 'flex';
+  document.getElementById('spinner-msg').textContent = msg;
+}
+
+function hideSpinner() {
+  document.getElementById('spinner').style.display = 'none';
+}
+
+function showGraph() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('spinner').style.display = 'none';
+  document.getElementById('canvas').style.display  = 'block';
+  document.getElementById('legend').style.display  = 'flex';
+  document.getElementById('module-select').disabled = false;
+}
+</script>
+</body>
+</html>

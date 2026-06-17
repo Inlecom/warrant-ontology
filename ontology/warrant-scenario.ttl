@@ -1,0 +1,118 @@
+##############################################################################
+# WARRaNT Scenario Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/scenario
+# Imports: warrant-core.ttl, warrant-cdm.ttl
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/scenario>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> ;
+    rdfs:label "WARRaNT Scenario Module"@en ;
+    rdfs:comment "Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios. The KG defines scenario semantics; the external scenario engine executes them."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Classes
+##############################################################################
+
+scen:Scenario a owl:Class ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Scenario"@en ;
+    rdfs:comment "A simulated what-if case: cyberattack, failure, degraded operation, environmental, or unsafe control. The external scenario engine executes it."@en .
+
+scen:CyberattackScenario       a owl:Class ; rdfs:subClassOf scen:Scenario ; rdfs:label "Cyberattack Scenario"@en .
+scen:FailureScenario           a owl:Class ; rdfs:subClassOf scen:Scenario ; rdfs:label "Failure Scenario"@en .
+scen:DegradedOperationScenario a owl:Class ; rdfs:subClassOf scen:Scenario ; rdfs:label "Degraded Operation Scenario"@en .
+scen:EnvironmentalScenario     a owl:Class ; rdfs:subClassOf scen:Scenario ; rdfs:label "Environmental Scenario"@en .
+scen:UnsafeControlScenario     a owl:Class ; rdfs:subClassOf scen:Scenario ; rdfs:label "Unsafe Control Scenario"@en .
+
+scen:ScenarioExecution a owl:Class ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Scenario Execution"@en ;
+    rdfs:comment "A specific execution instance of a Scenario, with state, timestamps, and result."@en .
+
+scen:ScenarioResult a owl:Class ;
+    rdfs:label "Scenario Result"@en ;
+    rdfs:comment "Stores the outcome of a ScenarioExecution: result metadata, timestamps, and references to DI states and deviation events produced during execution. Owned by this module; the DT module references but does not redefine it."@en .
+
+scen:ScenarioTrigger  a owl:Class ; rdfs:label "Scenario Trigger"@en .
+scen:Failure          a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:label "Failure"@en .
+scen:Threat           a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:label "Threat"@en .
+scen:EventTrigger     a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:label "Event Trigger"@en .
+scen:DeviationTrigger a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:label "Deviation Trigger"@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+scen:hasTrigger a owl:ObjectProperty ;
+    rdfs:domain scen:Scenario ;
+    rdfs:range [ owl:unionOf ( cdm:Deviation scen:Failure scen:Threat warrant:EnvironmentalCondition scen:EventTrigger ) ] ;
+    rdfs:label "has trigger"@en .
+
+scen:affects a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( scen:Scenario cdm:Deviation cdm:Hazard ) ] ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction ) ] ;
+    rdfs:label "affects"@en .
+
+scen:causes a owl:ObjectProperty ;
+    rdfs:domain scen:Scenario ;
+    rdfs:range [ owl:unionOf ( cdm:Risk cdm:Hazard ) ] ;
+    rdfs:label "causes"@en .
+
+scen:hasScenarioExecution a owl:ObjectProperty ;
+    rdfs:domain scen:Scenario ;
+    rdfs:range scen:ScenarioExecution ;
+    rdfs:label "has scenario execution"@en .
+
+scen:hasScenarioResult a owl:ObjectProperty ;
+    rdfs:domain scen:ScenarioExecution ;
+    rdfs:range scen:ScenarioResult ;
+    rdfs:label "has scenario result"@en .
+
+scen:hasScenarioParameter a owl:ObjectProperty ;
+    rdfs:domain scen:Scenario ;
+    rdfs:range owl:Thing ;
+    rdfs:label "has scenario parameter"@en .
+
+scen:hasExecutionState a owl:ObjectProperty ;
+    rdfs:domain scen:ScenarioExecution ;
+    rdfs:range di:DependabilityIndexState ;
+    rdfs:label "has execution state"@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+scen:hasExecutionTimestamp a owl:DatatypeProperty ;
+    rdfs:domain scen:ScenarioExecution ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "has execution timestamp"@en .
+
+scen:hasResultSummary a owl:DatatypeProperty ;
+    rdfs:domain scen:ScenarioResult ;
+    rdfs:range xsd:string ;
+    rdfs:label "has result summary"@en ;
+    rdfs:comment "Human-readable outcome description of the scenario execution."@en .
+
+##############################################################################
+# END warrant-scenario.ttl
+##############################################################################

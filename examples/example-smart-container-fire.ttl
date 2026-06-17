@@ -1,0 +1,758 @@
+##############################################################################
+# WARRaNT Example: Smart Container Fire Detection (LL2 — AELER)
+# Instance namespace: https://warrant-project.eu/data/ll2#
+# Ontology version: 1.0.0
+#
+# Scenario: A smart container must reliably detect fire and communicate
+# bidirectionally with the vessel. The container operates in two modes:
+#   (1) Event Detection & Reporting — sensors, edge processing, alarm generation
+#   (2) Context Awareness & Operation — adaptive alarm logic driven by vessel data
+#
+# Upstream (Container → Vessel): fire alarms, telemetry, diagnostics, location
+# Downstream (Vessel → Container): cargo/stowage context, fire-zone status,
+#   power availability, vessel alarms, configuration, time synchronisation
+#
+# Dependability aspects covered:
+#   - Sensor reliability (false positives, false negatives, harsh conditions)
+#   - Local edge processing and power robustness
+#   - Upstream communication (UNAVAILABLE, LATE)
+#   - Downstream communication (WRONG context, LESS data, INCONSISTENT)
+#   - Cybersecurity (SPOOFED alarm, UNTRUSTED source)
+#   - Vessel Communication Gateway capabilities
+#   - FMEA failure modes (cdm:FailureMode) with cdm:affectsComponent
+#     and cdm:producesDeviation — now properly defined in warrant-cdm.ttl
+#   - Composite DI with per-sub-function scores
+#   - Communication links typed with davom:hasInterfaceType (davom:WIRELESS)
+#
+# Hazards: cargo fire escalation; false alarm crew response; context blindness
+# Goal: dependable smart-container ecosystem where fire events are reliably
+#   detected, communicated, and acted upon onboard the vessel.
+##############################################################################
+
+@prefix ll2:     <https://warrant-project.eu/data/ll2#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESSEL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:CargoVessel a davom:Vessel ;
+    warrant:hasIdentifier "LL2-VESSEL-001" ;
+    warrant:hasName "LL2 Cargo Vessel (AELER)" .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SMART CONTAINERS — two archetypes per LL2 diagram
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:SmartContainer_EventDetection a davom:CyberPhysicalSystem ;
+    warrant:hasIdentifier "SC-ED-001" ;
+    warrant:hasName "Smart Container — Event Detection & Reporting" ;
+    warrant:hasMaker "AELER" ;
+    warrant:hasDescription "Container equipped with sensors and local edge processing that generates and sends alarms, telemetry, diagnostics, and status to the vessel." .
+
+ll2:SmartContainer_ContextAware a davom:CyberPhysicalSystem ;
+    warrant:hasIdentifier "SC-CA-001" ;
+    warrant:hasName "Smart Container — Context Awareness & Operation" ;
+    warrant:hasMaker "AELER" ;
+    warrant:hasDescription "Container that uses vessel data to contextualise alerts, adjust thresholds, and operate adaptively with dependability monitoring." .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESSEL FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:FireDetectionFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-FD-001" ;
+    warrant:hasName "Fire Detection Function" ;
+    warrant:hasDescription "Detect fire in cargo containers and communicate alerts to the vessel alarm system." .
+
+ll2:ContainerContextFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-CTX-001" ;
+    warrant:hasName "Container Context Provisioning Function" ;
+    warrant:hasDescription "Distribute cargo/stowage context, fire-zone status, and configuration from the vessel to smart containers." .
+
+ll2:CargoVessel davom:hasFunction ll2:FireDetectionFunction .
+ll2:CargoVessel davom:hasFunction ll2:ContainerContextFunction .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESSEL SYSTEMS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:VesselCommunicationGateway a davom:CommunicationSystem ;
+    warrant:hasIdentifier "SYS-VCG-001" ;
+    warrant:hasName "Vessel Communication Gateway" ;
+    warrant:hasDescription "Central gateway providing message validation, buffering & store-and-forward, redundancy & failover, cybersecurity & authentication, routing & prioritisation, and time synchronisation for all container–vessel data exchange." .
+
+ll2:AlarmManagementSystem a davom:SoftwareSystem ;
+    warrant:hasIdentifier "SYS-AMS-001" ;
+    warrant:hasName "Vessel Alarm Management System (AMS)" ;
+    warrant:hasDescription "Receives and processes fire alarms; provides alarm visualisation, notification, fire-response support, and event logging." .
+
+ll2:CargoManagementSystem a davom:SoftwareSystem ;
+    warrant:hasIdentifier "SYS-CMS-001" ;
+    warrant:hasName "Cargo Management System (CMS)" ;
+    warrant:hasDescription "Holds cargo & stowage information, reefer data, power status, environmental monitoring (temp, humidity), and ventilation/fire-zone information." .
+
+ll2:FireDetectionFunction davom:isSupportedBy ll2:VesselCommunicationGateway .
+ll2:FireDetectionFunction davom:isSupportedBy ll2:AlarmManagementSystem .
+ll2:ContainerContextFunction davom:isSupportedBy ll2:VesselCommunicationGateway .
+ll2:ContainerContextFunction davom:isSupportedBy ll2:CargoManagementSystem .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENTS — Container Event Detection side
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:FireSmokeTemperatureSensor a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-FST-001" ;
+    warrant:hasName "Fire / Smoke / Temperature Sensor" ;
+    warrant:hasDescription "Multi-modal thermal and optical sensor for fire, smoke, and temperature detection inside the smart container." .
+
+ll2:GasSensor a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GAS-001" ;
+    warrant:hasName "Gas Sensor" ;
+    warrant:hasDescription "Detects combustible and toxic gas accumulation as an early fire precursor." .
+
+ll2:LocalEdgeProcessor a davom:CyberComponent ;
+    warrant:hasIdentifier "COMP-EDGE-001" ;
+    warrant:hasName "Local Edge Processor" ;
+    warrant:hasDescription "On-container compute unit for local event detection, threshold evaluation, and alarm generation. Provides processing robustness independent of vessel connectivity." .
+
+ll2:AlarmGeneratorComponent a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-ALM-001" ;
+    warrant:hasName "Alarm Generator" ;
+    warrant:hasDescription "Software component that produces structured fire alarm messages from sensor events and forwards them to the container gateway." .
+
+ll2:LocalPowerHealthMonitor a davom:PhysicalComponent ;
+    warrant:hasIdentifier "COMP-PWR-001" ;
+    warrant:hasName "Local Power & Health Monitor" ;
+    warrant:hasDescription "Monitors on-container battery, power rail health, and hardware diagnostics. Enables safe shutdown and degraded-mode operation." .
+
+ll2:ContainerGateway a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-GW-001" ;
+    warrant:hasName "Container Gateway" ;
+    warrant:hasDescription "Wireless gateway transmitting alarms, telemetry, diagnostics, and location upstream; receiving vessel context, commands, and configuration downstream." .
+
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:FireSmokeTemperatureSensor .
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:GasSensor .
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:LocalEdgeProcessor .
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:AlarmGeneratorComponent .
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:LocalPowerHealthMonitor .
+ll2:SmartContainer_EventDetection davom:hasComponent ll2:ContainerGateway .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENTS — Container Context Awareness side
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:AdaptiveAlarmLogicComponent a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-AAL-001" ;
+    warrant:hasName "Adaptive Alarm Logic" ;
+    warrant:hasDescription "Adjusts fire alarm thresholds based on cargo type, stowage position, ventilation zone, and vessel operational state received from CMS." .
+
+ll2:DependabilityMonitorComponent a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-DM-001" ;
+    warrant:hasName "Dependability Monitor" ;
+    warrant:hasDescription "On-container runtime monitor computing local sensor confidence and communication availability scores for use by the adaptive alarm logic." .
+
+ll2:SmartContainer_ContextAware davom:hasComponent ll2:AdaptiveAlarmLogicComponent .
+ll2:SmartContainer_ContextAware davom:hasComponent ll2:DependabilityMonitorComponent .
+ll2:SmartContainer_ContextAware davom:hasComponent ll2:ContainerGateway .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMMUNICATION LINKS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:UpstreamContainerToVesselLink a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-SC-VCS-001" ;
+    warrant:hasName "Container → Vessel Communication Link (Upstream)" ;
+    davom:hasInterfaceType davom:WIRELESS ;
+    warrant:hasDescription "Wireless link carrying fire alarms, sensor telemetry, diagnostics & health status, and container location & identification from container to vessel." .
+
+ll2:DownstreamVesselToContainerLink a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-VCS-SC-001" ;
+    warrant:hasName "Vessel → Container Communication Link (Downstream)" ;
+    davom:hasInterfaceType davom:WIRELESS ;
+    warrant:hasDescription "Link carrying cargo/stowage information, ventilation/fire-zone status, power availability, vessel alarms & notifications, configuration/commands, and time synchronisation from vessel to container." .
+
+ll2:FireDetectionFunction davom:usesCommunicationLink ll2:UpstreamContainerToVesselLink .
+ll2:ContainerContextFunction davom:usesCommunicationLink ll2:DownstreamVesselToContainerLink .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# METRICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Sensor metrics
+ll2:FireDetectionConfidenceMetric a obs:SafetyMetric ;
+    warrant:hasName "Fire Detection Confidence" ;
+    obs:hasUnit "%" ;
+    obs:hasExternalTimeSeriesId "timeseries.fire.detection_confidence.SC-001" .
+
+ll2:GasDetectionConfidenceMetric a obs:SafetyMetric ;
+    warrant:hasName "Gas Detection Confidence" ;
+    obs:hasUnit "%" ;
+    obs:hasExternalTimeSeriesId "timeseries.gas.detection_confidence.SC-001" .
+
+ll2:SensorFalsePositiveRateMetric a obs:SafetyMetric ;
+    warrant:hasName "Sensor False Positive Rate" ;
+    obs:hasUnit "events/h" ;
+    obs:hasExternalTimeSeriesId "timeseries.sensor.false_positive_rate.SC-001" .
+
+ll2:SensorFalseNegativeRateMetric a obs:SafetyMetric ;
+    warrant:hasName "Sensor False Negative Rate" ;
+    obs:hasUnit "events/h" ;
+    obs:hasExternalTimeSeriesId "timeseries.sensor.false_negative_rate.SC-001" .
+
+ll2:LocalPowerHealthMetric a obs:AvailabilityMetric ;
+    warrant:hasName "Local Power & Health Status" ;
+    obs:hasUnit "ratio" ;
+    obs:hasExternalTimeSeriesId "timeseries.power.health.SC-001" .
+
+# — Upstream communication metrics
+ll2:UpstreamMessageLatencyMetric a obs:PerformanceMetric ;
+    warrant:hasName "Container→Vessel Alert Latency" ;
+    obs:hasUnit "ms" ;
+    obs:hasExternalTimeSeriesId "timeseries.comm.upstream.latency.SC-001" .
+
+ll2:UpstreamCommAvailabilityMetric a obs:AvailabilityMetric ;
+    warrant:hasName "Container→Vessel Communication Availability" ;
+    obs:hasUnit "ratio" ;
+    obs:hasExternalTimeSeriesId "timeseries.comm.upstream.availability.SC-001" .
+
+# — Downstream communication metrics
+ll2:DownstreamContextFreshnessMetric a obs:PerformanceMetric ;
+    warrant:hasName "Vessel→Container Context Data Freshness" ;
+    obs:hasUnit "s" ;
+    obs:hasExternalTimeSeriesId "timeseries.comm.downstream.freshness.SC-001" .
+
+ll2:DownstreamCommAvailabilityMetric a obs:AvailabilityMetric ;
+    warrant:hasName "Vessel→Container Communication Availability" ;
+    obs:hasUnit "ratio" ;
+    obs:hasExternalTimeSeriesId "timeseries.comm.downstream.availability.SC-001" .
+
+ll2:TimeSyncOffsetMetric a obs:PerformanceMetric ;
+    warrant:hasName "Container–Vessel Clock Offset" ;
+    obs:hasUnit "ms" ;
+    obs:hasExternalTimeSeriesId "timeseries.timesync.offset.SC-001" .
+
+# — Metric assignments
+ll2:FireSmokeTemperatureSensor obs:hasDependabilityMetric ll2:FireDetectionConfidenceMetric .
+ll2:FireSmokeTemperatureSensor obs:hasDependabilityMetric ll2:SensorFalsePositiveRateMetric .
+ll2:FireSmokeTemperatureSensor obs:hasDependabilityMetric ll2:SensorFalseNegativeRateMetric .
+ll2:GasSensor obs:hasDependabilityMetric ll2:GasDetectionConfidenceMetric .
+ll2:LocalPowerHealthMonitor obs:hasDependabilityMetric ll2:LocalPowerHealthMetric .
+ll2:UpstreamContainerToVesselLink obs:hasDependabilityMetric ll2:UpstreamMessageLatencyMetric .
+ll2:UpstreamContainerToVesselLink obs:hasDependabilityMetric ll2:UpstreamCommAvailabilityMetric .
+ll2:DownstreamVesselToContainerLink obs:hasDependabilityMetric ll2:DownstreamContextFreshnessMetric .
+ll2:DownstreamVesselToContainerLink obs:hasDependabilityMetric ll2:DownstreamCommAvailabilityMetric .
+ll2:DownstreamVesselToContainerLink obs:hasDependabilityMetric ll2:TimeSyncOffsetMetric .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANALYTICAL SERVICES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:FireDetectionAnalyticalService a obs:AnalyticalService ;
+    warrant:hasName "Container Fire Detection Analytical Service" ;
+    warrant:hasDescription "Analyses fire/gas sensor outputs and upstream communication metrics to produce fire detection events." .
+
+ll2:ContextAwarenessAnalyticalService a obs:AnalyticalService ;
+    warrant:hasName "Container Context Awareness Analytical Service" ;
+    warrant:hasDescription "Analyses downstream communication quality and context freshness to detect stale or inconsistent vessel data that would degrade adaptive alarm logic." .
+
+ll2:FireDetectionAnalyticalService obs:consumes ll2:FireDetectionConfidenceMetric .
+ll2:FireDetectionAnalyticalService obs:consumes ll2:GasDetectionConfidenceMetric .
+ll2:FireDetectionAnalyticalService obs:consumes ll2:UpstreamCommAvailabilityMetric .
+ll2:FireDetectionAnalyticalService obs:consumes ll2:SensorFalsePositiveRateMetric .
+ll2:FireDetectionAnalyticalService obs:consumes ll2:SensorFalseNegativeRateMetric .
+
+ll2:ContextAwarenessAnalyticalService obs:consumes ll2:DownstreamContextFreshnessMetric .
+ll2:ContextAwarenessAnalyticalService obs:consumes ll2:DownstreamCommAvailabilityMetric .
+ll2:ContextAwarenessAnalyticalService obs:consumes ll2:TimeSyncOffsetMetric .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DETECTION EVENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:FireDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "Container Fire Detection Event" ;
+    warrant:hasDescription "Fire detected in smart container SC-ED-001 by thermal/smoke sensor." ;
+    obs:hasTimestamp "2026-05-20T14:22:00Z"^^xsd:dateTime .
+
+ll2:UnavailableUpstreamCommEvent a obs:DetectionEvent ;
+    warrant:hasName "Upstream Communication Unavailability Event" ;
+    warrant:hasDescription "Container gateway cannot reach the Vessel Communication Gateway." ;
+    obs:hasTimestamp "2026-05-20T14:22:01Z"^^xsd:dateTime .
+
+ll2:LateFireAlertEvent a obs:DetectionEvent ;
+    warrant:hasName "Late Fire Alert Detection Event" ;
+    warrant:hasDescription "Fire alert message arrived after the maximum acceptable latency threshold." ;
+    obs:hasTimestamp "2026-05-20T14:22:05Z"^^xsd:dateTime .
+
+ll2:FalsePositiveFireAlarmEvent a obs:DetectionEvent ;
+    warrant:hasName "False Positive Fire Alarm Event" ;
+    warrant:hasDescription "Sensor triggered a fire alarm in the absence of actual fire — e.g. due to high ambient temperature or sea spray." ;
+    obs:hasTimestamp "2026-05-20T11:05:00Z"^^xsd:dateTime .
+
+ll2:FalseNegativeFireEvent a obs:DetectionEvent ;
+    warrant:hasName "False Negative Fire Detection Event" ;
+    warrant:hasDescription "Sensor failed to trigger an alarm despite fire conditions — e.g. sensor fouling or power degradation under harsh maritime conditions." ;
+    obs:hasTimestamp "2026-05-20T09:30:00Z"^^xsd:dateTime .
+
+ll2:SpoofedFireAlarmEvent a obs:DetectionEvent ;
+    warrant:hasName "Spoofed Fire Alarm Event" ;
+    warrant:hasDescription "A fire alarm message was injected by an adversary at the gateway or communication link, mimicking a legitimate container alarm." ;
+    obs:hasTimestamp "2026-05-20T16:00:00Z"^^xsd:dateTime .
+
+ll2:StaleContextDataEvent a obs:DetectionEvent ;
+    warrant:hasName "Stale Downstream Context Data Event" ;
+    warrant:hasDescription "Vessel context data (cargo/stowage, fire-zone) received by the container is outdated beyond acceptable freshness threshold." ;
+    obs:hasTimestamp "2026-05-20T14:20:00Z"^^xsd:dateTime .
+
+ll2:InconsistentContextDataEvent a obs:DetectionEvent ;
+    warrant:hasName "Inconsistent Context Data Event" ;
+    warrant:hasDescription "Contradictory cargo or fire-zone data received from CMS and AMS, preventing the adaptive alarm logic from resolving a reliable threshold." ;
+    obs:hasTimestamp "2026-05-20T14:21:00Z"^^xsd:dateTime .
+
+ll2:TimeSyncDriftEvent a obs:DetectionEvent ;
+    warrant:hasName "Container–Vessel Time Sync Drift Event" ;
+    warrant:hasDescription "Clock offset between container and vessel exceeds acceptable threshold, risking mis-timestamped alarm records." ;
+    obs:hasTimestamp "2026-05-20T14:19:00Z"^^xsd:dateTime .
+
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:FireDetectionEvent .
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:UnavailableUpstreamCommEvent .
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:LateFireAlertEvent .
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:FalsePositiveFireAlarmEvent .
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:FalseNegativeFireEvent .
+ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:SpoofedFireAlarmEvent .
+ll2:ContextAwarenessAnalyticalService obs:producesDetectionEvent ll2:StaleContextDataEvent .
+ll2:ContextAwarenessAnalyticalService obs:producesDetectionEvent ll2:InconsistentContextDataEvent .
+ll2:ContextAwarenessAnalyticalService obs:producesDetectionEvent ll2:TimeSyncDriftEvent .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEVIATIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Upstream communication deviations
+ll2:DevUpstreamUnavailable a cdm:Deviation ;
+    warrant:hasName "Upstream Link Unavailable" ;
+    cdm:hasDeviationType cdm:UNAVAILABLE .
+
+ll2:DevFireAlertLate a cdm:Deviation ;
+    warrant:hasName "Fire Alert Late Delivery" ;
+    cdm:hasDeviationType cdm:LATE .
+
+# — Sensor failure deviations
+ll2:DevFalsePositiveAlarm a cdm:Deviation ;
+    warrant:hasName "Sensor False Positive Alarm" ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll2:DevFalseNegativeAlarm a cdm:Deviation ;
+    warrant:hasName "Sensor False Negative — Fire Not Detected" ;
+    cdm:hasDeviationType cdm:NO .
+
+ll2:DevSensorNoisy a cdm:Deviation ;
+    warrant:hasName "Sensor Noisy Signal (Harsh Maritime Conditions)" ;
+    cdm:hasDeviationType cdm:NOISY .
+
+ll2:DevPowerDegraded a cdm:Deviation ;
+    warrant:hasName "Local Power Degraded" ;
+    cdm:hasDeviationType cdm:LESS .
+
+# — Cybersecurity deviations
+ll2:DevSpoofedAlarm a cdm:Deviation ;
+    warrant:hasName "Spoofed Fire Alarm Message" ;
+    cdm:hasDeviationType cdm:SPOOFED .
+
+ll2:DevUntrustedAlarmSource a cdm:Deviation ;
+    warrant:hasName "Alarm Source Not Authenticated" ;
+    cdm:hasDeviationType cdm:UNTRUSTED .
+
+# — Downstream context deviations
+ll2:DevStaleContextData a cdm:Deviation ;
+    warrant:hasName "Stale Vessel Context Data" ;
+    cdm:hasDeviationType cdm:LATE .
+
+ll2:DevInconsistentContextData a cdm:Deviation ;
+    warrant:hasName "Inconsistent Vessel Context Data" ;
+    cdm:hasDeviationType cdm:INCONSISTENT .
+
+ll2:DevTimeSyncDrift a cdm:Deviation ;
+    warrant:hasName "Container–Vessel Time Synchronisation Drift" ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll2:DevDownstreamLess a cdm:Deviation ;
+    warrant:hasName "Degraded Downstream Context Flow" ;
+    cdm:hasDeviationType cdm:LESS .
+
+# — Detection event → deviation links
+ll2:UnavailableUpstreamCommEvent obs:detectionEventDetects ll2:DevUpstreamUnavailable .
+ll2:LateFireAlertEvent obs:detectionEventDetects ll2:DevFireAlertLate .
+ll2:FalsePositiveFireAlarmEvent obs:detectionEventDetects ll2:DevFalsePositiveAlarm .
+ll2:FalseNegativeFireEvent obs:detectionEventDetects ll2:DevFalseNegativeAlarm .
+ll2:SpoofedFireAlarmEvent obs:detectionEventDetects ll2:DevSpoofedAlarm .
+ll2:StaleContextDataEvent obs:detectionEventDetects ll2:DevStaleContextData .
+ll2:InconsistentContextDataEvent obs:detectionEventDetects ll2:DevInconsistentContextData .
+ll2:TimeSyncDriftEvent obs:detectionEventDetects ll2:DevTimeSyncDrift .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FMEA — FAILURE MODES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:FM_SensorFouling a cdm:FailureMode ;
+    warrant:hasName "Sensor Fouling (salt spray / condensation)" ;
+    warrant:hasDescription "Accumulation of sea spray, salt, or condensation on sensor optics or probe surfaces degrades detection performance in harsh maritime conditions." ;
+    cdm:affectsComponent ll2:FireSmokeTemperatureSensor ;
+    cdm:producesDeviation ll2:DevSensorNoisy ;
+    cdm:producesDeviation ll2:DevFalseNegativeAlarm .
+
+ll2:FM_SensorPowerLoss a cdm:FailureMode ;
+    warrant:hasName "Sensor Power Loss" ;
+    warrant:hasDescription "Loss of local power to the sensor due to battery depletion or power rail fault, causing complete detection failure." ;
+    cdm:affectsComponent ll2:FireSmokeTemperatureSensor ;
+    cdm:affectsComponent ll2:GasSensor ;
+    cdm:producesDeviation ll2:DevFalseNegativeAlarm ;
+    cdm:producesDeviation ll2:DevPowerDegraded .
+
+ll2:FM_GatewayLinkFailure a cdm:FailureMode ;
+    warrant:hasName "Gateway Wireless Link Failure" ;
+    warrant:hasDescription "Hardware or software failure of the container gateway's radio interface, preventing upstream alarm transmission and downstream context reception." ;
+    cdm:affectsComponent ll2:ContainerGateway ;
+    cdm:producesDeviation ll2:DevUpstreamUnavailable ;
+    cdm:producesDeviation ll2:DevDownstreamLess .
+
+ll2:FM_GatewayAuthBypass a cdm:FailureMode ;
+    warrant:hasName "Gateway Authentication Bypass (Cyber)" ;
+    warrant:hasDescription "Adversary exploits a vulnerability in the gateway firmware or vessel communication gateway to inject unauthenticated alarm messages." ;
+    cdm:affectsComponent ll2:ContainerGateway ;
+    cdm:producesDeviation ll2:DevSpoofedAlarm ;
+    cdm:producesDeviation ll2:DevUntrustedAlarmSource .
+
+ll2:FM_EdgeProcessorCrash a cdm:FailureMode ;
+    warrant:hasName "Local Edge Processor Crash" ;
+    warrant:hasDescription "Software crash or hardware fault in the on-container edge processor disables local alarm generation, causing complete reliance on sensor direct output." ;
+    cdm:affectsComponent ll2:LocalEdgeProcessor ;
+    cdm:producesDeviation ll2:DevFalseNegativeAlarm .
+
+ll2:FM_CMSDataStaleness a cdm:FailureMode ;
+    warrant:hasName "CMS Data Staleness" ;
+    warrant:hasDescription "Cargo Management System fails to push updated cargo/stowage records to the container, leaving the adaptive alarm logic operating on outdated context." ;
+    cdm:affectsComponent ll2:CargoManagementSystem ;
+    cdm:producesDeviation ll2:DevStaleContextData .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HAZARDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:HazCargoFireEscalation a cdm:Hazard ;
+    warrant:hasName "Cargo Fire Escalation" ;
+    warrant:hasDescription "Fire in a smart container escalates before vessel crew can respond due to delayed, missing, or unauthenticated fire alert." .
+
+ll2:HazFalseAlarmCrewResponse a cdm:Hazard ;
+    warrant:hasName "False Alarm Crew Response" ;
+    warrant:hasDescription "Crew diverted to a non-existent fire event, consuming response capacity and potentially missing a real fire event elsewhere." .
+
+ll2:HazContextBlindness a cdm:Hazard ;
+    warrant:hasName "Container Context Blindness" ;
+    warrant:hasDescription "Smart container operates without accurate cargo/stowage or fire-zone context, causing miscalibrated alarm thresholds that miss or misclassify fire events." .
+
+ll2:HazCyberSafetyConfusion a cdm:Hazard ;
+    warrant:hasName "Cyber–Safety Confusion from Spoofed Alarm" ;
+    warrant:hasDescription "Adversary-injected fire alarm triggers vessel emergency response, causing crew distraction or unsafe manoeuvres." .
+
+# — Deviation → Hazard links
+ll2:DevUpstreamUnavailable cdm:mayCause ll2:HazCargoFireEscalation .
+ll2:DevFireAlertLate cdm:mayCause ll2:HazCargoFireEscalation .
+ll2:DevFalseNegativeAlarm cdm:mayCause ll2:HazCargoFireEscalation .
+ll2:DevPowerDegraded cdm:mayCause ll2:HazCargoFireEscalation .
+ll2:DevSensorNoisy cdm:mayCause ll2:HazCargoFireEscalation .
+
+ll2:DevFalsePositiveAlarm cdm:mayCause ll2:HazFalseAlarmCrewResponse .
+ll2:DevSpoofedAlarm cdm:mayCause ll2:HazFalseAlarmCrewResponse .
+ll2:DevSpoofedAlarm cdm:mayCause ll2:HazCyberSafetyConfusion .
+ll2:DevUntrustedAlarmSource cdm:mayCause ll2:HazCyberSafetyConfusion .
+
+ll2:DevStaleContextData cdm:mayCause ll2:HazContextBlindness .
+ll2:DevInconsistentContextData cdm:mayCause ll2:HazContextBlindness .
+ll2:DevTimeSyncDrift cdm:mayCause ll2:HazContextBlindness .
+ll2:DevDownstreamLess cdm:mayCause ll2:HazContextBlindness .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RISKS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:RiskVesselSafetyFromFire a cdm:Risk ;
+    warrant:hasName "Vessel Safety Risk from Cargo Fire" ;
+    cdm:hasLikelihood    "0.30"^^xsd:decimal ;
+    cdm:hasImpact        "0.95"^^xsd:decimal ;
+    cdm:hasSeverity      "0.90"^^xsd:decimal ;
+    cdm:hasRiskLevel     "Critical" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll2:RiskFalseAlarmOperational a cdm:Risk ;
+    warrant:hasName "Operational Risk from False Alarm" ;
+    cdm:hasLikelihood    "0.45"^^xsd:decimal ;
+    cdm:hasImpact        "0.40"^^xsd:decimal ;
+    cdm:hasSeverity      "0.35"^^xsd:decimal ;
+    cdm:hasRiskLevel     "Medium" ;
+    cdm:hasAcceptability "ALARP" .
+
+ll2:RiskContextBlindnessDetection a cdm:Risk ;
+    warrant:hasName "Fire Misdetection Risk due to Context Blindness" ;
+    cdm:hasLikelihood    "0.35"^^xsd:decimal ;
+    cdm:hasImpact        "0.75"^^xsd:decimal ;
+    cdm:hasSeverity      "0.70"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll2:RiskCyberSafety a cdm:Risk ;
+    warrant:hasName "Cyber–Safety Risk from Spoofed Alarm" ;
+    cdm:hasLikelihood    "0.20"^^xsd:decimal ;
+    cdm:hasImpact        "0.80"^^xsd:decimal ;
+    cdm:hasSeverity      "0.75"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll2:HazCargoFireEscalation cdm:isEvaluatedAs ll2:RiskVesselSafetyFromFire .
+ll2:HazFalseAlarmCrewResponse cdm:isEvaluatedAs ll2:RiskFalseAlarmOperational .
+ll2:HazContextBlindness cdm:isEvaluatedAs ll2:RiskContextBlindnessDetection .
+ll2:HazCyberSafetyConfusion cdm:isEvaluatedAs ll2:RiskCyberSafety .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ASSURANCE DEGRADATION & SCORES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:UpstreamCommAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Upstream Communication Assurance Degradation" .
+
+ll2:SensorReliabilityDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Sensor Reliability Assurance Degradation" .
+
+ll2:CyberAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Cybersecurity Assurance Degradation" .
+
+ll2:ContextAvailabilityDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Downstream Context Availability Assurance Degradation" .
+
+ll2:DevUpstreamUnavailable assr:causesAssuranceDegradation ll2:UpstreamCommAssuranceDegradation .
+ll2:DevFireAlertLate assr:causesAssuranceDegradation ll2:UpstreamCommAssuranceDegradation .
+ll2:DevFalsePositiveAlarm assr:causesAssuranceDegradation ll2:SensorReliabilityDegradation .
+ll2:DevFalseNegativeAlarm assr:causesAssuranceDegradation ll2:SensorReliabilityDegradation .
+ll2:DevSensorNoisy assr:causesAssuranceDegradation ll2:SensorReliabilityDegradation .
+ll2:DevPowerDegraded assr:causesAssuranceDegradation ll2:SensorReliabilityDegradation .
+ll2:DevSpoofedAlarm assr:causesAssuranceDegradation ll2:CyberAssuranceDegradation .
+ll2:DevUntrustedAlarmSource assr:causesAssuranceDegradation ll2:CyberAssuranceDegradation .
+ll2:DevStaleContextData assr:causesAssuranceDegradation ll2:ContextAvailabilityDegradation .
+ll2:DevInconsistentContextData assr:causesAssuranceDegradation ll2:ContextAvailabilityDegradation .
+ll2:DevTimeSyncDrift assr:causesAssuranceDegradation ll2:ContextAvailabilityDegradation .
+
+# — Per-sub-function assurance scores
+ll2:SensorDetectionAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.48"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-20T14:22:10Z"^^xsd:dateTime .
+
+ll2:UpstreamCommAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.28"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-20T14:22:10Z"^^xsd:dateTime .
+
+ll2:CyberAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.55"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-20T14:22:10Z"^^xsd:dateTime .
+
+ll2:ContextAwarenessAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.42"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-20T14:22:10Z"^^xsd:dateTime .
+
+ll2:FireDetectionFunction assr:hasAssuranceScore ll2:SensorDetectionAssuranceScore .
+ll2:FireDetectionFunction assr:hasAssuranceScore ll2:UpstreamCommAssuranceScore .
+ll2:FireDetectionFunction assr:hasAssuranceScore ll2:CyberAssuranceScore .
+ll2:ContainerContextFunction assr:hasAssuranceScore ll2:ContextAwarenessAssuranceScore .
+
+ll2:SensorReliabilityDegradation assr:updatesAssuranceScore ll2:SensorDetectionAssuranceScore .
+ll2:UpstreamCommAssuranceDegradation assr:updatesAssuranceScore ll2:UpstreamCommAssuranceScore .
+ll2:CyberAssuranceDegradation assr:updatesAssuranceScore ll2:CyberAssuranceScore .
+ll2:ContextAvailabilityDegradation assr:updatesAssuranceScore ll2:ContextAwarenessAssuranceScore .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPENDABILITY INDEX (DI) — per sub-function + composite
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:DI_Method_LL2 a di:DICalculationMethod ;
+    warrant:hasName "Risk-Propagation DI for LL2 Smart Container Fire System" .
+
+# — Sub-function DIs
+ll2:DI_SensorDetection a di:DependabilityIndex ;
+    di:hasDIValue            "0.45"^^xsd:decimal ;
+    di:hasBetaWeight         "0.40"^^xsd:decimal ;
+    di:calculatedAt          "2026-05-20T14:22:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll2:DI_Method_LL2 ;
+    di:hasDIState            di:CriticalState .
+
+ll2:DI_UpstreamComm a di:DependabilityIndex ;
+    di:hasDIValue            "0.22"^^xsd:decimal ;
+    di:hasBetaWeight         "0.30"^^xsd:decimal ;
+    di:calculatedAt          "2026-05-20T14:22:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll2:DI_Method_LL2 ;
+    di:hasDIState            di:CriticalState .
+
+ll2:DI_Cyber a di:DependabilityIndex ;
+    di:hasDIValue            "0.55"^^xsd:decimal ;
+    di:hasBetaWeight         "0.15"^^xsd:decimal ;
+    di:calculatedAt          "2026-05-20T14:22:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll2:DI_Method_LL2 ;
+    di:hasDIState            di:DegradedState .
+
+ll2:DI_ContextAwareness a di:DependabilityIndex ;
+    di:hasDIValue            "0.40"^^xsd:decimal ;
+    di:hasBetaWeight         "0.15"^^xsd:decimal ;
+    di:calculatedAt          "2026-05-20T14:22:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll2:DI_Method_LL2 ;
+    di:hasDIState            di:CriticalState .
+
+# — Composite DI for the full LL2 fire system
+ll2:DI_LL2_FireSystem a di:DependabilityIndex ;
+    di:hasDIValue            "0.37"^^xsd:decimal ;
+    di:hasBetaWeight         "1.00"^^xsd:decimal ;
+    di:calculatedAt          "2026-05-20T14:22:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll2:DI_Method_LL2 ;
+    di:hasDIState            di:CriticalState .
+
+ll2:SensorDetectionAssuranceScore di:contributesTo ll2:DI_SensorDetection .
+ll2:UpstreamCommAssuranceScore    di:contributesTo ll2:DI_UpstreamComm .
+ll2:CyberAssuranceScore           di:contributesTo ll2:DI_Cyber .
+ll2:ContextAwarenessAssuranceScore di:contributesTo ll2:DI_ContextAwareness .
+
+ll2:DI_SensorDetection  di:contributesTo ll2:DI_LL2_FireSystem .
+ll2:DI_UpstreamComm     di:contributesTo ll2:DI_LL2_FireSystem .
+ll2:DI_Cyber            di:contributesTo ll2:DI_LL2_FireSystem .
+ll2:DI_ContextAwareness di:contributesTo ll2:DI_LL2_FireSystem .
+
+ll2:DI_SensorDetection  di:appliesTo ll2:FireDetectionFunction .
+ll2:DI_UpstreamComm     di:appliesTo ll2:FireDetectionFunction .
+ll2:DI_Cyber            di:appliesTo ll2:FireDetectionFunction .
+ll2:DI_ContextAwareness di:appliesTo ll2:ContainerContextFunction .
+ll2:DI_LL2_FireSystem   di:appliesTo ll2:CargoVessel .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MITIGATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Rules
+ll2:RuleFireAlarmComm a mit:MitigationRule ;
+    warrant:hasName "Fire Alarm Communication Mitigation Rule" ;
+    warrant:hasDescription "When upstream link is unavailable or alert is late: activate local alarm and switch to redundant channel." .
+
+ll2:RuleSensorReliability a mit:MitigationRule ;
+    warrant:hasName "Sensor Reliability Mitigation Rule" ;
+    warrant:hasDescription "When false positive/negative rate exceeds threshold or signal is noisy: cross-validate with secondary sensor and require multi-sensor confirmation." .
+
+ll2:RuleCyberAlarmVerification a mit:MitigationRule ;
+    warrant:hasName "Cyber Alarm Verification Rule" ;
+    warrant:hasDescription "When alarm source is untrusted or message is spoofed: reject alarm pending authentication; escalate to crew for physical verification." .
+
+ll2:RuleContextDegradation a mit:MitigationRule ;
+    warrant:hasName "Downstream Context Degradation Rule" ;
+    warrant:hasDescription "When vessel context is stale, inconsistent, or unavailable: revert to static default thresholds and flag context-blind operation to vessel AMS." .
+
+ll2:DevUpstreamUnavailable mit:matchesRule ll2:RuleFireAlarmComm .
+ll2:DevFireAlertLate mit:matchesRule ll2:RuleFireAlarmComm .
+ll2:DevFalsePositiveAlarm mit:matchesRule ll2:RuleSensorReliability .
+ll2:DevFalseNegativeAlarm mit:matchesRule ll2:RuleSensorReliability .
+ll2:DevSensorNoisy mit:matchesRule ll2:RuleSensorReliability .
+ll2:DevSpoofedAlarm mit:matchesRule ll2:RuleCyberAlarmVerification .
+ll2:DevUntrustedAlarmSource mit:matchesRule ll2:RuleCyberAlarmVerification .
+ll2:DevStaleContextData mit:matchesRule ll2:RuleContextDegradation .
+ll2:DevInconsistentContextData mit:matchesRule ll2:RuleContextDegradation .
+ll2:DevDownstreamLess mit:matchesRule ll2:RuleContextDegradation .
+
+# — Actions
+ll2:ActionLocalAlarm a mit:AdvisoryAction ;
+    warrant:hasName "Activate Local Container Alarm" ;
+    warrant:hasDescription "Advisory: activate audible and visual alarm on the container and in the cargo hold." .
+
+ll2:ActionRedundantCommFailover a mit:FailoverProcedure ;
+    warrant:hasName "Redundant Communication Failover" ;
+    warrant:hasDescription "Switch upstream transmission to secondary wireless channel or hardwired fire alarm circuit via the Vessel Communication Gateway redundancy mechanism." .
+
+ll2:ActionCrewVerification a mit:FailoverProcedure ;
+    warrant:hasName "Crew Physical Verification" ;
+    warrant:hasDescription "Dispatch crew to physically inspect the container location and confirm or dismiss the fire event." .
+
+ll2:ActionMultiSensorConfirmation a mit:AdvisoryAction ;
+    warrant:hasName "Multi-Sensor Confirmation" ;
+    warrant:hasDescription "Require agreement between fire/smoke sensor and gas sensor before generating a fire alarm, reducing false positives under noisy conditions." .
+
+ll2:ActionStaticThresholdFallback a mit:FailoverProcedure ;
+    warrant:hasName "Static Threshold Fallback" ;
+    warrant:hasDescription "Revert adaptive alarm logic to pre-configured static thresholds when vessel context data is unavailable or inconsistent." .
+
+ll2:ActionAlarmAuthentication a mit:AdvisoryAction ;
+    warrant:hasName "Alarm Authentication Enforcement" ;
+    warrant:hasDescription "Reject unauthenticated alarm messages at the Vessel Communication Gateway; require cryptographic signature from known container." .
+
+ll2:RuleFireAlarmComm mit:recommends ll2:ActionLocalAlarm .
+ll2:RuleFireAlarmComm mit:recommends ll2:ActionRedundantCommFailover .
+ll2:RuleFireAlarmComm mit:recommends ll2:ActionCrewVerification .
+ll2:RuleSensorReliability mit:recommends ll2:ActionMultiSensorConfirmation .
+ll2:RuleSensorReliability mit:recommends ll2:ActionCrewVerification .
+ll2:RuleCyberAlarmVerification mit:recommends ll2:ActionAlarmAuthentication .
+ll2:RuleCyberAlarmVerification mit:recommends ll2:ActionCrewVerification .
+ll2:RuleContextDegradation mit:recommends ll2:ActionStaticThresholdFallback .
+
+ll2:ActionRedundantCommFailover mit:addresses ll2:UpstreamContainerToVesselLink .
+ll2:ActionStaticThresholdFallback mit:addresses ll2:ContainerContextFunction .
+ll2:ActionAlarmAuthentication mit:addresses ll2:VesselCommunicationGateway .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DIGITAL TWIN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll2:LL2_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasName "LL2 Smart Container Dependability Digital Twin" .
+
+ll2:LL2_DigitalTwin dt:representsStateOf ll2:CargoVessel .
+ll2:LL2_DigitalTwin dt:visualises ll2:SmartContainer_EventDetection .
+ll2:LL2_DigitalTwin dt:visualises ll2:SmartContainer_ContextAware .
+ll2:LL2_DigitalTwin dt:visualises ll2:UpstreamContainerToVesselLink .
+ll2:LL2_DigitalTwin dt:visualises ll2:DownstreamVesselToContainerLink .
+ll2:LL2_DigitalTwin dt:visualises ll2:VesselCommunicationGateway .
+ll2:LL2_DigitalTwin dt:visualises ll2:HazCargoFireEscalation .
+ll2:LL2_DigitalTwin dt:visualises ll2:HazFalseAlarmCrewResponse .
+ll2:LL2_DigitalTwin dt:visualises ll2:HazContextBlindness .
+ll2:LL2_DigitalTwin dt:visualises ll2:HazCyberSafetyConfusion .
+ll2:LL2_DigitalTwin dt:visualises ll2:RiskVesselSafetyFromFire .
+ll2:LL2_DigitalTwin dt:visualises ll2:RiskCyberSafety .
+ll2:LL2_DigitalTwin dt:visualises ll2:DI_LL2_FireSystem .
+ll2:LL2_DigitalTwin dt:visualises ll2:ActionRedundantCommFailover .
+ll2:LL2_DigitalTwin dt:visualises ll2:ActionStaticThresholdFallback .
+ll2:LL2_DigitalTwin dt:receivesUpdateFrom ll2:FireDetectionAnalyticalService .
+ll2:LL2_DigitalTwin dt:receivesUpdateFrom ll2:ContextAwarenessAnalyticalService .
+
+##############################################################################
+# END example-smart-container-fire.ttl
+##############################################################################

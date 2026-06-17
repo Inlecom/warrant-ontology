@@ -1,0 +1,1144 @@
+##############################################################################
+# WARRaNT Example: LL1 Containership Navigation/Comms OT Dependability
+# Instance namespace: https://warrant-project.eu/data/ll1#
+# Ontology version: 1.0.0
+# Source documents:
+#   - Block diagram of bridge navigation equipment (H/N 4009/4010/4011/4012)
+#   - Bridge navigation equipment interconnection interface details
+#   - Cyber security Equipment sw list V145-148 (vessel CATHERINE C, V145)
+#   - FMEA OT V145-148 (Navigation/Communication OT + Electrical/Automation OT)
+#   - WARRaNT LL1 scenario: AIS/ECDIS spoofing cyber-attack
+#
+# Scope: Danaos containership fleet (hull 4009–4012). Navigation & Comms OT.
+#
+# Vessel functions modelled:
+#   VF-NAV-001  Navigation (position fixing, chart display, course keeping)
+#   VF-COM-001  Communication (VHF/MF-HF/Inmarsat, distress alerting)
+#   VF-VDR-001  Voyage Data Recording (black-box, accident investigation)
+#   VF-EL-001   Electrical OT & Alarm Monitoring (AMS, fire detection, BNWAS)
+#
+# Key FMEA failure modes included (by RPN priority):
+#   AMS change data              RPN=315 (Sev=7, Prob=9, Det=5)
+#   VDR data modified/erased     RPN=180 (Sev=6, Prob=6, Det=5)
+#   VDR data not stored          RPN=175 (Sev=7, Prob=5, Det=5)
+#   RADAR/ECDIS/GPS settings mod RPN=108 (Sev=6, Prob=6, Det=3)
+#   BNWAS settings modified      RPN=108 (Sev=6, Prob=6, Det=3)
+#   SPEEDLOG settings modified   RPN=105 (Sev=7, Prob=5, Det=3)
+#   ECHOSOUNDER settings mod     RPN=105 (Sev=7, Prob=5, Det=3)
+#   NAVTEX settings modified     RPN=105 (Sev=7, Prob=5, Det=3)
+#   GPS signal jammed            RPN= 63 (Sev=7, Prob=3, Det=3)
+#   GYROCOMPASS settings mod     RPN= 63 (Sev=7, Prob=3, Det=3)
+#
+# Primary cyber scenario:
+#   Adversary injects spoofed AIS data → ECDIS displays false vessel position
+#   → Navigation officer issues wrong course alteration → collision/grounding risk
+#
+# ── ONTOLOGY STATUS ──────────────────────────────────────────────────────────
+#
+# FLAG-01 RESOLVED: cdm:FailureMode, cdm:affectsComponent, cdm:producesDeviation
+#   now defined in warrant-cdm.ttl.
+#
+# FLAG-02 RESOLVED: warrant:hasMaker, warrant:hasModel, warrant:hasSoftwareVersion
+#   now defined in warrant-core.ttl. All components use typed triples.
+#
+# FLAG-03 RESOLVED: davom:hasInterfaceType + davom:InterfaceType controlled
+#   vocabulary (LAN, SERIAL, CONTACT, SERIAL_CONTACT, VIDEO, AUDIO, WIRELESS)
+#   now defined in warrant-davom.ttl. All CommunicationLinks typed.
+#
+# FLAG-04 DEFERRED: cdm:hasSeverityScore, cdm:hasProbabilityScore,
+#   cdm:hasDetectionScore, cdm:hasRPN (integer FMEA 1–10 scales).
+#   FMEA scores remain in warrant:hasDescription until FMEA-to-KG pipeline
+#   is formalised in T1.1/T1.4 discussions.
+#
+##############################################################################
+
+@prefix ll1:     <https://warrant-project.eu/data/ll1#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESSEL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:ContainerVessel_LL1 a davom:Vessel ;
+    warrant:hasIdentifier "LL1-VESSEL-V145" ;
+    warrant:hasName "LL1 Containership (Danaos — CATHERINE C, V145)" ;
+    warrant:hasDescription "Danaos containership hull 4009/4010/4011/4012. Reference vessel for WARRaNT LL1. Navigation and communications OT scope." .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESSEL FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:NavigationFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-NAV-001" ;
+    warrant:hasName "Navigation Function" ;
+    warrant:hasDescription "Position fixing, chart display (ECDIS), course keeping (Autopilot), target tracking (RADAR), and speed/depth sensing." .
+
+ll1:CommunicationFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-COM-001" ;
+    warrant:hasName "Communication Function" ;
+    warrant:hasDescription "Short-range (VHF), long-range (MF/HF), satellite (Inmarsat-C/GX/FBB), and AIS vessel identification and distress alerting." .
+
+ll1:VoyageRecordingFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-VDR-001" ;
+    warrant:hasName "Voyage Data Recording Function" ;
+    warrant:hasDescription "Black-box voyage data recording (VDR/SVDR) for accident investigation; receives audio, video, serial, and contact inputs from bridge equipment." .
+
+ll1:ElectricalAlarmFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-EL-001" ;
+    warrant:hasName "Electrical OT and Alarm Monitoring Function" ;
+    warrant:hasDescription "Alarm monitoring system (AMS), bridge navigational watch alarm (BNWAS), fire detection, general alarm, and navigation lights." .
+
+ll1:ContainerVessel_LL1 davom:hasFunction ll1:NavigationFunction .
+ll1:ContainerVessel_LL1 davom:hasFunction ll1:CommunicationFunction .
+ll1:ContainerVessel_LL1 davom:hasFunction ll1:VoyageRecordingFunction .
+ll1:ContainerVessel_LL1 davom:hasFunction ll1:ElectricalAlarmFunction .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SYSTEMS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:NavigationSystem a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-NAV-001" ;
+    warrant:hasName "Bridge Navigation System" ;
+    warrant:hasDescription "Integrated bridge navigation system covering RADAR, ECDIS, GPS, Gyrocompass, Autopilot, Speedlog, Echosounder, Anemometer, AIS, and BNWAS." .
+
+ll1:CommunicationSystem a davom:CommunicationSystem ;
+    warrant:hasIdentifier "SYS-COM-001" ;
+    warrant:hasName "Bridge Communication System" ;
+    warrant:hasDescription "Ship communication system: VHF (×3), MF/HF, Inmarsat-C (×2), Inmarsat GX, Inmarsat FBB-500, Navtex, and Communications PC." .
+
+ll1:VDRSystem a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-VDR-001" ;
+    warrant:hasName "Voyage Data Recorder System (SVDR)" ;
+    warrant:hasDescription "Simplified Voyage Data Recorder: FURUNO VR-7017, sw 24550103-01.63. Central data hub receiving serial, contact, video, and audio from all bridge OT." .
+
+ll1:AlarmMonitoringSystem a davom:CyberPhysicalSystem ;
+    warrant:hasIdentifier "SYS-AMS-001" ;
+    warrant:hasName "Alarm Monitoring System (AMS)" ;
+    warrant:hasDescription "Integrated alarm monitoring system for engine room and vessel-wide alerting. Interconnected with VDR and BNWAS via SERIAL/CONTACT. FMEA RPN=315 (highest in electrical OT)." .
+
+ll1:NavigationFunction      davom:isSupportedBy ll1:NavigationSystem .
+ll1:CommunicationFunction   davom:isSupportedBy ll1:CommunicationSystem .
+ll1:VoyageRecordingFunction davom:isSupportedBy ll1:VDRSystem .
+ll1:VoyageRecordingFunction davom:isSupportedBy ll1:NavigationSystem .
+ll1:ElectricalAlarmFunction davom:isSupportedBy ll1:AlarmMonitoringSystem .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENTS — Navigation sensors and displays
+# (Maker/model/sw from cybersecurity equipment list V145, vessel CATHERINE C)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:RadarXBand a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-RAD-X-001" ;
+    warrant:hasName "X-band Radar" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FAR-2228" ;
+    warrant:hasSoftwareVersion "0359377-03.02" ;
+    warrant:hasDescription "FAR-22X8 series. Interfaces: LAN (S-band Radar, ECDIS); SERIAL (GPS, Gyrocompass, Speedlog, AIS); VIDEO (VDR). Access: service engineer only, authorization codes required. FMEA: settings modified Sev=6, Prob=6, Det=3, RPN=108." .
+
+ll1:RadarSBand a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-RAD-S-001" ;
+    warrant:hasName "S-band Radar" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FAR-2338S" ;
+    warrant:hasSoftwareVersion "0359377-03.02" ;
+    warrant:hasDescription "FAR-22X8 series. Interfaces: LAN (X-band Radar, ECDIS); SERIAL (GPS, Gyrocompass, Speedlog, AIS); VIDEO (VDR). Access: service engineer only. FMEA: settings modified RPN=108." .
+
+ll1:ECDIS_1 a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-ECDIS-001" ;
+    warrant:hasName "ECDIS No1" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FMD3300" ;
+    warrant:hasSoftwareVersion "2450074-05.12" ;
+    warrant:hasDescription "OS: Linux. Storage: CF/SD card. Interfaces: LAN (X/S-band Radars); SERIAL (GPS, Gyrocompass, Speedlog, Anemometer, Echosounder, Autopilot, AIS); VIDEO+SERIAL (VDR). DVD update interface present. Access: service engineer only, authorization codes. FMEA: settings modified RPN=108; interface modified RPN=90; SW infected RPN=72." .
+
+ll1:ECDIS_2 a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-ECDIS-002" ;
+    warrant:hasName "ECDIS No2" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FMD3300" ;
+    warrant:hasSoftwareVersion "2450074-05.12" ;
+    warrant:hasDescription "Redundant ECDIS. Interfaces: LAN (X/S-band Radars); SERIAL (GPS, Gyrocompass, Speedlog, Anemometer, Echosounder, AIS). Fallback for No1 ECDIS." .
+
+ll1:GPS_1 a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GPS-001" ;
+    warrant:hasName "GPS No1" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "GP-170" ;
+    warrant:hasSoftwareVersion "2051542-02.04" ;
+    warrant:hasDescription "Storage: ROM. SERIAL to X/S Radars, ECDIS, Gyrocompass, Autopilot, Speedlog, VDR, VHF, MF/HF, INM-C. Access: user-level. FMEA: settings modified Sev=6 Prob=6 Det=3 RPN=108; interface modified RPN=72; signal jammed Sev=7 Prob=3 Det=3 RPN=63." .
+
+ll1:GPS_2 a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GPS-002" ;
+    warrant:hasName "GPS No2" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "GP-170" ;
+    warrant:hasSoftwareVersion "2051542-02.04" ;
+    warrant:hasDescription "Redundant GPS unit. Serves as fallback when GPS No1 is unavailable or compromised." .
+
+ll1:Gyrocompass a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GYR-001" ;
+    warrant:hasName "Gyrocompass" ;
+    warrant:hasMaker "YOKOGAWA" ;
+    warrant:hasModel "CMZ900D" ;
+    warrant:hasDescription "CMZ-900 series. ROM-based. SERIAL to X/S Radars, ECDIS, Autopilot, Course recorder, VDR, CX-100; receives GPS, Speedlog, Sat compass. No LAN/USB/Wi-Fi interfaces. Access: service engineer only. FMEA: settings modified Sev=7 Prob=3 Det=3 RPN=63; interface disconnected RPN=63." .
+
+ll1:SatelliteCompass a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-SAT-CMP-001" ;
+    warrant:hasName "Satellite Compass" ;
+    warrant:hasDescription "Provides heading backup to Gyrocompass and Autopilot via SERIAL. Interfaces: SERIAL (Gyrocompass, Autopilot)." .
+
+ll1:Autopilot a davom:PhysicalComponent ;
+    warrant:hasIdentifier "COMP-AUT-001" ;
+    warrant:hasName "Autopilot" ;
+    warrant:hasMaker "YOKOGAWA" ;
+    warrant:hasModel "PT-900" ;
+    warrant:hasDescription "ROM-based. SERIAL (GPS, Gyrocompass, Speedlog). Access: service engineer only. FMEA: settings modified — loss of auto steering Sev=7 Prob=4 Det=3 RPN=84. Fallback: local/manual steering." .
+
+ll1:CourseRecorder a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-CRS-REC-001" ;
+    warrant:hasName "Course Recorder" ;
+    warrant:hasMaker "YOKOGAWA" ;
+    warrant:hasModel "MDR290" ;
+    warrant:hasSoftwareVersion "V8112KB_A10" ;
+    warrant:hasDescription "SERIAL (Gyrocompass). Access: service engineer only. FMEA: data not recorded Sev=3 Prob=3 Det=3 RPN=27." .
+
+ll1:Speedlog a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-SPD-001" ;
+    warrant:hasName "Speedlog" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "GS-100" ;
+    warrant:hasSoftwareVersion "2051604-01.01" ;
+    warrant:hasDescription "DS-80 series. Interfaces: LAN; SERIAL to X/S Radars, ECDIS, Gyrocompass, Autopilot, AIS, VDR. Access: service engineer only. FMEA: settings modified Sev=7 Prob=5 Det=3 RPN=105; interface disconnected RPN=84." .
+
+ll1:Echosounder a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-ECH-001" ;
+    warrant:hasName "Echo Sounder" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FE-800" ;
+    warrant:hasSoftwareVersion "1251002-01.11" ;
+    warrant:hasDescription "SERIAL to ECDIS, VDR. Access: user-level. FMEA: settings modified Sev=7 Prob=5 Det=3 RPN=105; interface disconnected RPN=84." .
+
+ll1:Anemometer a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-ANM-001" ;
+    warrant:hasName "Anemometer / Wind Indicator" ;
+    warrant:hasMaker "HERIANA" ;
+    warrant:hasModel "AC-TR10" ;
+    warrant:hasDescription "SERIAL to ECDIS, VDR. FMEA: interface disconnected Sev=6 Prob=3 Det=3 RPN=54." .
+
+ll1:AIS_Transponder a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-AIS-001" ;
+    warrant:hasName "AIS Transponder" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FA-170" ;
+    warrant:hasSoftwareVersion "0550256-02.02" ;
+    warrant:hasDescription "Storage: ROM. SERIAL to GPS, Gyrocompass, Speedlog, X/S Radars, ECDIS, VDR. Access: service engineer only, authorization codes. Cyber exposure: AIS messages transmitted openly on VHF CH 87/88 — no authentication. Primary spoofing attack surface." .
+
+ll1:BNWAS a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-BNW-001" ;
+    warrant:hasName "BNWAS" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "BR-510" ;
+    warrant:hasSoftwareVersion "2450054-01.06" ;
+    warrant:hasDescription "Storage: ROM. SERIAL (AMS). Access: service engineer only. FMEA: settings modified — bridge watch alarm not activated Sev=6 Prob=6 Det=3 RPN=108. Backup: additional watch." .
+
+ll1:VDR a davom:TechnicalSystem ;
+    warrant:hasIdentifier "COMP-VDR-001" ;
+    warrant:hasName "Simplified VDR" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "VR-7017" ;
+    warrant:hasSoftwareVersion "24550103-01.63" ;
+    warrant:hasDescription "Storage: CF card. Interfaces: SERIAL (GPS, Gyrocompass, AIS, Speedlog, Autopilot, Echosounder, Anemometer); SERIAL+CONTACT (Engine control, Watertight door, Hull door, Hull stress, AMS); VIDEO (S-band Radar); AUDIO (VHF, microphones). Access: service engineer only. FMEA top entry: data modified/erased Sev=6 Prob=6 Det=5 RPN=180." .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENTS — Communication equipment
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:VHF_1 a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-VHF-001" ;
+    warrant:hasName "VHF DSC No1" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FM-8900S" ;
+    warrant:hasSoftwareVersion "0550249-05.01" ;
+    warrant:hasDescription "SERIAL (GPS); AUDIO (VDR). Access: service engineer only. FMEA: settings modified Sev=6 Prob=5 Det=3 RPN=90; interface modified RPN=72." .
+
+ll1:VHF_2 a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-VHF-002" ;
+    warrant:hasName "VHF DSC No2" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FM-8900S" ;
+    warrant:hasSoftwareVersion "0550249-05.01" ;
+    warrant:hasDescription "Redundant VHF." .
+
+ll1:VHF_3 a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-VHF-003" ;
+    warrant:hasName "VHF DSC No3" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FM-8900S" ;
+    warrant:hasSoftwareVersion "0550249-05.01" ;
+    warrant:hasDescription "Third VHF (portable/backup)." .
+
+ll1:MFHF a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-MFHF-001" ;
+    warrant:hasName "MF/HF Radio" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FS-2575C" ;
+    warrant:hasSoftwareVersion "0550243-03.01" ;
+    warrant:hasDescription "SERIAL (GPS). Access: service engineer only. FMEA: settings modified Sev=6 Prob=5 Det=3 RPN=90." .
+
+ll1:InmarsatC_1 a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-INMC-001" ;
+    warrant:hasName "Inmarsat-C No1 / LRIT" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FELCOM-18" ;
+    warrant:hasSoftwareVersion "1650247-01" ;
+    warrant:hasDescription "Also carries LRIT and SSAS functions. SERIAL (GPS); FD (floppy-based update path — legacy cyber risk). Access: service engineer only. FMEA: settings modified Sev=6 Prob=5 Det=3 RPN=90." .
+
+ll1:InmarsatC_2 a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-INMC-002" ;
+    warrant:hasName "Inmarsat-C No2" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FELCOM-18" ;
+    warrant:hasSoftwareVersion "1650247-01" ;
+    warrant:hasDescription "Redundant Inmarsat-C." .
+
+ll1:InmarsatGX a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-GX-001" ;
+    warrant:hasName "Inmarsat GX" ;
+    warrant:hasMaker "SAILOR" ;
+    warrant:hasModel "GX-100" ;
+    warrant:hasDescription "OS: Linux. SERIAL (Gyrocompass); LAN (Communications PC). No antivirus/firewall configured. FMEA: settings modified Sev=6 Prob=4 Det=3 RPN=72. Backup: FBB available." .
+
+ll1:InmarsatFBB a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-FBB-001" ;
+    warrant:hasName "Inmarsat FBB-500" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "FB-500" ;
+    warrant:hasSoftwareVersion "1650271-01.03" ;
+    warrant:hasDescription "OS: Linux. LAN (Communications PC). No antivirus/firewall configured. FMEA: settings modified Sev=6 Prob=4 Det=3 RPN=72." .
+
+ll1:Navtex a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-NTX-001" ;
+    warrant:hasName "NAVTEX" ;
+    warrant:hasMaker "FURUNO" ;
+    warrant:hasModel "NX-700" ;
+    warrant:hasDescription "Storage: ROM. SERIAL (GPS). Access: user-level, authorization codes. FMEA: settings modified — loss of navigational/met warnings Sev=7 Prob=5 Det=3 RPN=105." .
+
+ll1:CommunicationsPC a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-COMPC-001" ;
+    warrant:hasName "Communications PC" ;
+    warrant:hasDescription "Shore-side connectivity hub for satellite broadband. LAN-connected to Inmarsat GX and FBB-500. Principal IT/OT boundary and potential lateral movement entry point for cyber adversaries." .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COMPONENTS — Electrical/Automation OT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:FireDetectionSystem a davom:PhysicalComponent ;
+    warrant:hasIdentifier "COMP-FIRE-001" ;
+    warrant:hasName "Fire Detection System" ;
+    warrant:hasMaker "CONSILIUM" ;
+    warrant:hasModel "M4.3 CARGO EN" ;
+    warrant:hasDescription "Standalone system. FMEA: settings modified — no fire detection Sev=3 Prob=4 Det=4 RPN=48. Backup: crew watch." .
+
+ll1:GeneralAlarmPA a davom:CommunicationComponent ;
+    warrant:hasIdentifier "COMP-GA-001" ;
+    warrant:hasName "General Alarm and Public Addressor" ;
+    warrant:hasMaker "MRC" ;
+    warrant:hasModel "MC-901D" ;
+    warrant:hasDescription "Standalone. FMEA: settings modified — no communication Sev=3 Prob=4 Det=4 RPN=48. Backup: walkie-talkies." .
+
+ll1:NavLightPanel a davom:PhysicalComponent ;
+    warrant:hasIdentifier "COMP-NLP-001" ;
+    warrant:hasName "Navigation Light Panel" ;
+    warrant:hasMaker "TMS" ;
+    warrant:hasModel "TMS" ;
+    warrant:hasDescription "Standalone. FMEA: settings modified — navigation lights switched off, safety/regulatory implications Sev=3 Prob=4 Det=4 RPN=48." .
+
+# ── Component assignments to systems
+ll1:NavigationSystem davom:hasComponent ll1:RadarXBand .
+ll1:NavigationSystem davom:hasComponent ll1:RadarSBand .
+ll1:NavigationSystem davom:hasComponent ll1:ECDIS_1 .
+ll1:NavigationSystem davom:hasComponent ll1:ECDIS_2 .
+ll1:NavigationSystem davom:hasComponent ll1:GPS_1 .
+ll1:NavigationSystem davom:hasComponent ll1:GPS_2 .
+ll1:NavigationSystem davom:hasComponent ll1:Gyrocompass .
+ll1:NavigationSystem davom:hasComponent ll1:SatelliteCompass .
+ll1:NavigationSystem davom:hasComponent ll1:Autopilot .
+ll1:NavigationSystem davom:hasComponent ll1:CourseRecorder .
+ll1:NavigationSystem davom:hasComponent ll1:Speedlog .
+ll1:NavigationSystem davom:hasComponent ll1:Echosounder .
+ll1:NavigationSystem davom:hasComponent ll1:Anemometer .
+ll1:NavigationSystem davom:hasComponent ll1:AIS_Transponder .
+ll1:NavigationSystem davom:hasComponent ll1:BNWAS .
+ll1:VDRSystem       davom:hasComponent ll1:VDR .
+ll1:CommunicationSystem davom:hasComponent ll1:VHF_1 .
+ll1:CommunicationSystem davom:hasComponent ll1:VHF_2 .
+ll1:CommunicationSystem davom:hasComponent ll1:VHF_3 .
+ll1:CommunicationSystem davom:hasComponent ll1:MFHF .
+ll1:CommunicationSystem davom:hasComponent ll1:InmarsatC_1 .
+ll1:CommunicationSystem davom:hasComponent ll1:InmarsatC_2 .
+ll1:CommunicationSystem davom:hasComponent ll1:InmarsatGX .
+ll1:CommunicationSystem davom:hasComponent ll1:InmarsatFBB .
+ll1:CommunicationSystem davom:hasComponent ll1:Navtex .
+ll1:CommunicationSystem davom:hasComponent ll1:CommunicationsPC .
+ll1:AlarmMonitoringSystem davom:hasComponent ll1:FireDetectionSystem .
+ll1:AlarmMonitoringSystem davom:hasComponent ll1:GeneralAlarmPA .
+ll1:AlarmMonitoringSystem davom:hasComponent ll1:NavLightPanel .
+ll1:AlarmMonitoringSystem davom:hasComponent ll1:BNWAS .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BRIDGE NETWORK — Communication Links (from Diagram 2)
+# Interface type encoded in description (FLAG-03: no davom:hasInterfaceType)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — LAN segment (Radar ↔ ECDIS backbone — primary navigation data bus)
+ll1:Link_RadarECDIS_LAN a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-RAD-ECDIS-LAN" ;
+    warrant:hasName "Radar–ECDIS LAN Link" ;
+    davom:hasInterfaceType davom:LAN ;
+    warrant:hasDescription "Carries X-band Radar ↔ S-band Radar ↔ No1/No2 ECDIS target and overlay data. Highest-bandwidth navigation data bus. LAN exposure: shared with other bridge systems — potential lateral movement path." .
+
+# — GPS serial bus (GPS → many receivers)
+ll1:Link_GPS_NavBus a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-GPS-NAVBUS" ;
+    warrant:hasName "GPS Serial Navigation Bus" ;
+    davom:hasInterfaceType davom:SERIAL ;
+    warrant:hasDescription "IEC-61162 / NMEA 0183. GPS No1/No2 position data distributed to X/S Radars, ECDIS, Gyrocompass, Autopilot, Speedlog, VDR, VHF, MF/HF, INM-C, Navtex. Single point of spoofing/jamming impacts all receivers." .
+
+# — Gyrocompass serial bus
+ll1:Link_Gyro_NavBus a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-GYR-NAVBUS" ;
+    warrant:hasName "Gyrocompass Serial Distribution Bus" ;
+    davom:hasInterfaceType davom:SERIAL ;
+    warrant:hasDescription "IEC-61162. Gyrocompass heading distributed to X/S Radars, ECDIS, Autopilot, AIS, Course recorder, Speedlog, VDR, Inmarsat GX, CX-100. Compromise propagates to all heading-dependent subsystems." .
+
+# — AIS serial link (bidirectional with ECDIS and Radars)
+ll1:Link_AIS_NavBus a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-AIS-NAVBUS" ;
+    warrant:hasName "AIS–Navigation Serial Link" ;
+    davom:hasInterfaceType davom:SERIAL ;
+    warrant:hasDescription "IEC-61162. AIS data (own-ship identity, target positions) distributed to X/S Radars, ECDIS No1, VDR. AIS transponder also receives GPS, Gyrocompass, Speedlog. VHF-based open protocol — no authentication — primary spoofing vector." .
+
+# — VDR data collection links
+ll1:Link_VDR_Serial a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-VDR-SERIAL" ;
+    warrant:hasName "VDR Serial/Contact Collection Link" ;
+    davom:hasInterfaceType davom:SERIAL_CONTACT ;
+    warrant:hasDescription "VDR collects from GPS, Gyrocompass, AIS, Speedlog, Autopilot, Echosounder, Anemometer (SERIAL), and Engine control system, Watertight door, Hull door, Hull stress monitoring, AMS (SERIAL+CONTACT)." .
+
+ll1:Link_VDR_AudioVideo a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-VDR-AV" ;
+    warrant:hasName "VDR Audio-Video Collection Link" ;
+    davom:hasInterfaceType davom:VIDEO ;
+    warrant:hasDescription "S-band Radar image (VIDEO) and VHF channels and bridge microphones (AUDIO) captured by VDR. Tampering with VDR audio/video input blocks accident investigation evidence." .
+
+# — Satellite/shore communications LAN
+ll1:Link_SatComm_LAN a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-SAT-LAN" ;
+    warrant:hasName "Satellite Communication LAN (IT/OT Boundary)" ;
+    davom:hasInterfaceType davom:LAN ;
+    warrant:hasDescription "Inmarsat GX and FBB-500 connect to Communications PC via LAN. Key IT/OT boundary: shore-based internet traffic reaches this LAN. Both GX and FBB run Linux with no antivirus/firewall (per makers' inventory). Principal external attack ingress path." .
+
+# — BNWAS → AMS link
+ll1:Link_BNWAS_AMS a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-BNWAS-AMS" ;
+    warrant:hasName "BNWAS–AMS Serial Link" ;
+    davom:hasInterfaceType davom:SERIAL ;
+    warrant:hasDescription "BNWAS bridge watch alarm status reported to AMS. Failure of this link can mask watch alarm suppression." .
+
+# — Function ↔ link associations
+ll1:NavigationFunction      davom:usesCommunicationLink ll1:Link_RadarECDIS_LAN .
+ll1:NavigationFunction      davom:usesCommunicationLink ll1:Link_GPS_NavBus .
+ll1:NavigationFunction      davom:usesCommunicationLink ll1:Link_Gyro_NavBus .
+ll1:NavigationFunction      davom:usesCommunicationLink ll1:Link_AIS_NavBus .
+ll1:VoyageRecordingFunction davom:usesCommunicationLink ll1:Link_VDR_Serial .
+ll1:VoyageRecordingFunction davom:usesCommunicationLink ll1:Link_VDR_AudioVideo .
+ll1:CommunicationFunction   davom:usesCommunicationLink ll1:Link_SatComm_LAN .
+ll1:ElectricalAlarmFunction davom:usesCommunicationLink ll1:Link_BNWAS_AMS .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HUMAN OPERATOR ROLES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:NavigationOfficerRole a davom:HumanOperatorRole ;
+    warrant:hasName "Navigation Officer" ;
+    warrant:hasDescription "Officer responsible for safe navigation using ECDIS, RADAR, and chart systems. Responsible authority for navigation OT FMEA controls." .
+
+ll1:ChiefEngineerRole a davom:HumanOperatorRole ;
+    warrant:hasName "Chief Engineer" ;
+    warrant:hasDescription "Responsible for AMS, M/E remote control, power management, and electrical OT. Responsible authority for electrical/automation OT FMEA controls." .
+
+ll1:ElectricalDeptRole a davom:HumanOperatorRole ;
+    warrant:hasName "Electrical Department Officer" ;
+    warrant:hasDescription "Responsible for fire detection, general alarm, MF/HF, and Inmarsat-C maintenance." .
+
+ll1:NavigationFunction      davom:requiresOperatorRole ll1:NavigationOfficerRole .
+ll1:CommunicationFunction   davom:requiresOperatorRole ll1:NavigationOfficerRole .
+ll1:VoyageRecordingFunction davom:requiresOperatorRole ll1:NavigationOfficerRole .
+ll1:ElectricalAlarmFunction davom:requiresOperatorRole ll1:ChiefEngineerRole .
+ll1:ElectricalAlarmFunction davom:requiresOperatorRole ll1:ElectricalDeptRole .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# METRICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Navigation integrity metrics
+ll1:AISPositionIntegrityMetric a obs:CybersecurityMetric ;
+    warrant:hasName "AIS Position Data Integrity" ;
+    obs:hasUnit "integrity_score" ;
+    obs:hasExternalTimeSeriesId "timeseries.ais.position_integrity.LL1" .
+
+ll1:AISMessageIntegrityMetric a obs:CybersecurityMetric ;
+    warrant:hasName "AIS Message Integrity" ;
+    obs:hasUnit "integrity_score" ;
+    obs:hasExternalTimeSeriesId "timeseries.ais.message_integrity.LL1" .
+
+ll1:GPSPositionConsistencyMetric a obs:SafetyMetric ;
+    warrant:hasName "GPS Position Cross-Check Consistency (GPS1 vs GPS2 vs RADAR)" ;
+    obs:hasUnit "m" ;
+    obs:hasExternalTimeSeriesId "timeseries.gps.position_consistency.LL1" .
+
+ll1:GyroHeadingConsistencyMetric a obs:SafetyMetric ;
+    warrant:hasName "Gyrocompass–Sat-Compass Heading Consistency" ;
+    obs:hasUnit "deg" ;
+    obs:hasExternalTimeSeriesId "timeseries.gyro.heading_consistency.LL1" .
+
+ll1:ECDISAvailabilityMetric a obs:AvailabilityMetric ;
+    warrant:hasName "ECDIS System Availability (No1 + No2)" ;
+    obs:hasUnit "ratio" ;
+    obs:hasExternalTimeSeriesId "timeseries.ecdis.availability.LL1" .
+
+# — VDR recording health metrics
+ll1:VDRRecordingStatusMetric a obs:AvailabilityMetric ;
+    warrant:hasName "VDR Recording Status" ;
+    obs:hasUnit "boolean" ;
+    obs:hasExternalTimeSeriesId "timeseries.vdr.recording_status.LL1" .
+
+ll1:VDRDataIntegrityMetric a obs:CybersecurityMetric ;
+    warrant:hasName "VDR Data Integrity Hash" ;
+    obs:hasUnit "hash_match_score" ;
+    obs:hasExternalTimeSeriesId "timeseries.vdr.data_integrity.LL1" .
+
+# — Communication health metrics
+ll1:SatCommAvailabilityMetric a obs:AvailabilityMetric ;
+    warrant:hasName "Satellite Communication Link Availability (GX + FBB)" ;
+    obs:hasUnit "ratio" ;
+    obs:hasExternalTimeSeriesId "timeseries.satcomm.availability.LL1" .
+
+# — AMS health
+ll1:AMSDataIntegrityMetric a obs:CybersecurityMetric ;
+    warrant:hasName "AMS Monitoring Data Integrity" ;
+    obs:hasUnit "integrity_score" ;
+    obs:hasExternalTimeSeriesId "timeseries.ams.data_integrity.LL1" .
+
+# — Metric assignments
+ll1:AIS_Transponder obs:hasDependabilityMetric ll1:AISPositionIntegrityMetric .
+ll1:Link_AIS_NavBus obs:hasDependabilityMetric ll1:AISMessageIntegrityMetric .
+ll1:GPS_1           obs:hasDependabilityMetric ll1:GPSPositionConsistencyMetric .
+ll1:Gyrocompass     obs:hasDependabilityMetric ll1:GyroHeadingConsistencyMetric .
+ll1:ECDIS_1         obs:hasDependabilityMetric ll1:ECDISAvailabilityMetric .
+ll1:VDR             obs:hasDependabilityMetric ll1:VDRRecordingStatusMetric .
+ll1:VDR             obs:hasDependabilityMetric ll1:VDRDataIntegrityMetric .
+ll1:Link_SatComm_LAN obs:hasDependabilityMetric ll1:SatCommAvailabilityMetric .
+ll1:AlarmMonitoringSystem obs:hasDependabilityMetric ll1:AMSDataIntegrityMetric .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANALYTICAL SERVICES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:IDSAnalyticalService a obs:AnalyticalService ;
+    warrant:hasName "IDS Analytical Service — Navigation Cyber Monitoring" ;
+    warrant:hasDescription "Intrusion Detection System monitoring AIS/GPS data integrity, RADAR-AIS position divergence, and ECDIS/VDR log anomalies. Primary detection capability for cyber-attack scenarios in LL1." .
+
+ll1:NavigationIntegrityService a obs:AnalyticalService ;
+    warrant:hasName "Navigation Sensor Integrity Cross-Check Service" ;
+    warrant:hasDescription "Cross-validates GPS1 vs GPS2 vs RADAR-derived position, gyrocompass vs satellite compass heading. Detects sensor failure, jamming, or spoofing by multi-source comparison." .
+
+ll1:VDRHealthService a obs:AnalyticalService ;
+    warrant:hasName "VDR Recording Health Monitoring Service" ;
+    warrant:hasDescription "Monitors VDR recording status, data write health, and hash-based integrity of stored records. Detects tampering, data loss, or storage failure." .
+
+ll1:IDSAnalyticalService obs:consumes ll1:AISPositionIntegrityMetric .
+ll1:IDSAnalyticalService obs:consumes ll1:AISMessageIntegrityMetric .
+ll1:IDSAnalyticalService obs:consumes ll1:ECDISAvailabilityMetric .
+ll1:IDSAnalyticalService obs:consumes ll1:AMSDataIntegrityMetric .
+ll1:NavigationIntegrityService obs:consumes ll1:GPSPositionConsistencyMetric .
+ll1:NavigationIntegrityService obs:consumes ll1:GyroHeadingConsistencyMetric .
+ll1:VDRHealthService obs:consumes ll1:VDRRecordingStatusMetric .
+ll1:VDRHealthService obs:consumes ll1:VDRDataIntegrityMetric .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DETECTION EVENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:AISSpoofingDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "AIS Spoofing Detection Event" ;
+    warrant:hasDescription "IDS detected significant divergence between AIS-reported position and RADAR/GPS cross-check. Position delta exceeds 0.5 NM threshold." ;
+    obs:hasTimestamp "2026-06-01T09:45:00Z"^^xsd:dateTime .
+
+ll1:GPSJammingDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "GPS Jamming Detection Event" ;
+    warrant:hasDescription "Navigation integrity service detected simultaneous loss of GPS No1 and No2 position fix, characteristic of broadband jamming. Vessel fell back to dead reckoning." ;
+    obs:hasTimestamp "2026-06-01T11:10:00Z"^^xsd:dateTime .
+
+ll1:ECDISSettingsModifiedEvent a obs:DetectionEvent ;
+    warrant:hasName "ECDIS Settings Modification Event" ;
+    warrant:hasDescription "IDS log analysis detected unauthorised write to ECDIS No1 configuration file. Access was not from authorised service engineer session." ;
+    obs:hasTimestamp "2026-06-01T08:30:00Z"^^xsd:dateTime .
+
+ll1:VDRDataTamperEvent a obs:DetectionEvent ;
+    warrant:hasName "VDR Data Tampering Detection Event" ;
+    warrant:hasDescription "VDR health service detected hash mismatch in stored voyage record block — possible erasure or overwrite of recorded data." ;
+    obs:hasTimestamp "2026-06-01T13:00:00Z"^^xsd:dateTime .
+
+ll1:AMSDataCorruptionEvent a obs:DetectionEvent ;
+    warrant:hasName "AMS Data Corruption Detection Event" ;
+    warrant:hasDescription "IDS detected anomalous data in AMS monitoring feed — sensor values outside physical range, consistent with unauthorised data change. FMEA worst-case entry: RPN=315." ;
+    obs:hasTimestamp "2026-06-01T07:00:00Z"^^xsd:dateTime .
+
+ll1:GyroHeadingDivergenceEvent a obs:DetectionEvent ;
+    warrant:hasName "Gyrocompass–Satellite Compass Heading Divergence Event" ;
+    warrant:hasDescription "Heading divergence between Gyrocompass (CMZ-900) and Satellite Compass exceeded 3° — possible gyrocompass settings modification or hardware fault." ;
+    obs:hasTimestamp "2026-06-01T10:15:00Z"^^xsd:dateTime .
+
+ll1:IDSAnalyticalService     obs:producesDetectionEvent ll1:AISSpoofingDetectionEvent .
+ll1:IDSAnalyticalService     obs:producesDetectionEvent ll1:ECDISSettingsModifiedEvent .
+ll1:IDSAnalyticalService     obs:producesDetectionEvent ll1:VDRDataTamperEvent .
+ll1:IDSAnalyticalService     obs:producesDetectionEvent ll1:AMSDataCorruptionEvent .
+ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GPSJammingDetectionEvent .
+ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GyroHeadingDivergenceEvent .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEVIATIONS
+# (FMEA failure modes mapped to HAZOP guidewords; RPN documented in description)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — AIS/ECDIS cyber attack
+ll1:DevSpoofedAIS a cdm:Deviation ;
+    warrant:hasName "Spoofed AIS Position Data" ;
+    warrant:hasDescription "AIS position data injected by adversary; ECDIS displays false vessel position. FMEA: AIS transponder, interfaces modified/SW infected. VHF open protocol — no authentication." ;
+    cdm:hasDeviationType cdm:SPOOFED .
+
+ll1:DevECDISSettingsModified a cdm:Deviation ;
+    warrant:hasName "ECDIS Settings Modified (Unauthorised)" ;
+    warrant:hasDescription "ECDIS display parameters or chart datum modified by unauthorised access. FMEA Asset 2: settings modified Sev=6 Prob=6 Det=3 RPN=108. Storage: CF/SD card, DVD update interface." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:DevECDISInterfaceModified a cdm:Deviation ;
+    warrant:hasName "ECDIS Sensor Interface Disconnected/Modified" ;
+    warrant:hasDescription "Loss of sensor feeds (GPS, Gyro, Speedlog, Anemometer, Echosounder) to ECDIS due to SERIAL interface manipulation. FMEA RPN=90." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE .
+
+# — GPS failure modes
+ll1:DevGPSJammed a cdm:Deviation ;
+    warrant:hasName "GPS Signal Jammed (External)" ;
+    warrant:hasDescription "External GPS jamming causes loss of position fix on both GPS units. FMEA Asset 8: signal jammed Sev=7 Prob=3 Det=3 RPN=63. Fallback: celestial/visual navigation, dead reckoning." ;
+    cdm:hasDeviationType cdm:NO .
+
+ll1:DevGPSSpoofed a cdm:Deviation ;
+    warrant:hasName "GPS Position Data Spoofed" ;
+    warrant:hasDescription "GPS receiver outputs manipulated position data; all downstream systems (ECDIS, Radars, AIS, Autopilot, Speedlog, VDR, VHF, MF/HF, INM-C) receive false position. FMEA: settings modified RPN=108." ;
+    cdm:hasDeviationType cdm:SPOOFED .
+
+# — Gyrocompass failure modes
+ll1:DevGyroSettingsModified a cdm:Deviation ;
+    warrant:hasName "Gyrocompass Settings Modified" ;
+    warrant:hasDescription "Invalid heading data distributed to X/S Radars, ECDIS, Autopilot, AIS, Course recorder, Speedlog, VDR. FMEA Asset 4: Sev=7 Prob=3 Det=3 RPN=63. Fallback: Satellite Compass and Magnetic Compass." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:DevGyroInterfaceDisconnected a cdm:Deviation ;
+    warrant:hasName "Gyrocompass Interface Disconnected" ;
+    warrant:hasDescription "Loss of gyro heading feed to all interconnected equipment. FMEA Asset 4: interface disconnected Sev=7 Prob=3 Det=3 RPN=63." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE .
+
+# — Speedlog failure modes
+ll1:DevSpeedlogModified a cdm:Deviation ;
+    warrant:hasName "Speedlog Data Invalid" ;
+    warrant:hasDescription "False speed-through-water data distributed to RADAR, ECDIS, Gyrocompass, Autopilot, AIS, VDR. FMEA Asset 6: settings modified Sev=7 Prob=5 Det=3 RPN=105. Fallback: GPS SOG." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+# — RADAR failure modes
+ll1:DevRADARSettingsModified a cdm:Deviation ;
+    warrant:hasName "RADAR Settings Modified" ;
+    warrant:hasDescription "Loss of RADAR display settings or user controls. FMEA Asset 1: settings modified Sev=6 Prob=6 Det=3 RPN=108. Fallback: second RADAR available." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+# — VDR failure modes
+ll1:DevVDRDataModified a cdm:Deviation ;
+    warrant:hasName "VDR Data Modified or Erased" ;
+    warrant:hasDescription "Voyage record data erased or overwritten; accident investigation evidence destroyed. FMEA Asset 11: data modified/erased Sev=6 Prob=6 Det=5 RPN=180 — highest RPN in navigation OT." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:DevVDRDataNotStored a cdm:Deviation ;
+    warrant:hasName "VDR Data Not Stored" ;
+    warrant:hasDescription "VDR fails to record incoming data streams. FMEA Asset 11: data not stored Sev=7 Prob=5 Det=5 RPN=175. Cause: procedures not followed or system failure." ;
+    cdm:hasDeviationType cdm:NO .
+
+# — AMS failure modes (electrical OT — highest RPN overall)
+ll1:DevAMSDataCorrupted a cdm:Deviation ;
+    warrant:hasName "AMS Monitoring Data Corrupted" ;
+    warrant:hasDescription "Engine room and vessel alarm data changed or falsified; crew unable to monitor engine room state. FMEA Asset 18 (Electrical OT): change data Sev=7 Prob=9 Det=5 RPN=315 — highest RPN in entire FMEA. Responsibility: Chief Engineer." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+# — Communication failure modes
+ll1:DevVHFSettingsModified a cdm:Deviation ;
+    warrant:hasName "VHF Communication Disrupted (Settings Modified)" ;
+    warrant:hasDescription "VHF settings modified, disrupting short-range comms and potentially disabling DSC distress functionality. FMEA Asset 12: Sev=6 Prob=5 Det=3 RPN=90." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:DevSatCommUnavailable a cdm:Deviation ;
+    warrant:hasName "Satellite Communication Link Unavailable" ;
+    warrant:hasDescription "Inmarsat GX or FBB settings modified or Linux system compromised via Communications PC LAN boundary. Both systems run Linux with no antivirus/firewall. FMEA Asset 16/17: RPN=72 each." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE .
+
+# — Detection event ↔ deviation
+ll1:AISSpoofingDetectionEvent   obs:detectionEventDetects ll1:DevSpoofedAIS .
+ll1:GPSJammingDetectionEvent    obs:detectionEventDetects ll1:DevGPSJammed .
+ll1:ECDISSettingsModifiedEvent  obs:detectionEventDetects ll1:DevECDISSettingsModified .
+ll1:VDRDataTamperEvent          obs:detectionEventDetects ll1:DevVDRDataModified .
+ll1:AMSDataCorruptionEvent      obs:detectionEventDetects ll1:DevAMSDataCorrupted .
+ll1:GyroHeadingDivergenceEvent  obs:detectionEventDetects ll1:DevGyroSettingsModified .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STPA — CONTROL STRUCTURE, PROCESS MODEL FLAW, UCA
+# (Primary AIS spoofing scenario — LL1 cyber-attack focus)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:BridgeControlStructure a cdm:ControlStructure ;
+    warrant:hasName "Bridge Navigation Control Structure" ;
+    warrant:hasDescription "Controller: Navigation Officer. Controlled process: Vessel course and speed. Feedback: ECDIS position, RADAR targets, GPS. Control actions: course/speed commands to Autopilot." .
+
+ll1:NavigationOfficerController a cdm:Controller ;
+    warrant:hasName "Navigation Officer (STPA Controller)" .
+
+ll1:VesselCourseControlledProcess a cdm:ControlledProcess ;
+    warrant:hasName "Vessel Course and Speed (Controlled Process)" .
+
+ll1:ECDISFeedback a cdm:Feedback ;
+    warrant:hasName "ECDIS Position and Chart Feedback" ;
+    warrant:hasDescription "Navigation officer receives vessel position from ECDIS, which integrates GPS, AIS traffic, and RADAR overlay." .
+
+ll1:NavigationOfficerController cdm:actsOn       ll1:VesselCourseControlledProcess .
+ll1:VesselCourseControlledProcess cdm:providesFeedback ll1:ECDISFeedback .
+
+ll1:WrongPositionProcessModelFlaw a cdm:ProcessModelFlaw ;
+    warrant:hasName "Wrong Chart Position in Officer Process Model" ;
+    warrant:hasDescription "Navigation officer's ECDIS shows incorrect vessel position due to spoofed AIS data; situational picture is fatally compromised. Officer believes vessel is on safe track while actual position is near hazard." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:WrongCourseAlterationUCA a cdm:UnsafeControlAction ;
+    warrant:hasName "Wrong Course Alteration (Based on Spoofed Position)" ;
+    warrant:hasDescription "Navigation officer issues course alteration command based on false ECDIS position, manoeuvring vessel toward shallow water, reef, or TSS zone. STPA: control action wrong — wrong direction/amount given spoofed process model." .
+
+ll1:DevSpoofedAIS             cdm:mayCause ll1:WrongPositionProcessModelFlaw .
+ll1:DevGPSSpoofed             cdm:mayCause ll1:WrongPositionProcessModelFlaw .
+ll1:DevECDISSettingsModified  cdm:mayCause ll1:WrongPositionProcessModelFlaw .
+ll1:WrongPositionProcessModelFlaw cdm:mayCause ll1:WrongCourseAlterationUCA .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CYBER-ATTACK SCENARIO
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:AISECDISSpoofingScenario a scen:CyberattackScenario ;
+    warrant:hasName "AIS-ECDIS Spoofing Cyber-Attack Scenario (LL1)" ;
+    warrant:hasDescription "Adversary injects false AIS position data over VHF CH87/88 (no authentication). ECDIS No1 displays false vessel position. Navigation officer issues wrong course alteration. Vessel approaches hazardous area. Concurrent VDR data erasure conceals the attack timeline." .
+
+ll1:AISECDISSpoofingScenario scen:hasTrigger ll1:DevSpoofedAIS .
+ll1:AISECDISSpoofingScenario scen:hasTrigger ll1:DevVDRDataModified .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HAZARDS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:HazHazardousAreaApproach a cdm:Hazard ;
+    warrant:hasName "Hazardous Area Approach" ;
+    warrant:hasDescription "Vessel manoeuvres toward shallow water, reef, traffic separation zone, or collision course with another vessel based on false position or heading data." .
+
+ll1:HazLossOfNavigationPicture a cdm:Hazard ;
+    warrant:hasName "Loss of Navigation Picture" ;
+    warrant:hasDescription "Simultaneous failure or compromise of GPS, Gyrocompass, and/or ECDIS leaves officer with no reliable position or heading reference." .
+
+ll1:HazLossOfVDREvidence a cdm:Hazard ;
+    warrant:hasName "Loss of Voyage Data Record Evidence" ;
+    warrant:hasDescription "VDR data erased or not stored — post-incident investigation, P&I Club claims, and flag-state requirements cannot be met." .
+
+ll1:HazLossOfDistressComms a cdm:Hazard ;
+    warrant:hasName "Loss of Distress Communication Capability" ;
+    warrant:hasDescription "VHF DSC, MF/HF, and/or Inmarsat-C unavailable or misconfigured — vessel cannot transmit MAYDAY or receive SAR coordination." .
+
+ll1:HazUnmonitoredEngineRoom a cdm:Hazard ;
+    warrant:hasName "Unmonitored Engine Room State" ;
+    warrant:hasDescription "AMS data corrupted — crew cannot detect engine room alarms, fire, flooding, or mechanical failure. Highest-probability hazard in FMEA (Prob=9)." .
+
+# — Deviation → Hazard
+ll1:DevSpoofedAIS             cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevGPSJammed              cdm:mayCause ll1:HazLossOfNavigationPicture .
+ll1:DevGPSSpoofed             cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevECDISSettingsModified  cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevECDISInterfaceModified cdm:mayCause ll1:HazLossOfNavigationPicture .
+ll1:DevGyroSettingsModified   cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevGyroInterfaceDisconnected cdm:mayCause ll1:HazLossOfNavigationPicture .
+ll1:DevSpeedlogModified       cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevRADARSettingsModified  cdm:mayCause ll1:HazLossOfNavigationPicture .
+ll1:WrongCourseAlterationUCA  cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:DevVDRDataModified        cdm:mayCause ll1:HazLossOfVDREvidence .
+ll1:DevVDRDataNotStored       cdm:mayCause ll1:HazLossOfVDREvidence .
+ll1:DevVHFSettingsModified    cdm:mayCause ll1:HazLossOfDistressComms .
+ll1:DevSatCommUnavailable     cdm:mayCause ll1:HazLossOfDistressComms .
+ll1:DevAMSDataCorrupted       cdm:mayCause ll1:HazUnmonitoredEngineRoom .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RISKS
+# (FMEA scores in description — FLAG-04: no typed cdm:hasRPN property)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:RiskCollisionGrounding a cdm:Risk ;
+    warrant:hasName "Collision or Grounding Risk" ;
+    warrant:hasDescription "FMEA basis: ECDIS/GPS/RADAR settings modified or interface manipulated, leading to compromised safety of navigation. ECDIS RPN=108 (Sev=6,Prob=6,Det=3)." ;
+    cdm:hasLikelihood    "0.50"^^xsd:decimal ;
+    cdm:hasImpact        "0.95"^^xsd:decimal ;
+    cdm:hasSeverity      "0.90"^^xsd:decimal ;
+    cdm:hasRiskLevel     "Critical" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll1:RiskNavigationPictureLoss a cdm:Risk ;
+    warrant:hasName "Loss of Navigation Picture Risk" ;
+    warrant:hasDescription "FMEA basis: GPS jamming (RPN=63) + gyrocompass interface failure (RPN=63) occurring simultaneously. Dead reckoning fallback for limited time only." ;
+    cdm:hasLikelihood    "0.25"^^xsd:decimal ;
+    cdm:hasImpact        "0.85"^^xsd:decimal ;
+    cdm:hasSeverity      "0.80"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll1:RiskVDREvidenceLoss a cdm:Risk ;
+    warrant:hasName "Voyage Record Evidence Loss Risk" ;
+    warrant:hasDescription "FMEA basis: VDR data modified/erased RPN=180 (Sev=6,Prob=6,Det=5) — highest RPN in navigation OT. Consequences: P&I Club liability, flag-state implications, inability to reconstruct accident." ;
+    cdm:hasLikelihood    "0.40"^^xsd:decimal ;
+    cdm:hasImpact        "0.70"^^xsd:decimal ;
+    cdm:hasSeverity      "0.65"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "ALARP" .
+
+ll1:RiskDistressCommsLoss a cdm:Risk ;
+    warrant:hasName "Loss of Distress Communication Risk" ;
+    warrant:hasDescription "FMEA basis: VHF settings modified RPN=90; Inmarsat-C interface modified RPN=72. Combined loss of VHF + Inmarsat-C leaves vessel unable to transmit MAYDAY." ;
+    cdm:hasLikelihood    "0.20"^^xsd:decimal ;
+    cdm:hasImpact        "0.90"^^xsd:decimal ;
+    cdm:hasSeverity      "0.85"^^xsd:decimal ;
+    cdm:hasRiskLevel     "Critical" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll1:RiskEngineRoomUnmonitored a cdm:Risk ;
+    warrant:hasName "Engine Room Unmonitored Risk" ;
+    warrant:hasDescription "FMEA basis: AMS data change RPN=315 (Sev=7,Prob=9,Det=5) — highest RPN in entire FMEA. Crew cannot detect engine/fire/flooding events. Chief Engineer responsible." ;
+    cdm:hasLikelihood    "0.60"^^xsd:decimal ;
+    cdm:hasImpact        "0.85"^^xsd:decimal ;
+    cdm:hasSeverity      "0.80"^^xsd:decimal ;
+    cdm:hasRiskLevel     "Critical" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll1:HazHazardousAreaApproach   cdm:isEvaluatedAs ll1:RiskCollisionGrounding .
+ll1:HazLossOfNavigationPicture cdm:isEvaluatedAs ll1:RiskNavigationPictureLoss .
+ll1:HazLossOfVDREvidence       cdm:isEvaluatedAs ll1:RiskVDREvidenceLoss .
+ll1:HazLossOfDistressComms     cdm:isEvaluatedAs ll1:RiskDistressCommsLoss .
+ll1:HazUnmonitoredEngineRoom   cdm:isEvaluatedAs ll1:RiskEngineRoomUnmonitored .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ASSURANCE DEGRADATION & SCORES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:NavigationCyberDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Navigation Cybersecurity Assurance Degradation" .
+
+ll1:PositionSensorDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Position and Heading Sensor Degradation" .
+
+ll1:VDRIntegrityDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "VDR Data Integrity Degradation" .
+
+ll1:CommAvailabilityDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Communication Availability Degradation" .
+
+ll1:AMSReliabilityDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "AMS Monitoring Reliability Degradation" .
+
+ll1:DevSpoofedAIS            assr:causesAssuranceDegradation ll1:NavigationCyberDegradation .
+ll1:DevGPSSpoofed            assr:causesAssuranceDegradation ll1:NavigationCyberDegradation .
+ll1:DevECDISSettingsModified assr:causesAssuranceDegradation ll1:NavigationCyberDegradation .
+ll1:WrongCourseAlterationUCA assr:causesAssuranceDegradation ll1:NavigationCyberDegradation .
+ll1:DevGPSJammed             assr:causesAssuranceDegradation ll1:PositionSensorDegradation .
+ll1:DevGyroSettingsModified  assr:causesAssuranceDegradation ll1:PositionSensorDegradation .
+ll1:DevGyroInterfaceDisconnected assr:causesAssuranceDegradation ll1:PositionSensorDegradation .
+ll1:DevSpeedlogModified      assr:causesAssuranceDegradation ll1:PositionSensorDegradation .
+ll1:DevVDRDataModified       assr:causesAssuranceDegradation ll1:VDRIntegrityDegradation .
+ll1:DevVDRDataNotStored      assr:causesAssuranceDegradation ll1:VDRIntegrityDegradation .
+ll1:DevVHFSettingsModified   assr:causesAssuranceDegradation ll1:CommAvailabilityDegradation .
+ll1:DevSatCommUnavailable    assr:causesAssuranceDegradation ll1:CommAvailabilityDegradation .
+ll1:DevAMSDataCorrupted      assr:causesAssuranceDegradation ll1:AMSReliabilityDegradation .
+
+# — Assurance scores (per function, at time of spoofing event)
+ll1:NavCyberAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.20"^^xsd:decimal ;
+    di:calculatedAt    "2026-06-01T09:45:05Z"^^xsd:dateTime .
+
+ll1:SensorAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.35"^^xsd:decimal ;
+    di:calculatedAt    "2026-06-01T09:45:05Z"^^xsd:dateTime .
+
+ll1:VDRAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.30"^^xsd:decimal ;
+    di:calculatedAt    "2026-06-01T09:45:05Z"^^xsd:dateTime .
+
+ll1:CommAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.60"^^xsd:decimal ;
+    di:calculatedAt    "2026-06-01T09:45:05Z"^^xsd:dateTime .
+
+ll1:AMSAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.15"^^xsd:decimal ;
+    di:calculatedAt    "2026-06-01T07:00:05Z"^^xsd:dateTime .
+
+ll1:NavigationFunction      assr:hasAssuranceScore ll1:NavCyberAssuranceScore .
+ll1:NavigationFunction      assr:hasAssuranceScore ll1:SensorAssuranceScore .
+ll1:VoyageRecordingFunction assr:hasAssuranceScore ll1:VDRAssuranceScore .
+ll1:CommunicationFunction   assr:hasAssuranceScore ll1:CommAssuranceScore .
+ll1:ElectricalAlarmFunction assr:hasAssuranceScore ll1:AMSAssuranceScore .
+
+ll1:NavigationCyberDegradation   assr:updatesAssuranceScore ll1:NavCyberAssuranceScore .
+ll1:PositionSensorDegradation    assr:updatesAssuranceScore ll1:SensorAssuranceScore .
+ll1:VDRIntegrityDegradation      assr:updatesAssuranceScore ll1:VDRAssuranceScore .
+ll1:CommAvailabilityDegradation  assr:updatesAssuranceScore ll1:CommAssuranceScore .
+ll1:AMSReliabilityDegradation    assr:updatesAssuranceScore ll1:AMSAssuranceScore .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEPENDABILITY INDEX (DI) — per function + composite vessel DI
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:DI_Method_LL1 a di:DICalculationMethod ;
+    warrant:hasName "Risk-Propagation DI for LL1 Navigation/Comms OT" .
+
+ll1:DI_Navigation a di:DependabilityIndex ;
+    di:hasDIValue            "0.18"^^xsd:decimal ;
+    di:hasBetaWeight         "0.40"^^xsd:decimal ;
+    di:calculatedAt          "2026-06-01T09:45:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll1:DI_Method_LL1 ;
+    di:hasDIState            di:UnsafeState .
+
+ll1:DI_VDR a di:DependabilityIndex ;
+    di:hasDIValue            "0.28"^^xsd:decimal ;
+    di:hasBetaWeight         "0.15"^^xsd:decimal ;
+    di:calculatedAt          "2026-06-01T09:45:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll1:DI_Method_LL1 ;
+    di:hasDIState            di:CriticalState .
+
+ll1:DI_Communication a di:DependabilityIndex ;
+    di:hasDIValue            "0.55"^^xsd:decimal ;
+    di:hasBetaWeight         "0.20"^^xsd:decimal ;
+    di:calculatedAt          "2026-06-01T09:45:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll1:DI_Method_LL1 ;
+    di:hasDIState            di:DegradedState .
+
+ll1:DI_ElectricalAlarm a di:DependabilityIndex ;
+    di:hasDIValue            "0.12"^^xsd:decimal ;
+    di:hasBetaWeight         "0.25"^^xsd:decimal ;
+    di:calculatedAt          "2026-06-01T07:00:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll1:DI_Method_LL1 ;
+    di:hasDIState            di:UnsafeState .
+
+ll1:DI_LL1_Composite a di:DependabilityIndex ;
+    di:hasDIValue            "0.25"^^xsd:decimal ;
+    di:hasBetaWeight         "1.00"^^xsd:decimal ;
+    di:calculatedAt          "2026-06-01T09:45:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll1:DI_Method_LL1 ;
+    di:hasDIState            di:UnsafeState .
+
+ll1:NavCyberAssuranceScore di:contributesTo ll1:DI_Navigation .
+ll1:SensorAssuranceScore   di:contributesTo ll1:DI_Navigation .
+ll1:VDRAssuranceScore      di:contributesTo ll1:DI_VDR .
+ll1:CommAssuranceScore     di:contributesTo ll1:DI_Communication .
+ll1:AMSAssuranceScore      di:contributesTo ll1:DI_ElectricalAlarm .
+
+ll1:DI_Navigation      di:contributesTo ll1:DI_LL1_Composite .
+ll1:DI_VDR             di:contributesTo ll1:DI_LL1_Composite .
+ll1:DI_Communication   di:contributesTo ll1:DI_LL1_Composite .
+ll1:DI_ElectricalAlarm di:contributesTo ll1:DI_LL1_Composite .
+
+ll1:DI_Navigation      di:appliesTo ll1:NavigationFunction .
+ll1:DI_VDR             di:appliesTo ll1:VoyageRecordingFunction .
+ll1:DI_Communication   di:appliesTo ll1:CommunicationFunction .
+ll1:DI_ElectricalAlarm di:appliesTo ll1:ElectricalAlarmFunction .
+ll1:DI_LL1_Composite   di:appliesTo ll1:ContainerVessel_LL1 .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MITIGATION
+# (Controls from FMEA "Current Controls" and "Recommended Controls" columns)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Rules
+ll1:RuleAISSpoofing a mit:MitigationRule ;
+    warrant:hasName "AIS Spoofing Mitigation Rule" ;
+    warrant:hasDescription "FMEA: Log monitoring / equipment inspection / bridge restricted area. Recommended: cross-check AIS with RADAR and GPS; alert Master and VSOC if discrepancy confirmed." .
+
+ll1:RuleGPSJamming a mit:MitigationRule ;
+    warrant:hasName "GPS Jamming Mitigation Rule" ;
+    warrant:hasDescription "FMEA recommended: user awareness/training. Fallback: celestial/visual navigation, dead reckoning, dual GPS cross-check." .
+
+ll1:RuleECDISSecurity a mit:MitigationRule ;
+    warrant:hasName "ECDIS Settings Security Rule" ;
+    warrant:hasDescription "FMEA: procedures available / paper charts. Recommended: USB locker, access restricted to service engineer, authorization codes, focused audit area." .
+
+ll1:RuleVDRIntegrity a mit:MitigationRule ;
+    warrant:hasName "VDR Data Integrity Rule" ;
+    warrant:hasDescription "FMEA (RPN=180): procedures + log monitoring. Recommended: USB locker where applicable / job orders on maker's representatives. Hash-based integrity monitoring." .
+
+ll1:RuleAMSSecurity a mit:MitigationRule ;
+    warrant:hasName "AMS Security Rule (FMEA Highest RPN)" ;
+    warrant:hasDescription "FMEA (RPN=315): back-up USB/CD + log monitoring. Recommended: user awareness/training/USB locker. Chief Engineer responsible." .
+
+ll1:RuleCommSecurity a mit:MitigationRule ;
+    warrant:hasName "Communication System Security Rule" ;
+    warrant:hasDescription "FMEA: procedures / redundant systems (second VHF/Inmarsat). Recommended: restrict access, authorization codes, focused area during audit." .
+
+ll1:DevSpoofedAIS            mit:matchesRule ll1:RuleAISSpoofing .
+ll1:DevGPSJammed             mit:matchesRule ll1:RuleGPSJamming .
+ll1:DevGPSSpoofed            mit:matchesRule ll1:RuleGPSJamming .
+ll1:DevECDISSettingsModified mit:matchesRule ll1:RuleECDISSecurity .
+ll1:DevECDISInterfaceModified mit:matchesRule ll1:RuleECDISSecurity .
+ll1:DevVDRDataModified       mit:matchesRule ll1:RuleVDRIntegrity .
+ll1:DevVDRDataNotStored      mit:matchesRule ll1:RuleVDRIntegrity .
+ll1:DevAMSDataCorrupted      mit:matchesRule ll1:RuleAMSSecurity .
+ll1:DevVHFSettingsModified   mit:matchesRule ll1:RuleCommSecurity .
+ll1:DevSatCommUnavailable    mit:matchesRule ll1:RuleCommSecurity .
+
+# — Actions
+ll1:ActionCrossCheckRADARGPS a mit:AdvisoryAction ;
+    warrant:hasName "Cross-Check AIS Position with RADAR and GPS" ;
+    warrant:hasDescription "Advisory: immediately compare AIS-reported position with RADAR echo returns and dual GPS fix. Do not act on AIS alone when discrepancy detected." .
+
+ll1:ActionAlertMasterVSOC a mit:AdvisoryAction ;
+    warrant:hasName "Alert Master and Vessel Security Officer (VSOC)" ;
+    warrant:hasDescription "Advisory: notify Ship Master and VSOC of suspected AIS spoofing or navigation cyber-attack. Initiate cyber incident log per ISM Code." .
+
+ll1:ActionDeadReckoningFallback a mit:FailoverProcedure ;
+    warrant:hasName "Dead Reckoning / Celestial Navigation Fallback" ;
+    warrant:hasDescription "Switch to dead reckoning using last known position + gyrocompass + speedlog. Use celestial navigation or visual bearings. FMEA recommended fallback for GPS jamming." .
+
+ll1:ActionDualGPSCrossCheck a mit:AdvisoryAction ;
+    warrant:hasName "Dual GPS Cross-Check (GPS No1 vs GPS No2)" ;
+    warrant:hasDescription "Advisory: compare positions from GPS No1 (GP-170, SW 2051542-02.04) and GPS No2. Any divergence >50m triggers investigation. Satellite compass heading serves as additional reference." .
+
+ll1:ActionPaperChartsBackup a mit:FailoverProcedure ;
+    warrant:hasName "Paper Chart Backup Navigation" ;
+    warrant:hasDescription "Fallback to paper charts if both ECDIS units are unavailable or compromised. FMEA existing control for ECDIS failure. Bridge restricted area enforces access control." .
+
+ll1:ActionVDRHashMonitoring a mit:AdvisoryAction ;
+    warrant:hasName "VDR Hash-Based Integrity Monitoring" ;
+    warrant:hasDescription "Recommended: periodically verify stored VDR data using cryptographic hash. Detect erasure or modification before evidence is lost. Supplement FMEA recommended USB locker." .
+
+ll1:ActionUSBLocker a mit:AdvisoryAction ;
+    warrant:hasName "USB Port Locking on Navigation OT Equipment" ;
+    warrant:hasDescription "FMEA recommended control across RADAR, ECDIS, GPS, AIS, VDR, BNWAS. Physical USB port blockers prevent unauthorised media insertion. Applied by Navigation Officer." .
+
+ll1:ActionBridgeAccessRestriction a mit:AdvisoryAction ;
+    warrant:hasName "Bridge Restricted Area Access Control" ;
+    warrant:hasDescription "FMEA detective control across all navigation OT. Bridge treated as restricted area; log entry of all non-crew personnel. Monitored during audits / superintendence inspections." .
+
+ll1:ActionAMSBackupRestore a mit:FailoverProcedure ;
+    warrant:hasName "AMS Data Backup and Restore (USB/CD)" ;
+    warrant:hasDescription "FMEA existing control (RPN=315): back-up USB/CD of AMS monitoring data. Chief Engineer responsible. Post-incident restore from backup if data corruption detected." .
+
+ll1:ActionRedundantVHF a mit:FailoverProcedure ;
+    warrant:hasName "Switch to Redundant VHF (No2 or No3)" ;
+    warrant:hasDescription "FMEA existing control: second VHF available. Immediately switch to VHF No2 or No3 (FM-8900S) if VHF No1 settings are compromised." .
+
+ll1:RuleAISSpoofing  mit:recommends ll1:ActionCrossCheckRADARGPS .
+ll1:RuleAISSpoofing  mit:recommends ll1:ActionAlertMasterVSOC .
+ll1:RuleGPSJamming   mit:recommends ll1:ActionDeadReckoningFallback .
+ll1:RuleGPSJamming   mit:recommends ll1:ActionDualGPSCrossCheck .
+ll1:RuleECDISSecurity mit:recommends ll1:ActionPaperChartsBackup .
+ll1:RuleECDISSecurity mit:recommends ll1:ActionUSBLocker .
+ll1:RuleECDISSecurity mit:recommends ll1:ActionBridgeAccessRestriction .
+ll1:RuleVDRIntegrity mit:recommends ll1:ActionVDRHashMonitoring .
+ll1:RuleVDRIntegrity mit:recommends ll1:ActionUSBLocker .
+ll1:RuleAMSSecurity  mit:recommends ll1:ActionAMSBackupRestore .
+ll1:RuleAMSSecurity  mit:recommends ll1:ActionUSBLocker .
+ll1:RuleCommSecurity mit:recommends ll1:ActionRedundantVHF .
+ll1:RuleCommSecurity mit:recommends ll1:ActionBridgeAccessRestriction .
+
+ll1:ActionCrossCheckRADARGPS    mit:addresses ll1:Link_AIS_NavBus .
+ll1:ActionDeadReckoningFallback mit:addresses ll1:NavigationFunction .
+ll1:ActionPaperChartsBackup     mit:addresses ll1:NavigationFunction .
+ll1:ActionVDRHashMonitoring     mit:addresses ll1:VDR .
+ll1:ActionRedundantVHF          mit:addresses ll1:CommunicationFunction .
+ll1:ActionAMSBackupRestore      mit:addresses ll1:AlarmMonitoringSystem .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DIGITAL TWIN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:ContainerVessel_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasName "LL1 Containership Digital Twin (Danaos / CATHERINE C)" .
+
+ll1:ContainerVessel_DigitalTwin dt:representsStateOf ll1:ContainerVessel_LL1 .
+
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DI_LL1_Composite .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DI_Navigation .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DI_VDR .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DI_Communication .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DI_ElectricalAlarm .
+
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:HazHazardousAreaApproach .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:HazLossOfNavigationPicture .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:HazLossOfVDREvidence .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:HazLossOfDistressComms .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:HazUnmonitoredEngineRoom .
+
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:RiskCollisionGrounding .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:RiskEngineRoomUnmonitored .
+
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DevSpoofedAIS .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DevAMSDataCorrupted .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:DevVDRDataModified .
+
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:ActionCrossCheckRADARGPS .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:ActionAlertMasterVSOC .
+ll1:ContainerVessel_DigitalTwin dt:visualises ll1:ActionAMSBackupRestore .
+
+ll1:ContainerVessel_DigitalTwin dt:receivesUpdateFrom ll1:IDSAnalyticalService .
+ll1:ContainerVessel_DigitalTwin dt:receivesUpdateFrom ll1:NavigationIntegrityService .
+ll1:ContainerVessel_DigitalTwin dt:receivesUpdateFrom ll1:VDRHealthService .
+
+##############################################################################
+# END example-ecdis-spoofing.ttl
+##############################################################################

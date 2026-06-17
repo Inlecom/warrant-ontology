@@ -1,0 +1,201 @@
+##############################################################################
+# WARRaNT Example: LL4 ROC–Boatmaster Handover (LL4 Use Case 2)
+# Instance namespace: https://warrant-project.eu/data/ll4#
+# Ontology version: 1.0.0
+#
+# Scenario: MAI-W approaching Kreekraksluizen lock.
+# ROC operator initiates handover to onboard boatmaster.
+# If LATE or the ROC operator's process model is WRONG (e.g. believes vessel
+# is idle when still in ROT mode), an unsafe control action may occur.
+# This may cause loss of situational awareness and lock-entry collision risk.
+# DI for navigation function degrades during handover window.
+# Mitigation advises ROC to confirm checklist before relinquishing control.
+# Operational mode: warrant:HandoverMode
+##############################################################################
+
+@prefix ll4:     <https://warrant-project.eu/data/ll4#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ── Vessel ─────────────────────────────────────────────────────────────────
+
+ll4:MAI_W a davom:Vessel ;
+    warrant:hasIdentifier "MAI-W" ;
+    warrant:hasName "MAI-W Inland Motor Tanker" ;
+    warrant:hasDescription "Type C inland tanker operating under remote control (Seafar ROS, LL4)." .
+
+# ── Vessel Function ────────────────────────────────────────────────────────
+
+ll4:RemoteNavigationFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-RN-001" ;
+    warrant:hasName "Remote Navigation Function" .
+
+ll4:MAI_W davom:hasFunction ll4:RemoteNavigationFunction .
+
+# ── Human Operator Roles (warrant:AgentEntity subclasses; NOT Components) ──
+
+ll4:RemoteOperatorRole a davom:HumanOperatorRole ;
+    warrant:hasName "Remote Operator (ROC Antwerp)" ;
+    warrant:hasDescription "ROC operator managing MAI-W navigation from the Antwerp Remote Operation Centre." .
+
+ll4:OnboardBoatmasterRole a davom:HumanOperatorRole ;
+    warrant:hasName "Onboard Boatmaster (MAI-W)" ;
+    warrant:hasDescription "Boatmaster aboard MAI-W who receives manual control after handover." .
+
+ll4:MAI_W davom:hasOperatorRole ll4:RemoteOperatorRole .
+ll4:MAI_W davom:hasOperatorRole ll4:OnboardBoatmasterRole .
+ll4:RemoteNavigationFunction davom:requiresOperatorRole ll4:RemoteOperatorRole .
+
+# ── Handover Dependency ─────────────────────────────────────────────────────
+
+ll4:HandoverHumanSupervisionDependency a davom:HumanSupervisionDependency ;
+    davom:dependencySource ll4:RemoteOperatorRole ;
+    davom:dependencyTarget ll4:OnboardBoatmasterRole ;
+    davom:hasDependencyWeight "0.9"^^xsd:decimal ;
+    davom:hasCriticality "Critical" ;
+    warrant:hasDescription "Supervision dependency during handover: ROC must verify boatmaster readiness before relinquishing control." .
+
+# ── Control Action and Procedure ──────────────────────────────────────────
+
+ll4:HandoverControlAction a davom:ControlAction ;
+    warrant:hasName "Handover Control Action" ;
+    warrant:hasDescription "The sequence of actions to transfer remote control from ROC operator to onboard boatmaster." .
+
+ll4:ROCHandoverProcedure a davom:OperationalProcedure ;
+    warrant:hasName "ROC Handover Procedure" ;
+    warrant:hasDescription "Defined procedure: verbal communication check, e-stop state verification, remote-control switch sequence." .
+
+ll4:RemoteOperatorRole davom:authorizes ll4:HandoverControlAction .
+ll4:RemoteOperatorRole davom:executes ll4:ROCHandoverProcedure .
+
+# ── Communication Link ─────────────────────────────────────────────────────
+
+ll4:ROCToVesselHandoverLink a davom:CommunicationLink ;
+    warrant:hasName "ROC to Vessel Handover Communication Link" ;
+    warrant:hasDescription "Voice and data channel used during the handover sequence." .
+
+ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselHandoverLink .
+
+# ── Operational Mode ────────────────────────────────────────────────────────
+
+# Using warrant:HandoverMode named individual from warrant-core.ttl
+ll4:HandoverControlAction cdm:isPerformedUnder warrant:HandoverMode .
+
+# ── Process Model and Flaw ─────────────────────────────────────────────────
+
+ll4:RemoteOperatorProcessModel a cdm:ProcessModel ;
+    warrant:hasName "ROC Remote Operator Process Model" ;
+    warrant:hasDescription "The ROC operator's internal model of the vessel state: position, speed, operational mode." .
+
+ll4:ProcessModelFlawWrongVesselState a cdm:ProcessModelFlaw ;
+    warrant:hasName "Wrong Vessel State in Process Model" ;
+    warrant:hasDescription "ROC operator believes vessel is in idle mode when it is still operating in ROT mode." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll4:RemoteOperatorProcessModel cdm:updates ll4:RemoteOperatorProcessModel .
+
+# ── Unsafe Control Action ──────────────────────────────────────────────────
+
+ll4:WrongHandoverUCA a cdm:UnsafeControlAction ;
+    warrant:hasName "Wrong Handover Control Action" ;
+    warrant:hasDescription "ROC operator issues handover command while vessel is in ROT mode; boatmaster is not ready." .
+
+ll4:ProcessModelFlawWrongVesselState cdm:mayCause ll4:WrongHandoverUCA .
+
+# ── Late Handover Deviation ────────────────────────────────────────────────
+
+ll4:LateHandoverDeviation a cdm:Deviation ;
+    warrant:hasName "Late Handover Execution" ;
+    warrant:hasDescription "Handover process not completed within the required time window before lock entry." ;
+    cdm:hasDeviationType cdm:LATE .
+
+# ── Hazards ─────────────────────────────────────────────────────────────────
+
+ll4:LossOfSituationalAwarenessHazard a cdm:Hazard ;
+    warrant:hasName "Loss of Situational Awareness during Handover" ;
+    warrant:hasDescription "Neither ROC operator nor boatmaster has full situational awareness during the handover window." .
+
+ll4:WrongHandoverUCA cdm:mayCause ll4:LossOfSituationalAwarenessHazard .
+ll4:LateHandoverDeviation cdm:mayCause ll4:LossOfSituationalAwarenessHazard .
+
+# ── Risk ─────────────────────────────────────────────────────────────────────
+
+ll4:LockEntryCollisionRisk a cdm:Risk ;
+    warrant:hasName "Lock Entry Collision Risk (Kreekraksluizen)" ;
+    cdm:hasLikelihood    "0.4"^^xsd:decimal ;
+    cdm:hasImpact        "0.85"^^xsd:decimal ;
+    cdm:hasSeverity      "0.8"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll4:LossOfSituationalAwarenessHazard cdm:isEvaluatedAs ll4:LockEntryCollisionRisk .
+
+# ── Assurance Degradation ───────────────────────────────────────────────────
+
+ll4:HandoverAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Navigation Assurance Degradation during Handover" .
+
+ll4:WrongHandoverUCA assr:causesAssuranceDegradation ll4:HandoverAssuranceDegradation .
+ll4:LateHandoverDeviation assr:causesAssuranceDegradation ll4:HandoverAssuranceDegradation .
+
+ll4:NavigationHandoverAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.45"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-17T14:00:00Z"^^xsd:dateTime .
+
+ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:NavigationHandoverAssuranceScore .
+ll4:HandoverAssuranceDegradation assr:updatesAssuranceScore ll4:NavigationHandoverAssuranceScore .
+
+# ── DI ─────────────────────────────────────────────────────────────────────
+
+ll4:HandoverDIMethod a di:DICalculationMethod ;
+    warrant:hasName "Risk-Propagation DI for Handover Window" .
+
+ll4:NavigationHandoverDI a di:DependabilityIndex ;
+    di:hasDIValue           "0.42"^^xsd:decimal ;
+    di:hasBetaWeight        "0.25"^^xsd:decimal ;
+    di:calculatedAt         "2026-05-17T14:00:00Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll4:HandoverDIMethod ;
+    di:hasDIState           di:DegradedState .
+
+ll4:NavigationHandoverAssuranceScore di:contributesTo ll4:NavigationHandoverDI .
+ll4:NavigationHandoverDI di:appliesTo ll4:RemoteNavigationFunction .
+
+# ── Mitigation ──────────────────────────────────────────────────────────────
+
+ll4:HandoverCompletionRule a mit:MitigationRule ;
+    warrant:hasName "Handover Checklist Completion Rule" ;
+    warrant:hasDescription "ROC must confirm full checklist completion before relinquishing control at any lock approach." .
+
+ll4:LateHandoverDeviation mit:matchesRule ll4:HandoverCompletionRule .
+
+ll4:ChecklistConfirmationAction a mit:AdvisoryAction ;
+    warrant:hasName "Confirm Handover Checklist" ;
+    warrant:hasDescription "Advisory: ROC operator must verbally confirm all checklist items with boatmaster before initiating control transfer." .
+
+ll4:HandoverCompletionRule mit:recommends ll4:ChecklistConfirmationAction .
+
+# ── Digital Twin ────────────────────────────────────────────────────────────
+
+ll4:MAI_W_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasName "MAI-W Digital Twin" .
+
+ll4:MAI_W_DigitalTwin dt:representsStateOf ll4:MAI_W .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:NavigationHandoverDI .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:LossOfSituationalAwarenessHazard .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:ChecklistConfirmationAction .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteOperatorRole .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:OnboardBoatmasterRole .
+
+##############################################################################
+# END example-roc-handover.ttl
+##############################################################################

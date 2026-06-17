@@ -1,0 +1,94 @@
+###############################################################################
+# WARRaNT KG Ontology — GitLab CI/CD
+#
+# Runs on every push and merge request.
+# Stages:
+#   validate  — parse all Turtle files, check namespace policy
+#   build     — merge all modules into dist/ (artefact, not committed)
+#
+# Optional stage (uncomment when Docker-in-Docker is available on your runner):
+#   docs      — generate WIDOCO HTML documentation
+###############################################################################
+
+default:
+  image: python:3.11-slim
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+
+cache:
+  paths:
+    - .pip-cache/
+
+stages:
+  - validate
+  - build
+  # - docs   # uncomment when WIDOCO/Docker runner is configured
+
+# ── Stage 1: Validate ─────────────────────────────────────────────────────────
+
+validate-turtle:
+  stage: validate
+  script:
+    - pip install rdflib --quiet
+    - python scripts/validate_turtle.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# ── Stage 2: Build ────────────────────────────────────────────────────────────
+
+build-merged:
+  stage: build
+  script:
+    - pip install rdflib --quiet
+    - python scripts/merge_ontology.py
+    - python scripts/prepare_widoco.py
+  artifacts:
+    name: "warrant-ontology-merged-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - dist/
+    expire_in: 7 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+
+# ── Stage 3: Docs (optional — requires Docker-in-Docker runner) ───────────────
+#
+# Uncomment this job and add a GitLab runner with the `docker` executor.
+# The generated HTML is published as a GitLab Pages site.
+#
+# docs-widoco:
+#   stage: docs
+#   image: docker:24
+#   services:
+#     - docker:24-dind
+#   variables:
+#     DOCKER_TLS_CERTDIR: "/certs"
+#   script:
+#     - apk add --no-cache python3 py3-pip
+#     - pip install rdflib --quiet
+#     - python scripts/merge_ontology.py
+#     - python scripts/prepare_widoco.py
+#     - docker run --rm
+#         -v "$CI_PROJECT_DIR:/repo"
+#         dgarijo/widoco:latest
+#         -ontFile /repo/dist/warrant-widoco-input.ttl
+#         -outFolder /repo/public
+#         -rewriteAll -getOntologyMetadata -lang en -noPlaceHolderText
+#   artifacts:
+#     paths:
+#       - public/
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+#
+# pages:
+#   stage: docs
+#   script:
+#     - echo "Publishing GitLab Pages from public/"
+#   artifacts:
+#     paths:
+#       - public/
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "main"'

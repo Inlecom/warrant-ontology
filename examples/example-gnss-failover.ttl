@@ -1,0 +1,252 @@
+##############################################################################
+# WARRaNT Example: GNSS Failover (LL4 — MAI-W)
+# Instance namespace: https://warrant-project.eu/data/ll4#
+# Ontology version: 1.0.0
+#
+# Scenario: GNSS signal loss on the MAI-W inland tanker (LL4, Antwerp–Emden).
+# An analytical service detects GNSS signal loss via a DetectionEvent.
+# The Deviation is typed cdm:UNAVAILABLE via hasDeviationType (no subclass).
+# The deviation causes a position uncertainty hazard → collision risk.
+# Risk causes assurance degradation → reduced AssuranceScore → node DI.
+# DI includes propagated risk from the ROC-to-vessel communication link.
+# DI state becomes di:CriticalState (named individual).
+# Mitigation recommends INS/AIS failover (AdvisoryAction).
+# Digital Twin visualises affected function, DI, hazard, and failover.
+##############################################################################
+
+@prefix ll4:     <https://warrant-project.eu/data/ll4#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ── Vessel ─────────────────────────────────────────────────────────────────
+
+ll4:MAI_W a davom:Vessel ;
+    warrant:hasIdentifier "MAI-W" ;
+    warrant:hasName "MAI-W Inland Motor Tanker" ;
+    warrant:hasDescription "Type C inland tanker, LL4, Antwerp Kanaaldok B1 → Emden, Remote Operation System (Seafar)." .
+
+# ── Vessel Function ────────────────────────────────────────────────────────
+
+ll4:RemoteNavigationFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-RN-001" ;
+    warrant:hasName "Remote Navigation Function" ;
+    warrant:hasDescription "Vessel function for remote navigation and positioning during remote operation from the Antwerp ROC." .
+
+ll4:MAI_W davom:hasFunction ll4:RemoteNavigationFunction .
+
+# ── Systems ────────────────────────────────────────────────────────────────
+
+ll4:GNSSNavigationSystem a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-GNSS-001" ;
+    warrant:hasName "GNSS Navigation System" .
+
+ll4:LTE5GCommunicationSystem a davom:CommunicationSystem ;
+    warrant:hasIdentifier "SYS-LTE5G-001" ;
+    warrant:hasName "LTE/5G Communication System" .
+
+ll4:RemoteNavigationFunction davom:isSupportedBy ll4:GNSSNavigationSystem .
+ll4:RemoteNavigationFunction davom:isSupportedBy ll4:LTE5GCommunicationSystem .
+
+# ── Subsystem and Component ────────────────────────────────────────────────
+
+ll4:GNSSReceiverSubsystem a davom:Subsystem ;
+    warrant:hasName "GNSS Receiver Subsystem" .
+
+ll4:GNSSNavigationSystem davom:hasSubsystem ll4:GNSSReceiverSubsystem .
+
+ll4:GNSSReceiverComponent a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GNSS-RX-001" ;
+    warrant:hasName "GNSS Receiver" .
+
+ll4:GNSSReceiverSubsystem davom:hasComponent ll4:GNSSReceiverComponent .
+
+ll4:PositioningSystem a davom:TechnicalSystem ;
+    warrant:hasName "Positioning System" .
+
+# ── Human Operator Role ────────────────────────────────────────────────────
+
+ll4:RemoteOperatorRole a davom:HumanOperatorRole ;
+    warrant:hasName "Remote Operator (ROC Antwerp)" ;
+    warrant:hasDescription "ROC operator supervising remote navigation from the Antwerp Remote Operation Centre." .
+
+ll4:RemoteNavigationFunction davom:requiresOperatorRole ll4:RemoteOperatorRole .
+ll4:RemoteOperatorRole davom:supervises ll4:LTE5GCommunicationSystem .
+
+# ── Communication Link ─────────────────────────────────────────────────────
+
+ll4:ROCToVesselCommandLink a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-ROC-VCS-001" ;
+    warrant:hasName "ROC to Vessel Command Link" ;
+    warrant:hasDescription "LTE/5G channel between the Antwerp ROC and the MAI-W VCS." .
+
+ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselCommandLink .
+
+# ── Metrics ────────────────────────────────────────────────────────────────
+
+ll4:GNSSSignalQualityMetric a obs:DependabilityMetric ;
+    warrant:hasName "GNSS Signal Quality" ;
+    obs:hasUnit "dBHz" ;
+    obs:hasExternalTimeSeriesId "timeseries.gnss.signal_quality.MAI-W" .
+
+ll4:CommandLatencyMetric a obs:PerformanceMetric ;
+    warrant:hasName "ROC Command Latency" ;
+    obs:hasUnit "ms" ;
+    obs:hasExternalTimeSeriesId "timeseries.network.command_latency.MAI-W" .
+
+ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSSignalQualityMetric .
+ll4:ROCToVesselCommandLink  obs:hasDependabilityMetric ll4:CommandLatencyMetric .
+
+# ── Observer and Analytical Service ───────────────────────────────────────
+
+ll4:GNSSSignalSensor a obs:Sensor ;
+    warrant:hasName "On-board GNSS Signal Sensor" .
+
+ll4:GNSSMonitoringService a obs:AnalyticalService ;
+    warrant:hasName "GNSS Monitoring Analytical Service" ;
+    warrant:hasDescription "Analyses GNSS signal quality and produces detection events when signal quality falls below threshold." .
+
+ll4:GNSSSignalSensor obs:measures ll4:GNSSSignalQualityMetric .
+ll4:GNSSMonitoringService obs:consumes ll4:GNSSSignalQualityMetric .
+
+# ── Measurement (semantic event; raw stream external) ─────────────────────
+
+ll4:GNSSSignalMeasurement_T1 a obs:Measurement ;
+    obs:hasValue "5.2"^^xsd:decimal ;
+    obs:hasUnit "dBHz" ;
+    obs:hasTimestamp "2026-05-17T10:15:00Z"^^xsd:dateTime ;
+    obs:hasSource ll4:GNSSSignalSensor ;
+    obs:hasExternalRecordReference "timeseries.gnss.signal_quality.MAI-W::1747476900" .
+
+ll4:GNSSSignalQualityMetric obs:hasMeasurement ll4:GNSSSignalMeasurement_T1 .
+
+# ── Detection Event pattern ────────────────────────────────────────────────
+
+ll4:GNSSSignalLossDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "GNSS Signal Loss Detection Event" ;
+    warrant:hasDescription "Produced by GNSSMonitoringService when signal quality falls below 10 dBHz threshold." ;
+    obs:hasTimestamp "2026-05-17T10:15:02Z"^^xsd:dateTime .
+
+ll4:GNSSSignalMeasurement_T1 obs:supportsDetection ll4:GNSSSignalLossDetectionEvent .
+ll4:GNSSMonitoringService obs:producesDetectionEvent ll4:GNSSSignalLossDetectionEvent .
+
+# ── Deviation (typed via hasDeviationType; no subclass) ───────────────────
+
+ll4:GNSSSignalLossDeviation a cdm:Deviation ;
+    warrant:hasName "GNSS Signal Loss" ;
+    warrant:hasDescription "GNSS position signal unavailable due to outage." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE .
+
+ll4:GNSSSignalLossDetectionEvent obs:detectionEventDetects ll4:GNSSSignalLossDeviation .
+
+# ── Hazard ─────────────────────────────────────────────────────────────────
+
+ll4:PositionUncertaintyHazard a cdm:Hazard ;
+    warrant:hasName "Vessel Position Uncertainty" ;
+    warrant:hasDescription "Vessel position unreliable; collision and grounding risk." .
+
+ll4:GNSSSignalLossDeviation cdm:mayCause ll4:PositionUncertaintyHazard .
+
+# ── Risk ───────────────────────────────────────────────────────────────────
+
+ll4:CollisionRisk a cdm:Risk ;
+    warrant:hasName "Collision Risk" ;
+    cdm:hasLikelihood    "0.45"^^xsd:decimal ;
+    cdm:hasImpact        "0.9"^^xsd:decimal ;
+    cdm:hasSeverity      "0.7"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll4:PositionUncertaintyHazard cdm:isEvaluatedAs ll4:CollisionRisk .
+
+# ── Assurance Degradation ──────────────────────────────────────────────────
+
+ll4:NavigationAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Navigation Assurance Degradation due to GNSS Loss" .
+
+ll4:GNSSSignalLossDeviation assr:causesAssuranceDegradation ll4:NavigationAssuranceDegradation .
+
+ll4:NavigationAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.38"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:NavigationAssuranceScore .
+ll4:NavigationAssuranceDegradation assr:updatesAssuranceScore ll4:NavigationAssuranceScore .
+
+# ── DI Calculation Method ──────────────────────────────────────────────────
+
+ll4:RiskPropagationDIMethod a di:DICalculationMethod ;
+    warrant:hasName "Risk-Propagation Weighted Assurance Aggregation" ;
+    warrant:hasDescription "DI_i(t) = A_i(t) - β·R̃_i(t). A_i is the weighted assurance score; R̃_i is propagated risk from upstream dependency nodes. Computed externally; inputs, weights, and result stored in KG." .
+
+# ── Propagated Risk ────────────────────────────────────────────────────────
+
+ll4:CommLinkPropagatedRisk a di:PropagatedRisk ;
+    di:hasPropagatedRiskValue "0.15"^^xsd:decimal .
+
+# ── Risk Propagation Edge (CommLink DI → Navigation DI) ───────────────────
+
+ll4:CommLinkToNavDIPropEdge a di:RiskPropagationEdge ;
+    di:hasRiskPropagationWeight "0.3"^^xsd:decimal .
+
+# ── Dependability Index ────────────────────────────────────────────────────
+
+ll4:RemoteNavigationDI a di:DependabilityIndex ;
+    di:hasDIValue             "0.34"^^xsd:decimal ;
+    di:hasBetaWeight          "0.25"^^xsd:decimal ;
+    di:calculatedAt           "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk       ll4:CommLinkPropagatedRisk ;
+    di:hasDIState              di:CriticalState .
+
+ll4:NavigationAssuranceScore di:contributesTo ll4:RemoteNavigationDI .
+ll4:RemoteNavigationDI di:appliesTo ll4:RemoteNavigationFunction .
+
+ll4:CommLinkToNavDIPropEdge di:propagationTarget ll4:RemoteNavigationDI .
+
+# ── Mitigation ─────────────────────────────────────────────────────────────
+
+ll4:GNSSFailoverRule a mit:MitigationRule ;
+    warrant:hasName "GNSS Loss Mitigation Rule" ;
+    warrant:hasDescription "Trigger INS/AIS-based positioning and alert ROC operator when GNSS unavailable." .
+
+ll4:GNSSSignalLossDeviation mit:matchesRule ll4:GNSSFailoverRule .
+
+ll4:SwitchToINSAISFailover a mit:AdvisoryAction ;
+    warrant:hasName "Switch to INS/AIS Positioning" ;
+    warrant:hasDescription "Advisory: activate inertial navigation and AIS-based position estimation. Notify ROC operator." .
+
+ll4:GNSSFailoverRule mit:recommends ll4:SwitchToINSAISFailover .
+
+ll4:INSPositioningFailover a mit:FailoverProcedure ;
+    warrant:hasName "INS-based Positioning Failover Procedure" ;
+    warrant:hasDescription "Visualised procedure: enable INS/AIS positioning and notify the ROC operator." .
+
+ll4:SwitchToINSAISFailover mit:activates ll4:INSPositioningFailover .
+ll4:INSPositioningFailover mit:addresses ll4:RemoteNavigationFunction .
+
+# ── Digital Twin ───────────────────────────────────────────────────────────
+
+ll4:MAI_W_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasName "MAI-W Digital Twin" .
+
+ll4:MAI_W_DigitalTwin dt:representsStateOf ll4:MAI_W .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationFunction .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationDI .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:PositionUncertaintyHazard .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:CollisionRisk .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:INSPositioningFailover .
+ll4:MAI_W_DigitalTwin dt:receivesUpdateFrom ll4:GNSSMonitoringService .
+
+##############################################################################
+# END example-gnss-failover.ttl
+##############################################################################

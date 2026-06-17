@@ -1,0 +1,49 @@
+##############################################################################
+# WARRaNT Aggregated Ontology
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/all
+#
+# Imports all WARRaNT ontology modules. Load this file to access the full
+# ontology in a single operation in Protégé, OWLAPI, or rdflib.
+# Use catalog.xml for multi-tool environments with relative IRIs.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/all>
+    a owl:Ontology ;
+    owl:imports
+        <warrant-core.ttl> ,
+        <warrant-davom.ttl> ,
+        <warrant-observation.ttl> ,
+        <warrant-cdm.ttl> ,
+        <warrant-assurance.ttl> ,
+        <warrant-di.ttl> ,
+        <warrant-scenario.ttl> ,
+        <warrant-mitigation.ttl> ,
+        <warrant-digital-twin.ttl> ;
+    rdfs:label "WARRaNT Aggregated Ontology"@en ;
+    rdfs:comment """Aggregated ontology importing all WARRaNT modules.
+Modules:
+  warrant-core        — shared superclasses, context, controlled vocabularies
+  warrant-davom       — vessel operational model (DAVOM)
+  warrant-observation — metrics, observers, detection events
+  warrant-cdm         — causal dependability model (STPA/HAZOP)
+  warrant-assurance   — assurance attributes, scores, degradation
+  warrant-di          — dependability index, risk propagation
+  warrant-scenario    — what-if scenario semantics
+  warrant-mitigation  — mitigation rules, failover, advisory actions
+  warrant-digital-twin — DT interface, views, layers"""@en ;
+    dcterms:title "WARRaNT Ontology (Full)" ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+##############################################################################
+# END warrant-all.ttl
+##############################################################################

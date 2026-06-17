@@ -1,0 +1,198 @@
+##############################################################################
+# WARRaNT Core Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/core
+# Project: WAterborne fedeRated systems and models for secuRe and resilieNt
+#          operations — Horizon Europe RIA 101202581
+# Date: 2026-06-05
+#
+# This module defines shared superclasses, common properties, context classes,
+# OperationalMode controlled vocabulary, and VisualisableEntity / AgentEntity.
+# All other modules import this module.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/core>
+    a owl:Ontology ;
+    rdfs:label "WARRaNT Core Ontology Module"@en ;
+    rdfs:comment "Shared superclasses, common properties, and controlled vocabularies used by all WARRaNT ontology modules."@en ;
+    dcterms:title "WARRaNT Core Module" ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Top-level Superclasses
+##############################################################################
+
+warrant:OperationalEntity a owl:Class ;
+    rdfs:label "Operational Entity"@en ;
+    rdfs:comment "Abstract superclass for all operational entities in a vessel system: components, systems, functions, data flows, and communication links. Human operators are NOT subclasses of this class; use warrant:AgentEntity instead."@en .
+
+warrant:AgentEntity a owl:Class ;
+    rdfs:label "Agent Entity"@en ;
+    rdfs:comment "Abstract superclass for all human agents: HumanOperator and HumanOperatorRole. Intentionally separate from warrant:OperationalEntity to enforce the principle that human operators are not components. The range of dt:visualises includes this class so that operator roles can be visualised by the Digital Twin."@en .
+
+warrant:EvidenceEntity a owl:Class ;
+    rdfs:label "Evidence Entity"@en ;
+    rdfs:comment "Abstract superclass for all observation, measurement, and evidence entities."@en .
+
+warrant:ContextEntity a owl:Class ;
+    rdfs:label "Context Entity"@en ;
+    rdfs:comment "Abstract superclass for operational context elements: voyage segments, operational modes, and environmental conditions."@en .
+
+warrant:VisualisableEntity a owl:Class ;
+    rdfs:label "Visualisable Entity"@en ;
+    rdfs:comment "Abstract marker class for any ontology entity that may be visualised by the Digital Twin. The range of dt:visualises is constrained to warrant:VisualisableEntity. This class is defined here in the core module — do NOT redefine it in the digital-twin module."@en .
+
+warrant:CalculationEntity a owl:Class ;
+    rdfs:label "Calculation Entity"@en ;
+    rdfs:comment "Abstract superclass for entities that store calculation inputs, weights, results, and traceability. Numerical computation is always external; the KG stores only the artefacts."@en .
+
+warrant:ExternalReference a owl:Class ;
+    rdfs:label "External Reference"@en ;
+    rdfs:comment "A reference to an external standard, regulation, or guideline (e.g., IMO circular, IACS UR, DNV class notation, EMSA framework). Used to link KG elements to normative requirements without importing their content."@en .
+
+
+##############################################################################
+# Context Subclasses
+##############################################################################
+
+warrant:OperationalContext a owl:Class ;
+    rdfs:subClassOf warrant:ContextEntity ;
+    rdfs:label "Operational Context"@en ;
+    rdfs:comment "A description of the operational state or setting in which a vessel function is executed."@en .
+
+warrant:EnvironmentalCondition a owl:Class ;
+    rdfs:subClassOf warrant:ContextEntity ;
+    rdfs:label "Environmental Condition"@en ;
+    rdfs:comment "A contextual factor that influences deviations, hazards, risks, assurance scores, DI values, and scenario outcomes. Not a vessel component."@en .
+
+warrant:WeatherCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Weather Condition"@en .
+
+warrant:SeaStateCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Sea State Condition"@en .
+
+warrant:TrafficCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Traffic Condition"@en .
+
+warrant:InfrastructureCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Infrastructure Condition"@en .
+
+warrant:NetworkCoverageCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Network Coverage Condition"@en .
+
+warrant:VisibilityCondition a owl:Class ;
+    rdfs:subClassOf warrant:EnvironmentalCondition ;
+    rdfs:label "Visibility Condition"@en .
+
+warrant:VoyageSegment a owl:Class ;
+    rdfs:subClassOf warrant:ContextEntity ;
+    rdfs:label "Voyage Segment"@en ;
+    rdfs:comment "A leg of a voyage characterised by a specific route segment, transit zone, or operational phase (e.g. port approach, lock transit, open sea). Belongs here in the core/context module, NOT in the CDM module."@en .
+
+warrant:OperationalMode a owl:Class ;
+    rdfs:subClassOf warrant:ContextEntity ;
+    rdfs:label "Operational Mode"@en ;
+    rdfs:comment "A controlled vocabulary class for the mode of vessel operation. Named individuals (not subclasses) enumerate the modes. Belongs here in the core/context module, NOT in the CDM module."@en .
+
+
+##############################################################################
+# OperationalMode Named Individuals (Controlled Vocabulary)
+##############################################################################
+
+warrant:RemoteOperationMode a warrant:OperationalMode ;
+    rdfs:label "Remote Operation Mode"@en ;
+    rdfs:comment "Vessel is under control of a remote operator via a Remote Operation Centre (ROC). Relevant to LL4 Seafar ROS."@en .
+
+warrant:ManualOperationMode a warrant:OperationalMode ;
+    rdfs:label "Manual Operation Mode"@en ;
+    rdfs:comment "Vessel is under direct manual control by onboard crew."@en .
+
+warrant:AutonomousOperationMode a warrant:OperationalMode ;
+    rdfs:label "Autonomous Operation Mode"@en ;
+    rdfs:comment "Vessel is operating autonomously without active human control. Relevant to LL3 NOVA."@en .
+
+warrant:AssistedOperationMode a warrant:OperationalMode ;
+    rdfs:label "Assisted Operation Mode"@en ;
+    rdfs:comment "Vessel is under human control with active decision-support assistance from the Digital Twin or an analytical service."@en .
+
+warrant:DegradedOperationMode a warrant:OperationalMode ;
+    rdfs:label "Degraded Operation Mode"@en ;
+    rdfs:comment "One or more vessel functions are operating below normal capability; reduced-dependency fallback procedures are active."@en .
+
+warrant:HandoverMode a warrant:OperationalMode ;
+    rdfs:label "Handover Mode"@en ;
+    rdfs:comment "A transient mode during transfer of control between ROC operator and onboard boatmaster, or between automation and human. Relevant to LL4 Use Case 2 (uncontrolled handover at Kreekraksluizen)."@en .
+
+
+##############################################################################
+# Common Datatype Properties
+##############################################################################
+
+warrant:hasIdentifier a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "has identifier"@en ;
+    rdfs:comment "A stable identifier string for the entity (e.g. VF-RN-001, COMP-GNSS-RX-001)."@en .
+
+warrant:hasName a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "has name"@en .
+
+warrant:hasDescription a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "has description"@en .
+
+warrant:hasVersion a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "has version"@en .
+
+warrant:hasMaker a owl:DatatypeProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range xsd:string ;
+    rdfs:label "has maker"@en ;
+    rdfs:comment "Manufacturer or vendor name of a physical or software component (e.g. 'FURUNO', 'YOKOGAWA', 'AELER'). Use warrant:hasModel for the model designation and warrant:hasSoftwareVersion for the SW version string."@en .
+
+warrant:hasModel a owl:DatatypeProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range xsd:string ;
+    rdfs:label "has model"@en ;
+    rdfs:comment "Model or type designation of a component as given by the manufacturer (e.g. 'FMD3300', 'CMZ900D', 'FAR-2228'). Pair with warrant:hasMaker."@en .
+
+warrant:hasSoftwareVersion a owl:DatatypeProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range xsd:string ;
+    rdfs:label "has software version"@en ;
+    rdfs:comment "Software or firmware version string as recorded in the equipment cybersecurity inventory (e.g. '2450074-05.12', '0359377-03.02'). Supports vulnerability tracking and patch management queries."@en .
+
+warrant:validFrom a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "valid from"@en .
+
+warrant:validTo a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "valid to"@en .
+
+##############################################################################
+# END warrant-core.ttl
+##############################################################################

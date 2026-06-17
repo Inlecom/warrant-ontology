@@ -1,0 +1,309 @@
+##############################################################################
+# WARRaNT DAVOM Ontology Module
+# Dependability-Aware Vessel Operational Model
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/davom
+# Imports: warrant-core.ttl
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/davom>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> ;
+    rdfs:label "WARRaNT DAVOM Module"@en ;
+    rdfs:comment "Dependability-Aware Vessel Operational Model: vessel, systems, functions, components, dependencies, data flows, communication links, and human operator roles."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Vessel, Function, System
+##############################################################################
+
+davom:Vessel a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Vessel"@en ;
+    rdfs:comment "The maritime asset or operational vessel represented in the KG."@en .
+
+davom:VesselFunction a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Vessel Function"@en ;
+    rdfs:comment "An operational capability that the vessel must provide (e.g. remote navigation, fire detection)."@en .
+
+davom:System a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "System"@en ;
+    rdfs:comment "A technical, software, cyber-physical, communication, or organisational system supporting one or more vessel functions."@en .
+
+davom:TechnicalSystem      a owl:Class ; rdfs:subClassOf davom:System ; rdfs:label "Technical System"@en .
+davom:SoftwareSystem       a owl:Class ; rdfs:subClassOf davom:System ; rdfs:label "Software System"@en .
+davom:CyberPhysicalSystem  a owl:Class ; rdfs:subClassOf davom:System ; rdfs:label "Cyber-Physical System"@en .
+davom:CommunicationSystem  a owl:Class ; rdfs:subClassOf davom:System ; rdfs:label "Communication System"@en .
+davom:OrganisationalSystem a owl:Class ; rdfs:subClassOf davom:System ; rdfs:label "Organisational System"@en .
+
+davom:Subsystem a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Subsystem"@en ;
+    rdfs:comment "A decomposition of a system into a more specific functional or technical unit."@en .
+
+
+##############################################################################
+# Components
+##############################################################################
+
+davom:Component a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Component"@en ;
+    rdfs:comment "A physical, software, cyber, data, communication, or sensor element. Human operators are NOT components; use warrant:AgentEntity subclasses instead."@en .
+
+davom:PhysicalComponent      a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Physical Component"@en .
+davom:SoftwareComponent      a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Software Component"@en .
+davom:CommunicationComponent a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Communication Component"@en .
+davom:DataComponent          a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Data Component"@en .
+davom:CyberComponent         a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Cyber Component"@en .
+davom:SensorComponent        a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Sensor Component"@en .
+davom:ActuatorComponent      a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Actuator Component"@en .
+davom:InterfaceComponent     a owl:Class ; rdfs:subClassOf davom:Component ; rdfs:label "Interface Component"@en .
+
+
+##############################################################################
+# DataFlow and CommunicationLink — first-class operational entities
+##############################################################################
+
+davom:DataFlow a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Data Flow"@en ;
+    rdfs:comment "A flow of data between systems, components, services, operators, or digital-twin elements. First-class operational entity; may have dependability metrics."@en .
+
+davom:CommunicationLink a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Communication Link"@en ;
+    rdfs:comment "A communication channel supporting data exchange, control, monitoring, or coordination between vessel, shore, or external entities. First-class operational entity; may have dependability metrics. Tag with davom:hasInterfaceType using a named davom:InterfaceType individual."@en .
+
+davom:InterfaceType a owl:Class ;
+    rdfs:label "Interface Type"@en ;
+    rdfs:comment "Controlled vocabulary for the physical or logical interface technology of a CommunicationLink or DataFlow. Use davom:hasInterfaceType to tag a link individual."@en .
+
+davom:LAN          a davom:InterfaceType ; rdfs:label "LAN"@en ;           rdfs:comment "IEEE 802.3 Ethernet LAN (e.g. bridge navigation data bus, satellite LAN)."@en .
+davom:SERIAL       a davom:InterfaceType ; rdfs:label "SERIAL"@en ;         rdfs:comment "Serial line conforming to IEC 61162 / NMEA 0183 (RS-422/RS-485). Dominant interface in navigation OT."@en .
+davom:CONTACT      a davom:InterfaceType ; rdfs:label "CONTACT"@en ;        rdfs:comment "Dry-contact (relay/digital I/O) interface, typically used for alarm and door-status signals into VDR and AMS."@en .
+davom:SERIAL_CONTACT a davom:InterfaceType ; rdfs:label "SERIAL+CONTACT"@en ; rdfs:comment "Combined serial and dry-contact interface, as used on VDR inputs from engine control, watertight door, and AMS systems."@en .
+davom:VIDEO        a davom:InterfaceType ; rdfs:label "VIDEO"@en ;           rdfs:comment "Analogue or digital video signal (e.g. RADAR image feed into VDR)."@en .
+davom:AUDIO        a davom:InterfaceType ; rdfs:label "AUDIO"@en ;           rdfs:comment "Analogue audio channel (e.g. VHF and bridge microphone feeds into VDR)."@en .
+davom:WIRELESS     a davom:InterfaceType ; rdfs:label "WIRELESS"@en ;        rdfs:comment "Radio-frequency wireless link (e.g. container gateway to vessel gateway, AIS VHF broadcast)."@en .
+
+
+##############################################################################
+# Human Operator — subclasses of warrant:AgentEntity (NOT Component)
+##############################################################################
+
+davom:HumanOperator a owl:Class ;
+    rdfs:subClassOf warrant:AgentEntity ;
+    rdfs:label "Human Operator"@en ;
+    rdfs:comment "A person performing an operational role. Subclass of warrant:AgentEntity, NOT davom:Component. Example: a remote ROC operator or an onboard boatmaster."@en .
+
+davom:HumanOperatorRole a owl:Class ;
+    rdfs:subClassOf warrant:AgentEntity ;
+    rdfs:label "Human Operator Role"@en ;
+    rdfs:comment "A functional role associated with human operation (e.g. RemoteOperatorRole, OnboardBoatmasterRole). Subclass of warrant:AgentEntity, NOT davom:Component. Multiple HumanOperator individuals may perform the same role."@en .
+
+davom:OperatorInterface a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Operator Interface"@en ;
+    rdfs:comment "An HMI through which a human operator receives information or provides input."@en .
+
+davom:OperationalProcedure a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Operational Procedure"@en ;
+    rdfs:comment "A defined sequence of operational or mitigation steps that may be executed by a HumanOperatorRole."@en .
+
+davom:ControlAction a owl:Class ;
+    rdfs:subClassOf warrant:OperationalEntity ;
+    rdfs:label "Control Action"@en ;
+    rdfs:comment "A command or intervention issued by a controller or authorised operator."@en .
+
+
+##############################################################################
+# Dependency (reified)
+##############################################################################
+
+davom:Dependency a owl:Class ;
+    rdfs:label "Dependency"@en ;
+    rdfs:comment "A typed, reified dependency node. Use when weight, criticality, latency, or redundancy level must be recorded alongside the dependency relationship."@en .
+
+davom:FunctionalDependency       a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Functional Dependency"@en .
+davom:DataDependency             a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Data Dependency"@en .
+davom:CommunicationDependency    a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Communication Dependency"@en .
+davom:ControlDependency          a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Control Dependency"@en .
+davom:PowerDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Power Dependency"@en .
+davom:CyberDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Cyber Dependency"@en .
+davom:OperationalDependency      a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Operational Dependency"@en .
+davom:HumanSupervisionDependency a owl:Class ; rdfs:subClassOf davom:Dependency ;
+    rdfs:label "Human Supervision Dependency"@en ;
+    rdfs:comment "A dependency modelling the oversight relationship between a HumanOperatorRole and a system or function (e.g. ROC operator supervises remote navigation)."@en .
+davom:ProcedureDependency        a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Procedure Dependency"@en .
+
+
+##############################################################################
+# Structural Object Properties
+##############################################################################
+
+davom:hasFunction a owl:ObjectProperty ;
+    rdfs:domain davom:Vessel ;
+    rdfs:range davom:VesselFunction ;
+    rdfs:label "has function"@en .
+
+davom:isSupportedBy a owl:ObjectProperty ;
+    rdfs:domain davom:VesselFunction ;
+    rdfs:range davom:System ;
+    rdfs:label "is supported by"@en .
+
+davom:supportsFunction a owl:ObjectProperty ;
+    owl:inverseOf davom:isSupportedBy ;
+    rdfs:label "supports function"@en .
+
+davom:hasSubsystem a owl:ObjectProperty ;
+    rdfs:domain davom:System ;
+    rdfs:range davom:Subsystem ;
+    rdfs:label "has subsystem"@en .
+
+davom:hasComponent a owl:ObjectProperty ;
+    rdfs:domain davom:Subsystem ;
+    rdfs:range davom:Component ;
+    rdfs:label "has component"@en .
+
+davom:dependsOn a owl:ObjectProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "depends on"@en ;
+    rdfs:comment "Simple traversal relation between operational entities. Use reified Dependency when weight, criticality, or redundancy level must be recorded."@en .
+
+davom:providesDataTo a owl:ObjectProperty ;
+    rdfs:domain davom:Component ;
+    rdfs:range davom:Component ;
+    rdfs:label "provides data to"@en .
+
+davom:controls a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:Component davom:HumanOperatorRole ) ] ;
+    rdfs:range davom:Component ;
+    rdfs:label "controls"@en .
+
+davom:carriesDataFlow a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:CommunicationLink davom:System davom:Component ) ] ;
+    rdfs:range davom:DataFlow ;
+    rdfs:label "carries data flow"@en .
+
+davom:hasDataFlow a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:VesselFunction davom:System davom:Component ) ] ;
+    rdfs:range davom:DataFlow ;
+    rdfs:label "has data flow"@en .
+
+davom:usesCommunicationLink a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:VesselFunction davom:System davom:DataFlow ) ] ;
+    rdfs:range davom:CommunicationLink ;
+    rdfs:label "uses communication link"@en .
+
+davom:hasInterfaceType a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:CommunicationLink davom:DataFlow ) ] ;
+    rdfs:range davom:InterfaceType ;
+    rdfs:label "has interface type"@en ;
+    rdfs:comment "Tags a CommunicationLink or DataFlow with a physical/logical interface technology from the davom:InterfaceType controlled vocabulary (LAN, SERIAL, CONTACT, SERIAL_CONTACT, VIDEO, AUDIO, WIRELESS)."@en .
+
+davom:hasOperatorRole a owl:ObjectProperty ;
+    rdfs:domain davom:Vessel ;
+    rdfs:range davom:HumanOperatorRole ;
+    rdfs:label "has operator role"@en .
+
+davom:performsRole a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperator ;
+    rdfs:range davom:HumanOperatorRole ;
+    rdfs:label "performs role"@en .
+
+davom:requiresOperatorRole a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( davom:VesselFunction davom:System ) ] ;
+    rdfs:range davom:HumanOperatorRole ;
+    rdfs:label "requires operator role"@en .
+
+davom:supervises a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range davom:System ;
+    rdfs:label "supervises"@en .
+
+davom:operates a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range davom:System ;
+    rdfs:label "operates"@en .
+
+davom:authorizes a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range davom:ControlAction ;
+    rdfs:label "authorizes"@en .
+
+davom:executes a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range davom:OperationalProcedure ;
+    rdfs:label "executes"@en .
+
+davom:supportsDecisionOf a owl:ObjectProperty ;
+    rdfs:domain davom:System ;
+    rdfs:range davom:HumanOperatorRole ;
+    rdfs:label "supports decision of"@en .
+
+davom:participatesIn a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range davom:VesselFunction ;
+    rdfs:label "participates in"@en .
+
+davom:dependencySource a owl:ObjectProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "dependency source"@en .
+
+davom:dependencyTarget a owl:ObjectProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "dependency target"@en .
+
+
+##############################################################################
+# Dependency Datatype Properties
+##############################################################################
+
+davom:hasDependencyWeight a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has dependency weight"@en ;
+    rdfs:comment "Structural weight of this dependency, mirrored at the DI level by di:hasRiskPropagationWeight on a RiskPropagationEdge."@en .
+
+davom:hasCriticality a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:string ;
+    rdfs:label "has criticality"@en .
+
+davom:hasLatency a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has latency"@en .
+
+davom:hasRedundancyLevel a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:integer ;
+    rdfs:label "has redundancy level"@en .
+
+davom:hasConfidence a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has confidence"@en .
+
+##############################################################################
+# END warrant-davom.ttl
+##############################################################################

@@ -1,0 +1,282 @@
+##############################################################################
+# WARRaNT Example: Communication Degradation (LL4 — MAI-W)
+# Instance namespace: https://warrant-project.eu/data/ll4#
+# Ontology version: 1.0.0
+#
+# Scenario: ROC–vessel communication link degrades with packet loss and latency.
+# Network monitoring service detects MORE packet loss and LATE command feedback.
+# Deviations typed cdm:MORE and cdm:LATE via hasDeviationType (no subclasses).
+# Hazards: loss of situational awareness, delayed control response.
+# Risk evaluated for remote operation.
+# Communication system and navigation function DIs degrade.
+# RiskPropagationEdge models propagation from comm-link DI to navigation DI.
+# Mitigation recommends switching to redundant communication channel.
+##############################################################################
+
+@prefix ll4:     <https://warrant-project.eu/data/ll4#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ── Vessel ─────────────────────────────────────────────────────────────────
+
+ll4:MAI_W a davom:Vessel ;
+    warrant:hasIdentifier "MAI-W" ;
+    warrant:hasName "MAI-W Inland Motor Tanker" .
+
+# ── Vessel Function ────────────────────────────────────────────────────────
+
+ll4:RemoteNavigationFunction a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-RN-001" ;
+    warrant:hasName "Remote Navigation Function" .
+
+ll4:MAI_W davom:hasFunction ll4:RemoteNavigationFunction .
+
+# ── Communication System and Link ─────────────────────────────────────────
+
+ll4:LTE5GCommunicationSystem a davom:CommunicationSystem ;
+    warrant:hasIdentifier "SYS-LTE5G-001" ;
+    warrant:hasName "LTE/5G Communication System" .
+
+ll4:RemoteNavigationFunction davom:isSupportedBy ll4:LTE5GCommunicationSystem .
+
+ll4:ROCToVesselCommandLink a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-ROC-VCS-001" ;
+    warrant:hasName "ROC to Vessel Command Link" ;
+    warrant:hasDescription "LTE/5G channel between the Antwerp ROC and the MAI-W VCS." .
+
+ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselCommandLink .
+
+# ── DataFlow ────────────────────────────────────────────────────────────────
+
+ll4:CommandDataFlow a davom:DataFlow ;
+    warrant:hasName "ROC Command Data Flow" ;
+    warrant:hasDescription "Flow of remote control commands from ROC to vessel VCS." .
+
+ll4:ROCToVesselCommandLink davom:carriesDataFlow ll4:CommandDataFlow .
+
+# ── Metrics ─────────────────────────────────────────────────────────────────
+
+ll4:PacketLossMetric a obs:CybersecurityMetric ;
+    warrant:hasName "LTE/5G Packet Loss" ;
+    obs:hasUnit "%" ;
+    obs:hasExternalTimeSeriesId "timeseries.network.packet_loss.MAI-W" .
+
+ll4:CommandLatencyMetric a obs:PerformanceMetric ;
+    warrant:hasName "ROC Command Latency" ;
+    obs:hasUnit "ms" ;
+    obs:hasExternalTimeSeriesId "timeseries.network.command_latency.MAI-W" .
+
+ll4:MessageFreshnessMetric a obs:DependabilityMetric ;
+    warrant:hasName "Command Message Freshness" ;
+    obs:hasUnit "s" ;
+    obs:hasExternalTimeSeriesId "timeseries.network.message_freshness.MAI-W" .
+
+ll4:ROCToVesselCommandLink obs:hasDependabilityMetric ll4:PacketLossMetric .
+ll4:ROCToVesselCommandLink obs:hasDependabilityMetric ll4:CommandLatencyMetric .
+ll4:ROCToVesselCommandLink obs:hasDependabilityMetric ll4:MessageFreshnessMetric .
+
+# ── Dependency ──────────────────────────────────────────────────────────────
+
+ll4:CommLinkToNavFunctionDep a davom:CommunicationDependency ;
+    davom:dependencySource ll4:ROCToVesselCommandLink ;
+    davom:dependencyTarget ll4:RemoteNavigationFunction ;
+    davom:hasDependencyWeight "0.35"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+# ── Analytical Service ──────────────────────────────────────────────────────
+
+ll4:NetworkMonitoringService a obs:AnalyticalService ;
+    warrant:hasName "Network Monitoring Analytical Service" ;
+    warrant:hasDescription "Monitors LTE/5G link metrics and detects packet loss and latency deviations." .
+
+ll4:NetworkMonitoringService obs:consumes ll4:PacketLossMetric .
+ll4:NetworkMonitoringService obs:consumes ll4:CommandLatencyMetric .
+
+# ── Measurements ────────────────────────────────────────────────────────────
+
+ll4:PacketLossMeasurement_T1 a obs:Measurement ;
+    obs:hasValue "18.5"^^xsd:decimal ;
+    obs:hasUnit "%" ;
+    obs:hasTimestamp "2026-05-17T11:30:00Z"^^xsd:dateTime ;
+    obs:hasExternalRecordReference "timeseries.network.packet_loss.MAI-W::1747480200" .
+
+ll4:CommandLatencyMeasurement_T1 a obs:Measurement ;
+    obs:hasValue "420"^^xsd:decimal ;
+    obs:hasUnit "ms" ;
+    obs:hasTimestamp "2026-05-17T11:30:02Z"^^xsd:dateTime ;
+    obs:hasExternalRecordReference "timeseries.network.command_latency.MAI-W::1747480202" .
+
+ll4:PacketLossMetric obs:hasMeasurement ll4:PacketLossMeasurement_T1 .
+ll4:CommandLatencyMetric obs:hasMeasurement ll4:CommandLatencyMeasurement_T1 .
+
+# ── Detection Events ────────────────────────────────────────────────────────
+
+ll4:MorePacketLossDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "Excessive Packet Loss Detection Event" ;
+    obs:hasTimestamp "2026-05-17T11:30:03Z"^^xsd:dateTime .
+
+ll4:LateCommandFeedbackDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "Late Command Feedback Detection Event" ;
+    obs:hasTimestamp "2026-05-17T11:30:04Z"^^xsd:dateTime .
+
+ll4:PacketLossMeasurement_T1 obs:supportsDetection ll4:MorePacketLossDetectionEvent .
+ll4:CommandLatencyMeasurement_T1 obs:supportsDetection ll4:LateCommandFeedbackDetectionEvent .
+
+ll4:NetworkMonitoringService obs:producesDetectionEvent ll4:MorePacketLossDetectionEvent .
+ll4:NetworkMonitoringService obs:producesDetectionEvent ll4:LateCommandFeedbackDetectionEvent .
+
+# ── Deviations (hasDeviationType; no subclasses) ────────────────────────────
+
+ll4:ExcessivePacketLossDeviation a cdm:Deviation ;
+    warrant:hasName "Excessive Packet Loss" ;
+    warrant:hasDescription "Packet loss exceeds acceptable threshold for remote navigation." ;
+    cdm:hasDeviationType cdm:MORE .
+
+ll4:LateCommandFeedbackDeviation a cdm:Deviation ;
+    warrant:hasName "Late Command Feedback" ;
+    warrant:hasDescription "Command acknowledgement arrives later than required for safe remote navigation." ;
+    cdm:hasDeviationType cdm:LATE .
+
+ll4:MorePacketLossDetectionEvent obs:detectionEventDetects ll4:ExcessivePacketLossDeviation .
+ll4:LateCommandFeedbackDetectionEvent obs:detectionEventDetects ll4:LateCommandFeedbackDeviation .
+
+# ── Hazards ─────────────────────────────────────────────────────────────────
+
+ll4:LossOfSituationalAwarenessHazard a cdm:Hazard ;
+    warrant:hasName "Loss of Situational Awareness" ;
+    warrant:hasDescription "ROC operator loses real-time awareness of vessel state due to degraded communication." .
+
+ll4:DelayedControlResponseHazard a cdm:Hazard ;
+    warrant:hasName "Delayed Control Response" ;
+    warrant:hasDescription "Control commands arrive too late for safe manoeuvring." .
+
+ll4:ExcessivePacketLossDeviation cdm:mayCause ll4:LossOfSituationalAwarenessHazard .
+ll4:LateCommandFeedbackDeviation cdm:mayCause ll4:DelayedControlResponseHazard .
+
+# ── Risk ─────────────────────────────────────────────────────────────────────
+
+ll4:RemoteOperationCommunicationRisk a cdm:Risk ;
+    warrant:hasName "Remote Operation Communication Risk" ;
+    cdm:hasLikelihood    "0.35"^^xsd:decimal ;
+    cdm:hasImpact        "0.75"^^xsd:decimal ;
+    cdm:hasSeverity      "0.6"^^xsd:decimal ;
+    cdm:hasRiskLevel     "High" ;
+    cdm:hasAcceptability "Unacceptable" .
+
+ll4:LossOfSituationalAwarenessHazard cdm:isEvaluatedAs ll4:RemoteOperationCommunicationRisk .
+ll4:DelayedControlResponseHazard cdm:isEvaluatedAs ll4:RemoteOperationCommunicationRisk .
+
+# ── Assurance Degradation ───────────────────────────────────────────────────
+
+ll4:CommSystemAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Communication System Assurance Degradation" .
+
+ll4:NavFunctionAssuranceDegradation a assr:AssuranceDegradation ;
+    warrant:hasName "Navigation Function Assurance Degradation (comm impact)" .
+
+ll4:ExcessivePacketLossDeviation assr:causesAssuranceDegradation ll4:CommSystemAssuranceDegradation .
+ll4:LateCommandFeedbackDeviation assr:causesAssuranceDegradation ll4:CommSystemAssuranceDegradation .
+ll4:CommSystemAssuranceDegradation assr:wasTriggeredBy ll4:ExcessivePacketLossDeviation .
+
+ll4:CommSystemAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.52"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-17T11:30:10Z"^^xsd:dateTime .
+
+ll4:NavFunctionAssuranceScore a assr:AssuranceScore ;
+    assr:hasScoreValue "0.48"^^xsd:decimal ;
+    di:calculatedAt    "2026-05-17T11:30:10Z"^^xsd:dateTime .
+
+ll4:LTE5GCommunicationSystem assr:hasAssuranceScore ll4:CommSystemAssuranceScore .
+ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:NavFunctionAssuranceScore .
+
+ll4:CommSystemAssuranceDegradation assr:updatesAssuranceScore ll4:CommSystemAssuranceScore .
+ll4:NavFunctionAssuranceDegradation assr:updatesAssuranceScore ll4:NavFunctionAssuranceScore .
+
+# ── DI Calculation Method ───────────────────────────────────────────────────
+
+ll4:RiskPropagationDIMethod a di:DICalculationMethod ;
+    warrant:hasName "Risk-Propagation Weighted Assurance Aggregation" ;
+    warrant:hasDescription "DI_i(t) = A_i(t) - β·R̃_i(t). Computed externally." .
+
+# ── Propagated Risk ─────────────────────────────────────────────────────────
+
+ll4:NavFunctionPropagatedRisk a di:PropagatedRisk ;
+    di:hasPropagatedRiskValue "0.21"^^xsd:decimal .
+
+# ── DI Nodes ────────────────────────────────────────────────────────────────
+
+ll4:CommLinkDI a di:DependabilityIndex ;
+    di:hasDIValue           "0.52"^^xsd:decimal ;
+    di:hasBetaWeight        "0.20"^^xsd:decimal ;
+    di:calculatedAt         "2026-05-17T11:30:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:hasDIState           di:DegradedState .
+
+ll4:CommSystemAssuranceScore di:contributesTo ll4:CommLinkDI .
+ll4:CommLinkDI di:appliesTo ll4:RemoteNavigationFunction .
+
+ll4:NavFunctionDI a di:DependabilityIndex ;
+    di:hasDIValue           "0.43"^^xsd:decimal ;
+    di:hasBetaWeight        "0.25"^^xsd:decimal ;
+    di:calculatedAt         "2026-05-17T11:30:10Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk     ll4:NavFunctionPropagatedRisk ;
+    di:hasDIState           di:CriticalState .
+
+ll4:NavFunctionAssuranceScore di:contributesTo ll4:NavFunctionDI .
+ll4:NavFunctionDI di:appliesTo ll4:RemoteNavigationFunction .
+
+# ── Risk Propagation Edge ───────────────────────────────────────────────────
+
+ll4:CommLinkToNavDIPropEdge a di:RiskPropagationEdge ;
+    di:propagationSource           ll4:CommLinkDI ;
+    di:propagationTarget           ll4:NavFunctionDI ;
+    di:hasRiskPropagationWeight    "0.35"^^xsd:decimal .
+
+# ── Mitigation ──────────────────────────────────────────────────────────────
+
+ll4:CommDegradationMitigationRule a mit:MitigationRule ;
+    warrant:hasName "Communication Degradation Mitigation Rule" ;
+    warrant:hasDescription "Trigger redundant communication channel when packet loss > 10% or latency > 300ms." .
+
+ll4:ExcessivePacketLossDeviation mit:matchesRule ll4:CommDegradationMitigationRule .
+ll4:LateCommandFeedbackDeviation mit:matchesRule ll4:CommDegradationMitigationRule .
+
+ll4:SwitchToRedundantChannelAction a mit:AdvisoryAction ;
+    warrant:hasName "Switch to Redundant Communication Channel" ;
+    warrant:hasDescription "Advisory: activate backup VSAT or satellite communication channel." .
+
+ll4:CommDegradationMitigationRule mit:recommends ll4:SwitchToRedundantChannelAction .
+
+ll4:RedundantChannelFailover a mit:FailoverProcedure ;
+    warrant:hasName "Redundant Communication Channel Failover" ;
+    warrant:hasDescription "Switch from LTE/5G to satellite or backup channel; confirm link quality." .
+
+ll4:SwitchToRedundantChannelAction mit:activates ll4:RedundantChannelFailover .
+ll4:RedundantChannelFailover mit:addresses ll4:LTE5GCommunicationSystem .
+
+# ── Digital Twin ────────────────────────────────────────────────────────────
+
+ll4:MAI_W_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasName "MAI-W Digital Twin" .
+
+ll4:MAI_W_DigitalTwin dt:representsStateOf ll4:MAI_W .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:ROCToVesselCommandLink .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:NavFunctionDI .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:LossOfSituationalAwarenessHazard .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:RedundantChannelFailover .
+ll4:MAI_W_DigitalTwin dt:receivesUpdateFrom ll4:NetworkMonitoringService .
+
+##############################################################################
+# END example-communication-degradation.ttl
+##############################################################################

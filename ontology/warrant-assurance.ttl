@@ -1,0 +1,173 @@
+##############################################################################
+# WARRaNT Assurance Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/assurance
+# Imports: warrant-core.ttl, warrant-cdm.ttl
+#
+# Stores calculation inputs, weights, assurance attribute values, penalties,
+# assurance score results, and traceability links.
+# Numerical computation (A_v = Σ βₖ·xᵥ^(k)) is performed EXTERNALLY.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/assurance>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> ;
+    rdfs:label "WARRaNT Assurance Module"@en ;
+    rdfs:comment """Assurance attributes, values, scores, weights, degradation, penalties, evidence,
+and calculation inputs for the WARRaNT dependability assurance model.
+
+Node assurance formula (metadata only; computation is external):
+  A_v(t) = Σ βₖ · x_v^(k),  Σ βₖ = 1
+where x_v^(k) is the normalised value of dependability attribute k for node v,
+and βₖ is its weight. AssuranceScore stores the computed result A_v(t)."""@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Classes
+##############################################################################
+
+assr:AssuranceEntity a owl:Class ;
+    rdfs:label "Assurance Entity"@en ;
+    rdfs:comment "Abstract superclass for all assurance-related entities."@en .
+
+assr:AssuranceAttribute a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assurance Attribute"@en ;
+    rdfs:comment "A dependability quality dimension: reliability, safety, cybersecurity, resilience, availability, maintainability."@en .
+
+assr:Reliability     a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Reliability"@en .
+assr:Safety          a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Safety"@en .
+assr:Cybersecurity   a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Cybersecurity"@en .
+assr:Resilience      a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Resilience"@en .
+assr:Availability    a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Availability"@en .
+assr:Maintainability a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdfs:label "Maintainability"@en .
+
+assr:AssuranceAttributeValue a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assurance Attribute Value"@en ;
+    rdfs:comment "The normalised value x_v^(k) for a specific assurance attribute of a node."@en .
+
+assr:AssuranceScore a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assurance Score"@en ;
+    rdfs:comment "The computed assurance state A_v(t) of a node. Feeds into the DI calculation via di:contributesTo."@en .
+
+assr:AssuranceWeight a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assurance Weight"@en ;
+    rdfs:comment "The weight βₖ for an assurance attribute in the node assurance formula."@en .
+
+assr:AssuranceDegradation a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assurance Degradation"@en ;
+    rdfs:comment "A reduction in assurance score caused by a Deviation, Hazard, or UnsafeControlAction."@en .
+
+assr:Penalty a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Penalty"@en ;
+    rdfs:comment "A quantified penalty applied to an assurance attribute value due to a specific event."@en .
+
+assr:Evidence a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Evidence"@en ;
+    rdfs:comment "Evidence supporting or undermining an assurance claim. Informative alignment: assr:Evidence ≈ gsn:Evidence."@en .
+
+assr:CalculationInput a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Calculation Input"@en ;
+    rdfs:comment "An input to the external assurance calculation (e.g. a normalised attribute value, weight)."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+assr:hasAssuranceAttribute a owl:ObjectProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range assr:AssuranceAttribute ;
+    rdfs:label "has assurance attribute"@en .
+
+assr:hasAssuranceScore a owl:ObjectProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range assr:AssuranceScore ;
+    rdfs:label "has assurance score"@en .
+
+assr:hasAttributeValue a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceAttribute ;
+    rdfs:range assr:AssuranceAttributeValue ;
+    rdfs:label "has attribute value"@en .
+
+assr:hasWeight a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceAttribute ;
+    rdfs:range assr:AssuranceWeight ;
+    rdfs:label "has weight"@en .
+
+assr:causesAssuranceDegradation a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:Hazard cdm:UnsafeControlAction ) ] ;
+    rdfs:range assr:AssuranceDegradation ;
+    rdfs:label "causes assurance degradation"@en .
+
+assr:wasTriggeredBy a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceDegradation ;
+    rdfs:range [ owl:unionOf ( cdm:Deviation cdm:Hazard cdm:UnsafeControlAction ) ] ;
+    rdfs:label "was triggered by"@en ;
+    rdfs:comment "Traceability: the Deviation, Hazard, or UnsafeControlAction that triggered this AssuranceDegradation."@en .
+
+assr:updatesAssuranceScore a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( assr:AssuranceDegradation assr:CalculationInput ) ] ;
+    rdfs:range assr:AssuranceScore ;
+    rdfs:label "updates assurance score"@en .
+
+assr:hasPenalty a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceDegradation ;
+    rdfs:range assr:Penalty ;
+    rdfs:label "has penalty"@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+assr:hasScoreValue a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceScore ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has score value"@en ;
+    rdfs:comment "The computed assurance score A_v(t). Stored by the external calculation service."@en .
+
+assr:hasAttributeValueNumber a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceAttributeValue ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has attribute value number"@en .
+
+assr:hasWeightValue a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceWeight ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has weight value"@en .
+
+assr:hasPenaltyValue a owl:DatatypeProperty ;
+    rdfs:domain assr:Penalty ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has penalty value"@en .
+
+di:calculatedAt a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( assr:AssuranceScore ) ] ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "calculated at"@en .
+
+##############################################################################
+# END warrant-assurance.ttl
+##############################################################################
