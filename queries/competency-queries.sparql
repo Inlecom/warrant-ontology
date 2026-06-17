@@ -1,0 +1,162 @@
+##############################################################################
+# WARRaNT Competency Queries — Starter Set (v0.1.0)
+# File: queries/competency-queries.sparql
+#
+# These queries define the minimum semantic capability the ontology must support.
+# Use them as regression tests against the example files.
+#
+# Prefixes used throughout:
+##############################################################################
+
+PREFIX warrant: <https://warrant-project.eu/ontology/core#>
+PREFIX davom:   <https://warrant-project.eu/ontology/davom#>
+PREFIX obs:     <https://warrant-project.eu/ontology/observation#>
+PREFIX cdm:     <https://warrant-project.eu/ontology/cdm#>
+PREFIX assr:    <https://warrant-project.eu/ontology/assurance#>
+PREFIX di:      <https://warrant-project.eu/ontology/dependability-index#>
+PREFIX scen:    <https://warrant-project.eu/ontology/scenario#>
+PREFIX mit:     <https://warrant-project.eu/ontology/mitigation#>
+PREFIX dt:      <https://warrant-project.eu/ontology/digital-twin#>
+PREFIX rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd:     <http://www.w3.org/2001/XMLSchema#>
+
+##############################################################################
+# QUERY 1: Trace from Deviation to DI State
+#
+# Competency question: Given a Deviation, what is the full causal chain from
+# detection to DI state?
+#
+# Expected result columns: deviation, detectionEvent, hazard, risk, degradation,
+#   assuranceScore, dependabilityIndex, diState
+##############################################################################
+
+# Query 1 — parameterise by replacing ?deviation binding
+SELECT ?deviation ?detectionEvent ?hazard ?risk ?degradation
+       ?assuranceScore ?dependabilityIndex ?diState
+WHERE {
+  ?detectionEvent obs:detectionEventDetects ?deviation .
+  OPTIONAL { ?deviation cdm:mayCause ?hazard .
+             OPTIONAL { ?hazard cdm:isEvaluatedAs ?risk . } }
+  OPTIONAL { ?deviation assr:causesAssuranceDegradation ?degradation .
+             OPTIONAL { ?degradation assr:updatesAssuranceScore ?assuranceScore .
+                        OPTIONAL { ?assuranceScore di:contributesTo ?dependabilityIndex .
+                                   OPTIONAL { ?dependabilityIndex di:hasDIState ?diState . } } } }
+}
+ORDER BY ?deviation
+
+
+##############################################################################
+# QUERY 2: List all Hazards for a VesselFunction
+#
+# Competency question: What hazards affect systems or components supporting
+# a given vessel function, ordered by risk likelihood descending?
+#
+# Expected result columns: function, system, deviation, hazard, risk, likelihood
+##############################################################################
+
+SELECT ?function ?system ?deviation ?hazard ?risk ?likelihood
+WHERE {
+  ?function a davom:VesselFunction .
+  ?function davom:isSupportedBy ?system .
+  ?system obs:hasDependabilityMetric ?metric .
+  ?metric obs:hasMeasurement ?measurement .
+  ?measurement obs:supportsDetection ?detectionEvent .
+  ?detectionEvent obs:detectionEventDetects ?deviation .
+  ?deviation cdm:mayCause ?hazard .
+  OPTIONAL {
+    ?hazard cdm:isEvaluatedAs ?risk .
+    OPTIONAL { ?risk cdm:hasLikelihood ?likelihood . }
+  }
+}
+ORDER BY DESC(?likelihood)
+
+
+##############################################################################
+# QUERY 3: Find MitigationRules triggered by a given DI state
+#
+# Competency question: Which mitigation rules and actions apply for a given
+# DependabilityIndexState (e.g. di:CriticalState)?
+#
+# Expected result columns: diState, diNode, mitigationRule, mitigationAction
+#
+# Usage: replace di:CriticalState with the target state IRI
+##############################################################################
+
+SELECT ?diState ?diNode ?mitigationRule ?mitigationAction
+WHERE {
+  ?diNode di:hasDIState ?diState .
+  ?diState mit:matchesRule ?mitigationRule .
+  OPTIONAL { ?mitigationRule mit:recommends ?mitigationAction . }
+}
+ORDER BY ?mitigationRule
+
+
+##############################################################################
+# QUERY 4: List AssuranceScores below a threshold
+#
+# Competency question: Which vessel functions have an assurance score below
+# a given threshold, and what is their current DI state?
+#
+# Expected result columns: function, assuranceScore, scoreValue, dependabilityIndex, diState
+#
+# Usage: replace 0.5 with desired threshold value
+##############################################################################
+
+SELECT ?function ?assuranceScore ?scoreValue ?dependabilityIndex ?diState
+WHERE {
+  ?function a davom:VesselFunction .
+  ?function assr:hasAssuranceScore ?assuranceScore .
+  ?assuranceScore assr:hasScoreValue ?scoreValue .
+  FILTER (?scoreValue < 0.5)
+  OPTIONAL {
+    ?assuranceScore di:contributesTo ?dependabilityIndex .
+    OPTIONAL { ?dependabilityIndex di:hasDIState ?diState . }
+  }
+}
+ORDER BY ?scoreValue
+
+
+##############################################################################
+# QUERY 5: Show the risk propagation graph for a node DI
+#
+# Competency question: What upstream dependency nodes propagate risk into a
+# given DI node, with what weights and upstream DI values?
+#
+# Expected result columns: targetDI, propagationEdge, sourceDI, propWeight,
+#   sourceDIValue, sourceDIState
+##############################################################################
+
+SELECT ?targetDI ?propagationEdge ?sourceDI ?propWeight
+       ?sourceDIValue ?sourceDIState
+WHERE {
+  ?propagationEdge a di:RiskPropagationEdge .
+  ?propagationEdge di:propagationTarget ?targetDI .
+  ?propagationEdge di:propagationSource ?sourceDI .
+  OPTIONAL { ?propagationEdge di:hasRiskPropagationWeight ?propWeight . }
+  OPTIONAL { ?sourceDI di:hasDIValue ?sourceDIValue . }
+  OPTIONAL { ?sourceDI di:hasDIState ?sourceDIState . }
+}
+ORDER BY ?targetDI DESC(?propWeight)
+
+
+##############################################################################
+# QUERY 6: List all OperationalProcedures for a HumanOperatorRole
+#
+# Competency question: What operational procedures does a given human operator
+# role execute, and what control actions does the role authorise?
+#
+# Expected result columns: role, procedure, controlAction
+##############################################################################
+
+SELECT ?role ?procedure ?controlAction
+WHERE {
+  ?role a davom:HumanOperatorRole .
+  OPTIONAL { ?role davom:executes ?procedure . }
+  OPTIONAL { ?role davom:authorizes ?controlAction . }
+}
+ORDER BY ?role
+
+##############################################################################
+# END queries/competency-queries.sparql
+##############################################################################

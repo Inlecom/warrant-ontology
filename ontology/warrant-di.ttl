@@ -1,0 +1,253 @@
+##############################################################################
+# WARRaNT Dependability Index (DI) Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/dependability-index
+# Imports: warrant-core.ttl, warrant-assurance.ttl
+#
+# Represents the full risk-propagation Dependability Index model:
+# node-level DI, propagated risk, propagation edges, system-level DI,
+# states, thresholds, weights, calculation methods, and update events.
+#
+# DI FORMULA (metadata only; numerical computation is EXTERNAL):
+#
+#   Node assurance (from warrant-assurance.ttl):
+#     A_v(t) = Σ βₖ · x_v^(k)
+#
+#   Propagated risk at node i:
+#     R̃_i(t) = Σ_{j ∈ N(i)} w_ji · R_j(t)
+#     where w_ji is the risk propagation weight from dependency edge j→i,
+#     R_j(t) is the risk value at upstream node j,
+#     N(i) is the set of nodes with a dependency edge into i.
+#
+#   Node Dependability Index:
+#     DI_i(t) = A_i(t) - β · R̃_i(t)
+#     where β is the risk sensitivity coefficient for node i.
+#
+#   System-level Dependability Index:
+#     DI_sys(t) = Σᵢ γᵢ · DI_i(t),  Σᵢ γᵢ = 1
+#     where γᵢ is the system aggregation weight for node i.
+#
+# DependabilityIndexState instances MUST be named individuals.
+# Subclassing DependabilityIndexState is PROHIBITED.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/dependability-index>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-assurance.ttl> ;
+    rdfs:label "WARRaNT Dependability Index Module"@en ;
+    rdfs:comment """DI module: node-level DI, propagated risk, RiskPropagationEdge,
+SystemDependabilityIndex, DI states (named individuals only), thresholds,
+weights, calculation methods, and update events."""@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Classes
+##############################################################################
+
+di:DependabilityEntity a owl:Class ;
+    rdfs:label "Dependability Entity"@en ;
+    rdfs:comment "Abstract superclass for all DI-related entities."@en .
+
+di:DependabilityIndex a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Dependability Index"@en ;
+    rdfs:comment "Node-level DI for a VesselFunction: DI_i(t) = A_i(t) - β·R̃_i(t). Computed externally; inputs, weights, and result stored in the KG."@en .
+
+di:DependabilityIndexValue a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "Dependability Index Value"@en .
+
+di:DependabilityIndexState a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "Dependability Index State"@en ;
+    rdfs:comment "Operational state of a DI node. MUST be represented as named individuals (di:NormalState, di:DegradedState, etc.). Subclassing DependabilityIndexState is PROHIBITED."@en .
+
+di:DIThreshold a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "DI Threshold"@en .
+
+di:DIWeight a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "DI Weight"@en ;
+    rdfs:comment "Stores γᵢ, the system aggregation weight for node i in the DI_sys formula."@en .
+
+di:DICalculationMethod a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "DI Calculation Method"@en ;
+    rdfs:comment "Metadata describing the formula used to compute a DI value. Numerical computation is external; this stores method identity and version."@en .
+
+di:DIUpdateEvent a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "DI Update Event"@en ;
+    rdfs:comment "A recorded event of a DI value being updated by the external calculation service."@en .
+
+di:PropagatedRisk a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "Propagated Risk"@en ;
+    rdfs:comment "Stores R̃_i(t) = Σ w_ji·R_j(t), the risk propagated into node i from upstream dependency nodes."@en .
+
+di:RiskPropagationEdge a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:label "Risk Propagation Edge"@en ;
+    rdfs:comment "A reified edge encoding the risk propagation weight w_ji from upstream DI node j to downstream DI node i. Mirrors the structural dependency in davom:Dependency."@en .
+
+di:SystemDependabilityIndex a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "System Dependability Index"@en ;
+    rdfs:comment "Top-level DI_sys aggregating all node DIs: DI_sys(t) = Σᵢ γᵢ·DI_i(t)."@en .
+
+
+##############################################################################
+# DependabilityIndexState Named Individuals (NOT subclasses)
+##############################################################################
+
+di:NormalState a di:DependabilityIndexState ;
+    rdfs:label "Normal"@en ;
+    rdfs:comment "DI within normal operating bounds."@en .
+
+di:DegradedState a di:DependabilityIndexState ;
+    rdfs:label "Degraded"@en ;
+    rdfs:comment "DI below normal threshold; function remains operational with reduced capability."@en .
+
+di:CriticalState a di:DependabilityIndexState ;
+    rdfs:label "Critical"@en ;
+    rdfs:comment "DI indicates a critical level requiring immediate attention or action."@en .
+
+di:FailedState a di:DependabilityIndexState ;
+    rdfs:label "Failed"@en ;
+    rdfs:comment "DI indicates function failure."@en .
+
+di:UnsafeState a di:DependabilityIndexState ;
+    rdfs:label "Unsafe"@en ;
+    rdfs:comment "DI indicates an unsafe operational condition requiring emergency response."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+di:contributesTo a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceScore ;
+    rdfs:range di:DependabilityIndex ;
+    rdfs:label "contributes to"@en ;
+    rdfs:comment "An AssuranceScore feeds into the node-level DI calculation."@en .
+
+di:appliesTo a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range davom:VesselFunction ;
+    rdfs:label "applies to"@en .
+
+di:hasDIState a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range di:DependabilityIndexState ;
+    rdfs:label "has DI state"@en .
+
+di:hasThreshold a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndexState ;
+    rdfs:range di:DIThreshold ;
+    rdfs:label "has threshold"@en .
+
+di:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:range di:DICalculationMethod ;
+    rdfs:label "uses calculation method"@en .
+
+di:hasPropagatedRisk a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range di:PropagatedRisk ;
+    rdfs:label "has propagated risk"@en ;
+    rdfs:comment "Associates the node DI with its PropagatedRisk value R̃_i(t)."@en .
+
+di:propagationSource a owl:ObjectProperty ;
+    rdfs:domain di:RiskPropagationEdge ;
+    rdfs:range di:DependabilityIndex ;
+    rdfs:label "propagation source"@en ;
+    rdfs:comment "The upstream DI node j in the propagation edge j→i."@en .
+
+di:propagationTarget a owl:ObjectProperty ;
+    rdfs:domain di:RiskPropagationEdge ;
+    rdfs:range di:DependabilityIndex ;
+    rdfs:label "propagation target"@en ;
+    rdfs:comment "The downstream DI node i in the propagation edge j→i."@en .
+
+di:contributesToSystem a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range di:SystemDependabilityIndex ;
+    rdfs:label "contributes to system"@en ;
+    rdfs:comment "A node DI contributes to the system-level DI_sys aggregation."@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+di:hasDIValue a owl:DatatypeProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has DI value"@en ;
+    rdfs:comment "The computed node DI_i(t) value."@en .
+
+di:calculatedAt a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex assr:AssuranceScore ) ] ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "calculated at"@en .
+
+di:hasLowerThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has lower threshold"@en .
+
+di:hasUpperThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has upper threshold"@en .
+
+di:hasPropagatedRiskValue a owl:DatatypeProperty ;
+    rdfs:domain di:PropagatedRisk ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has propagated risk value"@en ;
+    rdfs:comment "The computed R̃_i(t) value."@en .
+
+di:hasBetaWeight a owl:DatatypeProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has beta weight"@en ;
+    rdfs:comment "The risk sensitivity coefficient β for this node in DI_i = A_i - β·R̃_i."@en .
+
+di:hasRiskPropagationWeight a owl:DatatypeProperty ;
+    rdfs:domain di:RiskPropagationEdge ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has risk propagation weight"@en ;
+    rdfs:comment "The weight w_ji on this propagation edge, corresponding to davom:hasDependencyWeight on the structural Dependency."@en .
+
+di:hasSystemWeight a owl:DatatypeProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has system weight"@en ;
+    rdfs:comment "The aggregation weight γᵢ for this node in DI_sys = Σ γᵢ·DI_i."@en .
+
+di:hasSystemDIValue a owl:DatatypeProperty ;
+    rdfs:domain di:SystemDependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has system DI value"@en ;
+    rdfs:comment "The computed DI_sys(t) value."@en .
+
+##############################################################################
+# END warrant-di.ttl
+##############################################################################

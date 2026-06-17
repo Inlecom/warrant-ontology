@@ -1,0 +1,31 @@
+# WARRaNT KG Ontology — CODEOWNERS
+# Routes pull request reviews by ontology area.
+# Replace placeholder team names with actual GitHub teams or user handles.
+
+# Core module and shared infrastructure
+ontology/warrant-core.ttl               @kg-coordination-team
+ontology/warrant-all.ttl                @kg-coordination-team
+ontology/catalog.xml                    @kg-coordination-team
+
+# Module-specific owners
+ontology/warrant-davom.ttl              @davom-operational-model-team
+ontology/warrant-observation.ttl        @kg-observation-team
+ontology/warrant-cdm.ttl               @cdm-stpa-hazop-team
+ontology/warrant-assurance.ttl          @assurance-team
+ontology/warrant-di.ttl                @di-dependability-calculation-team
+ontology/warrant-scenario.ttl           @scenario-engine-team
+ontology/warrant-mitigation.ttl         @mitigation-failover-team
+ontology/warrant-digital-twin.ttl       @digital-twin-team
+
+# Validation
+shapes/                                 @kg-coordination-team
+queries/                                @kg-coordination-team
+
+# Examples and documentation
+examples/                               @kg-coordination-team
+docs/                                   @kg-coordination-team
+
+# Scripts and CI
+scripts/                                @technical-coordination-team
+tests/                                  @technical-coordination-team
+.github/                                @technical-coordination-team

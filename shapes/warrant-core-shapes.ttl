@@ -1,0 +1,210 @@
+##############################################################################
+# WARRaNT SHACL Shapes — Starter Set (v0.1.0)
+# File: shapes/warrant-core-shapes.ttl
+#
+# This is a minimally constraining starter set for v0.1.0.
+# Full SHACL coverage is planned for v0.2.0.
+#
+# Shapes provided:
+#   1. davom:Vessel
+#   2. davom:VesselFunction
+#   3. di:DependabilityIndex
+#   4. cdm:Hazard
+#   5. cdm:Deviation  (includes deprecation warning for subclass instantiation)
+#   6. obs:DetectionEvent
+#
+# The deprecation shape on cdm:Deviation warns but does not block validation.
+##############################################################################
+
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+
+##############################################################################
+# Shape 1: davom:Vessel
+##############################################################################
+
+:VesselShape a sh:NodeShape ;
+    sh:targetClass davom:Vessel ;
+    rdfs:label "Vessel Shape" ;
+    sh:property [
+        sh:path warrant:hasIdentifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Vessel must have exactly one warrant:hasIdentifier (xsd:string)." ;
+    ] ;
+    sh:property [
+        sh:path warrant:hasName ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Vessel must have exactly one warrant:hasName (xsd:string)." ;
+    ] ;
+    sh:property [
+        sh:path davom:hasFunction ;
+        sh:minCount 1 ;
+        sh:message "Vessel must have at least one davom:hasFunction triple." ;
+    ] .
+
+
+##############################################################################
+# Shape 2: davom:VesselFunction
+##############################################################################
+
+:VesselFunctionShape a sh:NodeShape ;
+    sh:targetClass davom:VesselFunction ;
+    rdfs:label "VesselFunction Shape" ;
+    sh:property [
+        sh:path warrant:hasIdentifier ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "VesselFunction must have exactly one warrant:hasIdentifier (xsd:string)." ;
+    ] ;
+    sh:property [
+        sh:path warrant:hasName ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "VesselFunction must have exactly one warrant:hasName (xsd:string)." ;
+    ] ;
+    sh:property [
+        sh:path obs:hasDependabilityMetric ;
+        sh:minCount 1 ;
+        sh:message "VesselFunction must have at least one obs:hasDependabilityMetric triple." ;
+    ] .
+
+
+##############################################################################
+# Shape 3: di:DependabilityIndex
+##############################################################################
+
+:DependabilityIndexShape a sh:NodeShape ;
+    sh:targetClass di:DependabilityIndex ;
+    rdfs:label "DependabilityIndex Shape" ;
+    sh:property [
+        sh:path di:hasDIValue ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DependabilityIndex must have exactly one di:hasDIValue (xsd:decimal)." ;
+    ] ;
+    sh:property [
+        sh:path di:hasDIState ;
+        sh:class di:DependabilityIndexState ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DependabilityIndex must have exactly one di:hasDIState pointing to a di:DependabilityIndexState individual." ;
+    ] ;
+    sh:property [
+        sh:path di:appliesTo ;
+        sh:class davom:VesselFunction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DependabilityIndex must apply to exactly one davom:VesselFunction." ;
+    ] ;
+    sh:property [
+        sh:path di:calculatedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DependabilityIndex must have exactly one di:calculatedAt (xsd:dateTime)." ;
+    ] ;
+    sh:property [
+        sh:path di:usesCalculationMethod ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DependabilityIndex must reference exactly one di:usesCalculationMethod." ;
+    ] .
+
+
+##############################################################################
+# Shape 4: cdm:Hazard
+##############################################################################
+
+:HazardShape a sh:NodeShape ;
+    sh:targetClass cdm:Hazard ;
+    rdfs:label "Hazard Shape" ;
+    sh:property [
+        sh:path warrant:hasName ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Hazard must have exactly one warrant:hasName (xsd:string)." ;
+    ] ;
+    sh:property [
+        sh:path cdm:isEvaluatedAs ;
+        sh:class cdm:Risk ;
+        sh:minCount 1 ;
+        sh:message "Hazard must be evaluated as at least one cdm:Risk." ;
+    ] .
+
+
+##############################################################################
+# Shape 5: cdm:Deviation
+##############################################################################
+
+:DeviationShape a sh:NodeShape ;
+    sh:targetClass cdm:Deviation ;
+    rdfs:label "Deviation Shape" ;
+    sh:property [
+        sh:path cdm:hasDeviationType ;
+        sh:class cdm:DeviationType ;
+        sh:minCount 1 ;
+        sh:message "Deviation must have cdm:hasDeviationType pointing to a cdm:DeviationType individual." ;
+    ] .
+
+:DeviationSubclassWarningShape a sh:NodeShape ;
+    rdfs:label "Deviation Subclass Deprecation Warning" ;
+    rdfs:comment "Warns when a Deviation individual is instantiated as a deprecated subclass." ;
+    sh:targetClass cdm:Deviation ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "DEPRECATED: This Deviation individual is typed as a deprecated subclass. Use cdm:Deviation with cdm:hasDeviationType instead." ;
+        sh:severity sh:Warning ;
+        sh:prefixes <https://warrant-project.eu/ontology/cdm> ;
+        sh:select """
+            PREFIX cdm: <https://warrant-project.eu/ontology/cdm#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            SELECT $this WHERE {
+                $this rdf:type ?subclass .
+                ?subclass rdfs:subClassOf cdm:Deviation .
+                FILTER(?subclass != cdm:Deviation)
+            }
+        """ ;
+    ] .
+
+
+##############################################################################
+# Shape 6: obs:DetectionEvent
+##############################################################################
+
+:DetectionEventShape a sh:NodeShape ;
+    sh:targetClass obs:DetectionEvent ;
+    rdfs:label "DetectionEvent Shape" ;
+    sh:property [
+        sh:path obs:hasTimestamp ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DetectionEvent must have exactly one obs:hasTimestamp (xsd:dateTime)." ;
+    ] ;
+    sh:property [
+        sh:path obs:detectionEventDetects ;
+        sh:class cdm:Deviation ;
+        sh:minCount 1 ;
+        sh:message "DetectionEvent must detect at least one cdm:Deviation via obs:detectionEventDetects." ;
+    ] .
+
+##############################################################################
+# END shapes/warrant-core-shapes.ttl
+##############################################################################

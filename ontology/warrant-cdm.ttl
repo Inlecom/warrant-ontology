@@ -1,0 +1,356 @@
+##############################################################################
+# WARRaNT CDM Ontology Module
+# Causal Dependability Model (STPA / HAZOP)
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/cdm
+# Imports: warrant-core.ttl, warrant-davom.ttl
+#
+# DEPRECATION NOTICE:
+# The Deviation subclass pattern (cdm:UnavailableDeviation, cdm:LessDeviation,
+# etc.) is DEPRECATED in v0.9. All deviation typing MUST use cdm:hasDeviationType
+# with the named cdm:DeviationType individuals (cdm:NO, cdm:LESS, cdm:MORE,
+# cdm:LATE, cdm:WRONG, cdm:UNAVAILABLE, cdm:UNTRUSTED, cdm:INCONSISTENT,
+# cdm:NOISY, cdm:SPOOFED).
+# Subclasses are retained with owl:deprecated true for one minor release.
+#
+# NOTE: VoyageSegment and OperationalMode are NOT defined here.
+# They are warrant:ContextEntity subclasses in warrant-core.ttl.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/cdm>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> ;
+    rdfs:label "WARRaNT CDM Module"@en ;
+    rdfs:comment "Causal Dependability Model supporting STPA/HAZOP-style causal reasoning. Core chain: Deviation → Hazard → Risk → Accident → Loss."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Causal Entity Superclass
+##############################################################################
+
+cdm:CausalEntity a owl:Class ;
+    rdfs:label "Causal Entity"@en ;
+    rdfs:comment "Abstract superclass for all entities in the causal dependability chain."@en .
+
+
+##############################################################################
+# Core Causal Chain: Deviation → Hazard → Risk → Accident → Loss
+##############################################################################
+
+cdm:Loss a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Loss"@en ;
+    rdfs:comment "Unacceptable outcome: property damage, environmental damage, loss of life, or loss of mission."@en .
+
+cdm:Accident a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Accident"@en ;
+    rdfs:comment "Sudden, unwanted, unplanned event or sequence that has led to harm (Rausand & Haugen, 2020)."@en .
+
+cdm:Hazard a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Hazard"@en ;
+    rdfs:comment "A system state or condition that may lead to an accident or loss."@en .
+
+cdm:Risk a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Risk"@en ;
+    rdfs:comment "Evaluation of a hazard in terms of likelihood, impact, and severity."@en .
+
+cdm:Deviation a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Deviation"@en ;
+    rdfs:comment "An abnormal condition relative to expected operation or data. Tag with cdm:hasDeviationType using a named cdm:DeviationType individual. Do NOT create Deviation subclasses — that pattern is deprecated."@en .
+
+
+##############################################################################
+# DeviationType Controlled Vocabulary (named individuals)
+##############################################################################
+
+cdm:DeviationType a owl:Class ;
+    rdfs:label "Deviation Type"@en ;
+    rdfs:comment "Controlled vocabulary of HAZOP guidewords. Use cdm:hasDeviationType to tag a Deviation individual."@en .
+
+cdm:NO           a cdm:DeviationType ; rdfs:label "NO"@en ;           rdfs:comment "No flow, no signal, function absent."@en .
+cdm:LESS         a cdm:DeviationType ; rdfs:label "LESS"@en ;         rdfs:comment "Less than intended quantity, flow, or signal."@en .
+cdm:MORE         a cdm:DeviationType ; rdfs:label "MORE"@en ;         rdfs:comment "More than intended quantity, flow, or signal."@en .
+cdm:LATE         a cdm:DeviationType ; rdfs:label "LATE"@en ;         rdfs:comment "Later than expected."@en .
+cdm:WRONG        a cdm:DeviationType ; rdfs:label "WRONG"@en ;        rdfs:comment "Wrong direction, content, or target."@en .
+cdm:UNAVAILABLE  a cdm:DeviationType ; rdfs:label "UNAVAILABLE"@en ;  rdfs:comment "Component, service, or signal unavailable."@en .
+cdm:UNTRUSTED    a cdm:DeviationType ; rdfs:label "UNTRUSTED"@en ;    rdfs:comment "Source, identity, or integrity cannot be verified."@en .
+cdm:INCONSISTENT a cdm:DeviationType ; rdfs:label "INCONSISTENT"@en ; rdfs:comment "Conflicting or incoherent data from multiple sources."@en .
+cdm:NOISY        a cdm:DeviationType ; rdfs:label "NOISY"@en ;        rdfs:comment "Excessive noise or degraded signal quality."@en .
+cdm:SPOOFED      a cdm:DeviationType ; rdfs:label "SPOOFED"@en ;      rdfs:comment "Data injected or manipulated by an adversary (cyberattack)."@en .
+
+
+##############################################################################
+# DEPRECATED Deviation Subclasses
+# Retained for one minor release (v0.2.0 will remove them).
+# Use cdm:hasDeviationType with named individuals instead.
+##############################################################################
+
+cdm:NoDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "No Deviation (DEPRECATED)"@en ;
+    skos:altLabel "NO"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:NO instead. Will be removed in v0.2.0."@en .
+
+cdm:LessDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Less Deviation (DEPRECATED)"@en ;
+    skos:altLabel "LESS"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:LESS instead. Will be removed in v0.2.0."@en .
+
+cdm:MoreDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "More Deviation (DEPRECATED)"@en ;
+    skos:altLabel "MORE"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:MORE instead. Will be removed in v0.2.0."@en .
+
+cdm:LateDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Late Deviation (DEPRECATED)"@en ;
+    skos:altLabel "LATE"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:LATE instead. Will be removed in v0.2.0."@en .
+
+cdm:WrongDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Wrong Deviation (DEPRECATED)"@en ;
+    skos:altLabel "WRONG"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:WRONG instead. Will be removed in v0.2.0."@en .
+
+cdm:UnavailableDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Unavailable Deviation (DEPRECATED)"@en ;
+    skos:altLabel "UNAVAILABLE"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:UNAVAILABLE instead. Will be removed in v0.2.0."@en .
+
+cdm:UntrustedDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Untrusted Deviation (DEPRECATED)"@en ;
+    skos:altLabel "UNTRUSTED"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:UNTRUSTED instead. Will be removed in v0.2.0."@en .
+
+cdm:InconsistentDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Inconsistent Deviation (DEPRECATED)"@en ;
+    skos:altLabel "INCONSISTENT"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:INCONSISTENT instead. Will be removed in v0.2.0."@en .
+
+cdm:NoisyDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Noisy Deviation (DEPRECATED)"@en ;
+    skos:altLabel "NOISY"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:NOISY instead. Will be removed in v0.2.0."@en .
+
+cdm:SpoofedDeviation a owl:Class ;
+    rdfs:subClassOf cdm:Deviation ;
+    owl:deprecated true ;
+    rdfs:label "Spoofed Deviation (DEPRECATED)"@en ;
+    skos:altLabel "SPOOFED"@en ;
+    rdfs:comment "DEPRECATED. Use cdm:Deviation with cdm:hasDeviationType cdm:SPOOFED instead. Will be removed in v0.2.0."@en .
+
+
+##############################################################################
+# STPA Classes
+##############################################################################
+
+cdm:SafetyConstraint a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Safety Constraint"@en ;
+    rdfs:comment "A constraint that, if violated, may lead to a hazard."@en .
+
+cdm:ControlStructure a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Control Structure"@en .
+
+cdm:Controller a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Controller"@en .
+
+cdm:ControlledProcess a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Controlled Process"@en .
+
+cdm:Feedback a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Feedback"@en .
+
+cdm:ProcessModel a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Process Model"@en ;
+    rdfs:comment "The controller's internal model of the controlled process state. A ProcessModelFlaw arises when this model diverges from the actual state."@en .
+
+cdm:ProcessModelFlaw a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Process Model Flaw"@en ;
+    rdfs:comment "A divergence between the controller's process model and actual process state, leading to an unsafe control action."@en .
+
+cdm:UnsafeControlAction a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Unsafe Control Action"@en ;
+    rdfs:comment "A control action that is missing, incorrect, late, early, stopped too soon, or applied too long (STPA terminology)."@en .
+
+cdm:CausalScenario a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Causal Scenario"@en .
+
+cdm:FailureMode a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Failure Mode"@en ;
+    rdfs:comment "A specific way in which a component or system can fail (FMEA terminology). A FailureMode affects one or more components (cdm:affectsComponent) and produces one or more deviations (cdm:producesDeviation) that propagate into the causal chain. Use cdm:hasDeviationType on the produced Deviation to tag the HAZOP guideword."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+cdm:hasDeviationType a owl:ObjectProperty ;
+    rdfs:domain cdm:Deviation ;
+    rdfs:range cdm:DeviationType ;
+    rdfs:label "has deviation type"@en ;
+    rdfs:comment "Tags a Deviation individual with a HAZOP guideword from the cdm:DeviationType controlled vocabulary."@en .
+
+cdm:affectsComponent a owl:ObjectProperty ;
+    rdfs:domain cdm:FailureMode ;
+    rdfs:range davom:Component ;
+    rdfs:label "affects component"@en ;
+    rdfs:comment "Links a FailureMode to the component(s) it degrades or puts out of service. Range is davom:Component; subclasses (SensorComponent, SoftwareComponent, etc.) are valid."@en .
+
+cdm:producesDeviation a owl:ObjectProperty ;
+    rdfs:domain cdm:FailureMode ;
+    rdfs:range cdm:Deviation ;
+    rdfs:label "produces deviation"@en ;
+    rdfs:comment "Links a FailureMode to the Deviation(s) it generates, connecting FMEA failure mode analysis to the HAZOP/STPA causal chain."@en .
+
+cdm:mayCause a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:UnsafeControlAction ) ] ;
+    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction assr:AssuranceDegradation ) ] ;
+    rdfs:label "may cause"@en .
+
+cdm:mayLeadTo a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
+    rdfs:range [ owl:unionOf ( cdm:Accident cdm:Hazard ) ] ;
+    rdfs:label "may lead to"@en .
+
+cdm:isEvaluatedAs a owl:ObjectProperty ;
+    rdfs:domain cdm:Hazard ;
+    rdfs:range cdm:Risk ;
+    rdfs:label "is evaluated as"@en .
+
+cdm:realises a owl:ObjectProperty ;
+    rdfs:domain cdm:Accident ;
+    rdfs:range cdm:Loss ;
+    rdfs:label "realises"@en .
+
+cdm:prevents a owl:ObjectProperty ;
+    rdfs:domain cdm:SafetyConstraint ;
+    rdfs:range cdm:Hazard ;
+    rdfs:label "prevents"@en .
+
+cdm:issues a owl:ObjectProperty ;
+    rdfs:domain cdm:Controller ;
+    rdfs:range davom:ControlAction ;
+    rdfs:label "issues"@en .
+
+cdm:actsOn a owl:ObjectProperty ;
+    rdfs:domain davom:ControlAction ;
+    rdfs:range cdm:ControlledProcess ;
+    rdfs:label "acts on"@en .
+
+cdm:providesFeedback a owl:ObjectProperty ;
+    rdfs:domain cdm:ControlledProcess ;
+    rdfs:range cdm:Feedback ;
+    rdfs:label "provides feedback"@en .
+
+cdm:updates a owl:ObjectProperty ;
+    rdfs:domain cdm:Feedback ;
+    rdfs:range cdm:ProcessModel ;
+    rdfs:label "updates"@en .
+
+cdm:degrades a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:Deviation ) ] ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction ) ] ;
+    rdfs:label "degrades"@en .
+
+cdm:isCriticalUnder a owl:ObjectProperty ;
+    rdfs:domain cdm:Hazard ;
+    rdfs:range warrant:EnvironmentalCondition ;
+    rdfs:label "is critical under"@en .
+
+cdm:influences a owl:ObjectProperty ;
+    rdfs:domain warrant:EnvironmentalCondition ;
+    rdfs:range cdm:Risk ;
+    rdfs:label "influences"@en .
+
+cdm:modifiesLikelihoodOf a owl:ObjectProperty ;
+    rdfs:domain warrant:EnvironmentalCondition ;
+    rdfs:range cdm:Risk ;
+    rdfs:label "modifies likelihood of"@en .
+
+cdm:modifiesImpactOf a owl:ObjectProperty ;
+    rdfs:domain warrant:EnvironmentalCondition ;
+    rdfs:range cdm:Risk ;
+    rdfs:label "modifies impact of"@en .
+
+cdm:isPerformedUnder a owl:ObjectProperty ;
+    rdfs:domain davom:ControlAction ;
+    rdfs:range warrant:OperationalMode ;
+    rdfs:label "is performed under"@en .
+
+cdm:wasObservedUnder a owl:ObjectProperty ;
+    rdfs:domain cdm:Deviation ;
+    rdfs:range warrant:OperationalMode ;
+    rdfs:label "was observed under"@en .
+
+cdm:hasOperationalContext a owl:ObjectProperty ;
+    rdfs:domain cdm:CausalEntity ;
+    rdfs:range warrant:ContextEntity ;
+    rdfs:label "has operational context"@en .
+
+cdm:hasEnvironmentalCondition a owl:ObjectProperty ;
+    rdfs:domain cdm:Risk ;
+    rdfs:range warrant:EnvironmentalCondition ;
+    rdfs:label "has environmental condition"@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+cdm:hasLikelihood    a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has likelihood"@en .
+cdm:hasImpact        a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has impact"@en .
+cdm:hasSeverity      a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has severity"@en .
+cdm:hasRiskLevel     a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:string  ; rdfs:label "has risk level"@en .
+cdm:hasAcceptability a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:string  ; rdfs:label "has acceptability"@en .
+
+##############################################################################
+# END warrant-cdm.ttl
+##############################################################################

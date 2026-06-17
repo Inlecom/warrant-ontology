@@ -1,0 +1,120 @@
+##############################################################################
+# WARRaNT Mitigation and Failover Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/mitigation
+# Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-di.ttl
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/mitigation>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> , <warrant-di.ttl> ;
+    rdfs:label "WARRaNT Mitigation Module"@en ;
+    rdfs:comment "Mitigation rules, actions, failover procedures, redundant resources, recovery effects, advisory actions, and machine-actionable actions."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Classes
+##############################################################################
+
+mit:MitigationEntity a owl:Class ;
+    rdfs:label "Mitigation Entity"@en ;
+    rdfs:comment "Abstract superclass for all mitigation-related entities."@en .
+
+mit:MitigationRule a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:label "Mitigation Rule"@en ;
+    rdfs:comment "A rule matching a Deviation, Hazard, or DependabilityIndexState and recommending a MitigationAction."@en .
+
+mit:MitigationAction a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Mitigation Action"@en ;
+    rdfs:comment "An action that reduces risk, assurance degradation, or DI degradation."@en .
+
+mit:FailoverProcedure a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Failover Procedure"@en ;
+    rdfs:comment "A defined fallback or recovery process. In the WARRaNT v0.1.0 PoC, failover procedures are visualised or advisory — they are NOT automatically executed."@en .
+
+mit:RedundantResource a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:label "Redundant Resource"@en .
+
+mit:RecoveryEffect a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:label "Recovery Effect"@en .
+
+mit:AdvisoryAction a owl:Class ;
+    rdfs:subClassOf mit:MitigationAction ;
+    rdfs:label "Advisory Action"@en ;
+    rdfs:comment "A human-directed advisory recommendation presented to the operator. All PoC mitigation instances must use this class."@en .
+
+mit:MachineActionableAction a owl:Class ;
+    rdfs:subClassOf mit:MitigationAction ;
+    rdfs:label "Machine-Actionable Action"@en ;
+    rdfs:comment "A subclass of MitigationAction representing a future automation-executable action. Defined for semantic completeness and forward compatibility. All WARRaNT v0.1.0 PoC instances MUST use mit:AdvisoryAction or mit:FailoverProcedure instead. Informative alignment: mit:MachineActionableAction ≈ saref:Command (SAREF4ENER)."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+mit:matchesRule a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState ) ] ;
+    rdfs:range mit:MitigationRule ;
+    rdfs:label "matches rule"@en .
+
+mit:recommends a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationRule cdm:Risk ) ] ;
+    rdfs:range mit:MitigationAction ;
+    rdfs:label "recommends"@en .
+
+mit:activates a owl:ObjectProperty ;
+    rdfs:domain mit:MitigationAction ;
+    rdfs:range mit:FailoverProcedure ;
+    rdfs:label "activates"@en .
+
+mit:addresses a owl:ObjectProperty ;
+    rdfs:domain mit:FailoverProcedure ;
+    rdfs:range [ owl:unionOf ( davom:VesselFunction davom:System davom:Component ) ] ;
+    rdfs:label "addresses"@en .
+
+mit:uses a owl:ObjectProperty ;
+    rdfs:domain mit:FailoverProcedure ;
+    rdfs:range mit:RedundantResource ;
+    rdfs:label "uses"@en .
+
+mit:hasExpectedEffect a owl:ObjectProperty ;
+    rdfs:domain mit:FailoverProcedure ;
+    rdfs:range mit:RecoveryEffect ;
+    rdfs:label "has expected effect"@en .
+
+mit:performsMitigation a owl:ObjectProperty ;
+    rdfs:domain davom:HumanOperatorRole ;
+    rdfs:range mit:MitigationAction ;
+    rdfs:label "performs mitigation"@en .
+
+mit:isTriggeredBy a owl:ObjectProperty ;
+    rdfs:domain mit:MitigationAction ;
+    rdfs:range [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState ) ] ;
+    rdfs:label "is triggered by"@en .
+
+##############################################################################
+# END warrant-mitigation.ttl
+##############################################################################

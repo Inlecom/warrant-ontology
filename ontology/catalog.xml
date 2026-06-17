@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Protégé / OWLAPI catalog for WARRaNT ontology modules.
+  Maps each module IRI to its relative file path within the ontology/ directory.
+  Place this file in the same directory as the .ttl files.
+-->
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+    <uri name="https://warrant-project.eu/ontology/all"                id="URI1" uri="warrant-all.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/core"               id="URI2" uri="warrant-core.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/davom"              id="URI3" uri="warrant-davom.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/observation"        id="URI4" uri="warrant-observation.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/cdm"                id="URI5" uri="warrant-cdm.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/assurance"          id="URI6" uri="warrant-assurance.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/dependability-index" id="URI7" uri="warrant-di.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/scenario"           id="URI8" uri="warrant-scenario.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/mitigation"         id="URI9" uri="warrant-mitigation.ttl"/>
+    <uri name="https://warrant-project.eu/ontology/digital-twin"       id="URI10" uri="warrant-digital-twin.ttl"/>
+</catalog>

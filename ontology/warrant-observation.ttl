@@ -1,0 +1,298 @@
+##############################################################################
+# WARRaNT Observation Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/observation
+# Imports: warrant-core.ttl, warrant-davom.ttl
+#
+# Models metrics, observers, measurements, analytical services, detection
+# events, virtual sensors, data quality, human observations, and operator inputs.
+#
+# Critical modelling rules:
+# - Components do NOT generate metrics; operational entities HAVE metrics.
+# - obs:produces range: Status | VirtualSensorOutput only — NOT cdm:Deviation.
+# - Production path: AnalyticalService → producesDetectionEvent →
+#   DetectionEvent → detectionEventDetects → Deviation.
+# - obs:detects is a SPARQL shortcut only; its domain is DetectionEvent.
+# - Raw time-series data stays outside the KG; use hasExternalRecordReference
+#   and hasExternalTimeSeriesId to link to external stores.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/observation>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> ;
+    rdfs:label "WARRaNT Observation Module"@en ;
+    rdfs:comment "Metrics, observers, measurements, analytical services, detection events, virtual sensors, data quality, human observations, and operator inputs."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# Evidence Superclass (aligns with warrant:EvidenceEntity in core)
+##############################################################################
+
+obs:EvidenceEntity a owl:Class ;
+    rdfs:subClassOf warrant:EvidenceEntity ;
+    rdfs:label "Evidence Entity (Observation)"@en ;
+    rdfs:comment "Observation-module superclass for all observation and evidence entities."@en .
+
+
+##############################################################################
+# DataSource
+##############################################################################
+
+obs:DataSource a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Data Source"@en ;
+    rdfs:comment "A source of measurements, observations, operator inputs, analytical outputs, or evidence. Subclasses include Observer, AnalyticalService, and system-level data producers."@en .
+
+obs:Observer rdfs:subClassOf obs:DataSource .
+obs:AnalyticalService rdfs:subClassOf obs:DataSource .
+davom:HumanOperatorRole rdfs:subClassOf obs:DataSource .
+
+
+##############################################################################
+# Metric
+##############################################################################
+
+obs:Metric a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Metric"@en ;
+    rdfs:comment "A dependability-relevant measurable property of an operational entity (Component, System, VesselFunction, DataFlow, CommunicationLink, or HumanOperatorRole). Components have metrics; they do not generate metrics."@en .
+
+obs:DependabilityMetric    a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Dependability Metric"@en .
+obs:PerformanceMetric      a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Performance Metric"@en .
+obs:SafetyMetric           a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Safety Metric"@en .
+obs:CybersecurityMetric    a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Cybersecurity Metric"@en .
+obs:AvailabilityMetric     a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Availability Metric"@en .
+obs:ReliabilityMetric      a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Reliability Metric"@en .
+obs:DataQualityMetric      a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Data Quality Metric"@en .
+obs:HumanPerformanceMetric a owl:Class ; rdfs:subClassOf obs:Metric ; rdfs:label "Human Performance Metric"@en .
+
+
+##############################################################################
+# Measurement and Auxiliary Evidence
+##############################################################################
+
+obs:Measurement a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Measurement"@en ;
+    rdfs:comment "An observed value of a metric at a specific time. Raw high-frequency measurements are stored externally; only semantic events and latest states live in the KG. Use hasExternalRecordReference to link to the external store."@en .
+
+obs:Status               a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Status"@en .
+obs:Alert                a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Alert"@en .
+obs:DataQualityIndicator a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Data Quality Indicator"@en .
+obs:ConfidenceLevel      a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Confidence Level"@en .
+
+
+##############################################################################
+# Observer
+##############################################################################
+
+obs:Observer a owl:Class ;
+    rdfs:subClassOf obs:DataSource ;
+    rdfs:label "Observer"@en ;
+    rdfs:comment "An entity that observes, measures, or estimates a metric. Informative alignment: obs:Observer ≈ sosa:Sensor (W3C SOSA/SSN)."@en .
+
+obs:Sensor          a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "Sensor"@en .
+obs:Probe           a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "Probe"@en .
+obs:DiagnosticService a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "Diagnostic Service"@en .
+obs:APIConnector    a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "API Connector"@en .
+obs:LogCollector    a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "Log Collector"@en .
+obs:VirtualSensor   a owl:Class ; rdfs:subClassOf obs:Observer ;
+    rdfs:label "Virtual Sensor"@en ;
+    rdfs:comment "Software-based observer that estimates a metric from other data streams. Informative alignment: obs:VirtualSensor ≈ sosa:Sensor (software-only variant)."@en .
+
+obs:VirtualSensorOutput a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Virtual Sensor Output"@en .
+
+
+##############################################################################
+# AnalyticalService
+##############################################################################
+
+obs:AnalyticalService a owl:Class ;
+    rdfs:subClassOf obs:DataSource ;
+    rdfs:label "Analytical Service"@en ;
+    rdfs:comment "A computational service that consumes metrics and produces Status, VirtualSensorOutput, or DetectionEvents. It does NOT produce Deviation directly — use the DetectionEvent production path."@en .
+
+obs:DetectionRule    a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Detection Rule"@en .
+
+obs:HumanObservation a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Human Observation"@en ;
+    rdfs:comment "A human-reported observation about a metric, status, or deviation."@en .
+
+obs:OperatorInput a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Operator Input"@en .
+
+
+##############################################################################
+# DetectionEvent
+##############################################################################
+
+obs:DetectionEvent a owl:Class ;
+    rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Detection Event"@en ;
+    rdfs:comment "An interpreted event produced by a DetectionRule, AnalyticalService, or VirtualSensor indicating that a Deviation has been detected. This is the ONLY production path to Deviation: AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation. obs:detects is a SPARQL shortcut only."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+obs:hasDependabilityMetric a owl:ObjectProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range obs:Metric ;
+    rdfs:label "has dependability metric"@en ;
+    rdfs:comment "Associates a metric with an operational entity (Component, System, VesselFunction, HumanOperatorRole, DataFlow, CommunicationLink)."@en .
+
+obs:observes a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( obs:Observer obs:HumanObservation ) ] ;
+    rdfs:range [ owl:unionOf ( obs:Metric obs:Status ) ] ;
+    rdfs:label "observes"@en .
+
+obs:measures a owl:ObjectProperty ;
+    rdfs:domain obs:Observer ;
+    rdfs:range obs:Metric ;
+    rdfs:label "measures"@en .
+
+obs:estimates a owl:ObjectProperty ;
+    rdfs:domain obs:VirtualSensor ;
+    rdfs:range obs:Metric ;
+    rdfs:label "estimates"@en .
+
+obs:hasMeasurement a owl:ObjectProperty ;
+    rdfs:domain obs:Metric ;
+    rdfs:range obs:Measurement ;
+    rdfs:label "has measurement"@en .
+
+obs:hasSource a owl:ObjectProperty ;
+    rdfs:domain obs:EvidenceEntity ;
+    rdfs:range obs:DataSource ;
+    rdfs:label "has source"@en ;
+    rdfs:comment "Source of a measurement, observation, or analytical output."@en .
+
+obs:hasDataQuality a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( obs:Measurement obs:HumanObservation obs:OperatorInput ) ] ;
+    rdfs:range obs:DataQualityIndicator ;
+    rdfs:label "has data quality"@en .
+
+obs:indicates a owl:ObjectProperty ;
+    rdfs:domain obs:Measurement ;
+    rdfs:range obs:Status ;
+    rdfs:label "indicates"@en .
+
+obs:detects a owl:ObjectProperty ;
+    rdfs:domain obs:DetectionEvent ;
+    rdfs:range cdm:Deviation ;
+    rdfs:label "detects"@en ;
+    rdfs:comment "SPARQL shortcut traversal property only. Domain is DetectionEvent (not AnalyticalService or Measurement directly). Production pattern: use obs:producesDetectionEvent + obs:detectionEventDetects."@en .
+
+obs:consumes a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( obs:AnalyticalService obs:VirtualSensor ) ] ;
+    rdfs:range obs:Metric ;
+    rdfs:label "consumes"@en .
+
+obs:produces a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( obs:AnalyticalService obs:VirtualSensor ) ] ;
+    rdfs:range [ owl:unionOf ( obs:Status obs:VirtualSensorOutput ) ] ;
+    rdfs:label "produces"@en ;
+    rdfs:comment "Range is Status or VirtualSensorOutput. cdm:Deviation is NOT in the range — deviations are reached only via the DetectionEvent production path."@en .
+
+obs:presents a owl:ObjectProperty ;
+    rdfs:domain davom:OperatorInterface ;
+    rdfs:range [ owl:unionOf ( obs:Metric obs:Status obs:Alert ) ] ;
+    rdfs:label "presents"@en .
+
+obs:captures a owl:ObjectProperty ;
+    rdfs:domain davom:OperatorInterface ;
+    rdfs:range obs:OperatorInput ;
+    rdfs:label "captures"@en .
+
+obs:supportsDetection a owl:ObjectProperty ;
+    rdfs:domain obs:Measurement ;
+    rdfs:range obs:DetectionEvent ;
+    rdfs:label "supports detection"@en ;
+    rdfs:comment "A measurement provides evidence contributing to a detection event."@en .
+
+obs:producesDetectionEvent a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( obs:AnalyticalService obs:VirtualSensor obs:DetectionRule ) ] ;
+    rdfs:range obs:DetectionEvent ;
+    rdfs:label "produces detection event"@en .
+
+obs:detectionEventDetects a owl:ObjectProperty ;
+    rdfs:domain obs:DetectionEvent ;
+    rdfs:range cdm:Deviation ;
+    rdfs:label "detection event detects"@en ;
+    rdfs:comment "The terminal step of the production chain. A DetectionEvent identifies a specific Deviation individual."@en .
+
+obs:supportsDetectionOf a owl:ObjectProperty ;
+    rdfs:domain obs:Observer ;
+    rdfs:range obs:DetectionRule ;
+    rdfs:label "supports detection of"@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+obs:hasValue a owl:DatatypeProperty ;
+    rdfs:domain obs:Measurement ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has value"@en .
+
+obs:hasTimestamp a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( obs:Measurement obs:HumanObservation obs:OperatorInput obs:DetectionEvent ) ] ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "has timestamp"@en .
+
+obs:hasUnit a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( obs:Measurement obs:Metric ) ] ;
+    rdfs:range xsd:string ;
+    rdfs:label "has unit"@en ;
+    rdfs:comment "Unit of measurement as a string. Future alignment: obs:hasUnit ≈ qudt:unit."@en .
+
+obs:hasSamplingRate a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( obs:Metric obs:Observer ) ] ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has sampling rate"@en .
+
+obs:hasConfidenceValue a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( obs:ConfidenceLevel obs:VirtualSensorOutput obs:HumanObservation ) ] ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has confidence value"@en .
+
+obs:hasQualityValue a owl:DatatypeProperty ;
+    rdfs:domain obs:DataQualityIndicator ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has quality value"@en .
+
+obs:hasExternalRecordReference a owl:DatatypeProperty ;
+    rdfs:domain obs:Measurement ;
+    rdfs:range xsd:string ;
+    rdfs:label "has external record reference"@en ;
+    rdfs:comment "Key or URI pointing to the raw measurement record in an external time-series store. Prevents the KG from being used as a telemetry database."@en .
+
+obs:hasExternalTimeSeriesId a owl:DatatypeProperty ;
+    rdfs:domain obs:Metric ;
+    rdfs:range xsd:string ;
+    rdfs:label "has external time series id"@en ;
+    rdfs:comment "Identifier of the metric's data stream in the external telemetry platform."@en .
+
+##############################################################################
+# END warrant-observation.ttl
+##############################################################################

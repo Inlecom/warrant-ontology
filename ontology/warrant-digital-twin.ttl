@@ -1,0 +1,131 @@
+##############################################################################
+# WARRaNT Digital Twin Ontology Module
+# Version: 1.0.0
+# IRI: https://warrant-project.eu/ontology/digital-twin
+# Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
+#          warrant-scenario.ttl
+#
+# Defines the semantic interface between the KG and the Digital Twin:
+# views, visualisation layers, decision-support interfaces, scenario state,
+# and update channels.
+#
+# IMPORTANT: warrant:VisualisableEntity is defined in warrant-core.ttl.
+# Do NOT redefine dt:VisualisableEntity here. Import and use the core class.
+##############################################################################
+
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://warrant-project.eu/ontology/digital-twin>
+    a owl:Ontology ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> , <warrant-scenario.ttl> ;
+    rdfs:label "WARRaNT Digital Twin Module"@en ;
+    rdfs:comment "Semantic interface between the WARRaNT KG and the Digital Twin: views, visualisation layers, decision-support, scenario execution state, and update channels. The KG defines what the DT executes, visualises, and stores — it does NOT implement the DT."@en ;
+    dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
+    dcterms:issued "2026-06-05"^^xsd:date ;
+    dcterms:modified "2026-06-08"^^xsd:date ;
+    owl:versionInfo "1.0.0" .
+
+
+##############################################################################
+# VisualisableEntity subclass declarations
+# (warrant:VisualisableEntity is defined in warrant-core.ttl)
+##############################################################################
+
+di:DependabilityIndex       rdfs:subClassOf warrant:VisualisableEntity .
+di:SystemDependabilityIndex rdfs:subClassOf warrant:VisualisableEntity .
+scen:Scenario               rdfs:subClassOf warrant:VisualisableEntity .
+scen:ScenarioExecution      rdfs:subClassOf warrant:VisualisableEntity .
+warrant:OperationalEntity   rdfs:subClassOf warrant:VisualisableEntity .
+warrant:AgentEntity         rdfs:subClassOf warrant:VisualisableEntity .
+
+
+##############################################################################
+# Digital Twin Classes
+##############################################################################
+
+dt:DigitalTwin a owl:Class ;
+    rdfs:label "Digital Twin"@en ;
+    rdfs:comment "A digital representation of a vessel or system. Executes scenarios, visualises DI and failover procedures, monitors operational entities, and receives live updates from analytical services."@en .
+
+dt:DigitalTwinView a owl:Class ;
+    rdfs:label "Digital Twin View"@en ;
+    rdfs:comment "A configurable view displayed on the DT interface (e.g. vessel overview, function health panel, scenario panel)."@en .
+
+dt:VisualisationLayer a owl:Class ;
+    rdfs:label "Visualisation Layer"@en ;
+    rdfs:comment "A rendering layer within a DigitalTwinView. Instances declare which KG entities they render via dt:visualises (e.g. DI heatmap layer, hazard overlay, alert layer)."@en .
+
+dt:DecisionSupportView a owl:Class ;
+    rdfs:subClassOf dt:DigitalTwinView ;
+    rdfs:label "Decision Support View"@en ;
+    rdfs:comment "A specialised DigitalTwinView for operator decision-support: presents DI state, recommended mitigations, and scenario results side-by-side."@en .
+
+dt:ScenarioExecutionState a owl:Class ;
+    rdfs:label "Scenario Execution State"@en ;
+    rdfs:comment "Transient execution state during a scenario run. Lifecycle: PENDING → RUNNING → COMPLETED | FAILED."@en .
+
+
+##############################################################################
+# Object Properties
+##############################################################################
+
+dt:executes a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range scen:Scenario ;
+    rdfs:label "executes"@en .
+
+dt:visualises a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( dt:DigitalTwin dt:VisualisationLayer ) ] ;
+    rdfs:range warrant:VisualisableEntity ;
+    rdfs:label "visualises"@en ;
+    rdfs:comment "Range constrained to warrant:VisualisableEntity (defined in warrant-core.ttl). Do NOT use dt:VisualisableEntity."@en .
+
+dt:storesResult a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range scen:ScenarioExecution ;
+    rdfs:label "stores result"@en .
+
+dt:monitors a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "monitors"@en .
+
+dt:representsStateOf a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range davom:Vessel ;
+    rdfs:label "represents state of"@en .
+
+dt:hasView a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range dt:DigitalTwinView ;
+    rdfs:label "has view"@en .
+
+dt:hasLayer a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwinView ;
+    rdfs:range dt:VisualisationLayer ;
+    rdfs:label "has layer"@en .
+
+dt:supportsDecision a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range dt:DecisionSupportView ;
+    rdfs:label "supports decision"@en .
+
+dt:receivesUpdateFrom a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range obs:DataSource ;
+    rdfs:label "receives update from"@en ;
+    rdfs:comment "Documents that the DT receives live updates from analytical services, sensors, or operator inputs."@en .
+
+##############################################################################
+# END warrant-digital-twin.ttl
+##############################################################################
