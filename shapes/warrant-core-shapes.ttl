@@ -1,9 +1,10 @@
 ##############################################################################
-# WARRaNT SHACL Shapes — Starter Set (v0.1.0)
+# WARRaNT SHACL Shapes — Starter Set
 # File: shapes/warrant-core-shapes.ttl
 #
-# This is a minimally constraining starter set for v0.1.0.
-# Full SHACL coverage is planned for v0.2.0.
+# Minimally constraining starter set. Run with:
+#   python scripts/validate_turtle.py --shacl
+# (ontology modules merged into the data graph, inference off).
 #
 # Shapes provided:
 #   1. davom:Vessel
@@ -12,6 +13,13 @@
 #   4. cdm:Hazard
 #   5. cdm:Deviation  (includes deprecation warning for subclass instantiation)
 #   6. obs:DetectionEvent
+#   7. obs:HealthEvent
+#   8. assr:AssuranceClaim
+#   9. assr:Evidence
+#  10. di:DIThreshold
+#  11. di:ResilienceTrigger
+#  12. mit:ResponseEvaluation
+#  13. mit:ResponseExecution
 #
 # The deprecation shape on cdm:Deviation warns but does not block validation.
 ##############################################################################
@@ -22,7 +30,9 @@
 @prefix davom:   <https://warrant-project.eu/ontology/davom#> .
 @prefix obs:     <https://warrant-project.eu/ontology/observation#> .
 @prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
@@ -117,10 +127,10 @@
     ] ;
     sh:property [
         sh:path di:appliesTo ;
-        sh:class davom:VesselFunction ;
+        sh:class warrant:OperationalEntity ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:message "DependabilityIndex must apply to exactly one davom:VesselFunction." ;
+        sh:message "DependabilityIndex must apply to exactly one warrant:OperationalEntity (component, subsystem, function, system, or vessel)." ;
     ] ;
     sh:property [
         sh:path di:calculatedAt ;
@@ -213,6 +223,199 @@
         sh:class cdm:Deviation ;
         sh:minCount 1 ;
         sh:message "DetectionEvent must detect at least one cdm:Deviation via obs:detectionEventDetects." ;
+    ] .
+
+
+##############################################################################
+# Shape 7: obs:HealthEvent (applies to DetectionEvent and
+#          PredictedConditionEvent through rdfs:subClassOf)
+##############################################################################
+
+:HealthEventShape a sh:NodeShape ;
+    sh:targetClass obs:HealthEvent ;
+    rdfs:label "HealthEvent Shape" ;
+    sh:property [
+        sh:path obs:hasTimestamp ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "HealthEvent must have exactly one obs:hasTimestamp (xsd:dateTime)." ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( obs:hasSource [ sh:inversePath obs:producesHealthEvent ] [ sh:inversePath obs:producesDetectionEvent ] ) ] ;
+        sh:minCount 1 ;
+        sh:message "HealthEvent must have a source: obs:hasSource, or be the object of obs:producesHealthEvent / obs:producesDetectionEvent." ;
+    ] ;
+    sh:property [
+        sh:path obs:hasConfidenceValue ;
+        sh:datatype xsd:decimal ;
+        sh:maxCount 1 ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 1 ;
+        sh:message "HealthEvent confidence, if given, must be a single xsd:decimal in [0,1]." ;
+    ] .
+
+
+##############################################################################
+# Shape 8: assr:AssuranceClaim
+##############################################################################
+
+:AssuranceClaimShape a sh:NodeShape ;
+    sh:targetClass assr:AssuranceClaim ;
+    rdfs:label "AssuranceClaim Shape" ;
+    sh:property [
+        sh:path assr:addressesRequirement ;
+        sh:class assr:Requirement ;
+        sh:minCount 1 ;
+        sh:message "AssuranceClaim must address at least one assr:Requirement." ;
+    ] ;
+    sh:property [
+        sh:path assr:hasClaimStatus ;
+        sh:class assr:ClaimStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "AssuranceClaim must have exactly one assr:hasClaimStatus pointing to an assr:ClaimStatus individual." ;
+    ] ;
+    sh:property [
+        sh:path assr:claimAppliesTo ;
+        sh:minCount 1 ;
+        sh:message "AssuranceClaim must apply to at least one system element, function, or control." ;
+    ] .
+
+
+##############################################################################
+# Shape 9: assr:Evidence
+##############################################################################
+
+:EvidenceShape a sh:NodeShape ;
+    sh:targetClass assr:Evidence ;
+    rdfs:label "Evidence Shape" ;
+    sh:property [
+        sh:path [ sh:alternativePath ( assr:supportsClaim assr:challengesClaim ) ] ;
+        sh:class assr:AssuranceClaim ;
+        sh:minCount 1 ;
+        sh:message "Evidence must support or challenge at least one assr:AssuranceClaim." ;
+    ] ;
+    sh:property [
+        sh:path assr:hasEvidenceSource ;
+        sh:minCount 1 ;
+        sh:message "Evidence must be traceable to at least one source (assr:hasEvidenceSource)." ;
+    ] .
+
+
+##############################################################################
+# Shape 10: di:DIThreshold (attribute state thresholds)
+##############################################################################
+
+:DIThresholdShape a sh:NodeShape ;
+    sh:targetClass di:DIThreshold ;
+    rdfs:label "Attribute State Threshold Shape" ;
+    sh:property [
+        sh:path di:thresholdAppliesToAttribute ;
+        sh:class assr:AssuranceAttribute ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "DIThreshold must apply to exactly one assr:AssuranceAttribute." ;
+    ] ;
+    sh:property [ sh:path di:hasNormalMinimum ;     sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 1 ;
+        sh:message "DIThreshold must have exactly one di:hasNormalMinimum in [0,1]." ] ;
+    sh:property [ sh:path di:hasCriticalThreshold ; sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 1 ;
+        sh:message "DIThreshold must have exactly one di:hasCriticalThreshold in [0,1]." ] ;
+    sh:property [ sh:path di:hasFailedThreshold ;   sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 1 ;
+        sh:message "DIThreshold must have exactly one di:hasFailedThreshold in [0,1]." ] ;
+    sh:property [ sh:path di:hasUnsafeThreshold ;   sh:datatype xsd:decimal ; sh:minCount 1 ; sh:maxCount 1 ; sh:minInclusive 0 ; sh:maxInclusive 1 ;
+        sh:message "DIThreshold must have exactly one di:hasUnsafeThreshold in [0,1]." ] ;
+    sh:property [ sh:path di:hasCriticalThreshold ; sh:lessThan di:hasNormalMinimum ;
+        sh:message "Threshold ordering violated: critical threshold must be below the normal minimum." ] ;
+    sh:property [ sh:path di:hasFailedThreshold ;   sh:lessThan di:hasCriticalThreshold ;
+        sh:message "Threshold ordering violated: failed threshold must be below the critical threshold." ] ;
+    sh:property [ sh:path di:hasUnsafeThreshold ;   sh:lessThan di:hasFailedThreshold ;
+        sh:message "Threshold ordering violated: unsafe threshold must be below the failed threshold." ] .
+
+
+##############################################################################
+# Shape 11: di:ResilienceTrigger
+##############################################################################
+
+:ResilienceTriggerShape a sh:NodeShape ;
+    sh:targetClass di:ResilienceTrigger ;
+    rdfs:label "ResilienceTrigger Shape" ;
+    sh:property [
+        sh:path di:hasTriggerType ;
+        sh:class di:ResilienceTriggerType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResilienceTrigger must have exactly one di:hasTriggerType (ATTRIBUTE_BREACH, SUSTAINED_DECLINE, PREDICTED_FLOOR_CROSSING)." ;
+    ] ;
+    sh:property [
+        sh:path di:triggeredAt ;
+        sh:datatype xsd:dateTime ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResilienceTrigger must have exactly one di:triggeredAt (xsd:dateTime)." ;
+    ] ;
+    sh:property [
+        sh:path [ sh:alternativePath ( di:triggeredByAttributeValue di:triggeredByIndex di:triggeredByForecast ) ] ;
+        sh:minCount 1 ;
+        sh:message "ResilienceTrigger must record what fired it: an attribute value, an index trend, or a forecast." ;
+    ] .
+
+
+##############################################################################
+# Shape 12: mit:ResponseEvaluation
+##############################################################################
+
+:ResponseEvaluationShape a sh:NodeShape ;
+    sh:targetClass mit:ResponseEvaluation ;
+    rdfs:label "ResponseEvaluation Shape" ;
+    sh:property [
+        sh:path mit:evaluatesAction ;
+        sh:class mit:MitigationAction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResponseEvaluation must evaluate exactly one mit:MitigationAction." ;
+    ] ;
+    sh:property [
+        sh:path mit:respondsToTrigger ;
+        sh:class di:ResilienceTrigger ;
+        sh:minCount 1 ;
+        sh:message "ResponseEvaluation must respond to at least one di:ResilienceTrigger." ;
+    ] ;
+    sh:property [
+        sh:path mit:isAdmissible ;
+        sh:datatype xsd:boolean ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResponseEvaluation must state admissibility (mit:isAdmissible)." ;
+    ] .
+
+
+##############################################################################
+# Shape 13: mit:ResponseExecution
+##############################################################################
+
+:ResponseExecutionShape a sh:NodeShape ;
+    sh:targetClass mit:ResponseExecution ;
+    rdfs:label "ResponseExecution Shape" ;
+    sh:property [
+        sh:path mit:executesAction ;
+        sh:class mit:MitigationAction ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResponseExecution must execute exactly one mit:MitigationAction." ;
+    ] ;
+    sh:property [
+        sh:path mit:hasAuthorisationStatus ;
+        sh:class mit:AuthorisationStatus ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "ResponseExecution must have exactly one mit:hasAuthorisationStatus." ;
+    ] ;
+    sh:property [
+        sh:path mit:hasResiliencePosture ;
+        sh:class mit:ResiliencePosture ;
+        sh:maxCount 1 ;
+        sh:message "ResponseExecution may have at most one mit:hasResiliencePosture." ;
     ] .
 
 ##############################################################################
