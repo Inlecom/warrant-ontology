@@ -20,11 +20,12 @@ Work on `develop`; merge to `main` only for tagged releases.
 ## Pull Request Process
 
 1. Branch from `develop`.
-2. Run validation locally: `python scripts/validate_turtle.py`
-3. Open a PR to `develop` with a clear description.
-4. Request review from the module CODEOWNER.
-5. Address all comments; at least one approval required.
-6. Squash-merge to `develop`.
+2. Run validation locally: `python scripts/validate_turtle.py --shacl` and `python scripts/run_queries.py` (after `python scripts/merge_ontology.py`).
+3. If you changed a module, regenerate its documentation: `python scripts/generate_module_docs.py` (CI checks with `--check`).
+4. Open a PR to `develop` with a clear description.
+5. Request review from the module CODEOWNER.
+6. Address all comments; at least one approval required.
+7. Squash-merge to `develop`.
 
 ---
 
@@ -34,24 +35,32 @@ Work on `develop`; merge to `main` only for tagged releases.
 2. Create a new file in `examples/` or extend an existing file.
 3. Use `cdm:hasDeviationType` with named `cdm:DeviationType` individuals — never instantiate deprecated deviation subclasses.
 4. Use `di:hasDIState` with named `di:DependabilityIndexState` individuals — never subclass.
-5. Follow the DetectionEvent production chain: `AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation`.
-6. Run `python scripts/validate_turtle.py` before submitting.
+5. Follow the DetectionEvent production chain: `AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation`. A health event that does not identify a deviation is an `obs:HealthEvent` or `obs:PredictedConditionEvent`.
+6. Assign operational states attribute-wise (`di:hasAttributeState` from `di:DIThreshold`s), never from the DI value.
+7. Give scenario-specific individuals (indices, edges, events, triggers) scenario-specific local names so that files sharing a Living Lab namespace can be loaded together.
+8. Run `python scripts/validate_turtle.py --shacl` before submitting; the example must conform to the shapes.
 
 ---
 
 ## How to Run Validation
 
 ```bash
-# Install rdflib (once)
-pip install rdflib
+# Install rdflib and pySHACL (once)
+pip install rdflib pyshacl
 
-# Validate all Turtle files
-python scripts/validate_turtle.py
+# Validate all Turtle files (ontology/, examples/, shapes/) and run SHACL over the examples
+python scripts/validate_turtle.py --shacl
 
-# Build merged ontology
+# Build merged ontology and run the competency queries (regression test)
 python scripts/merge_ontology.py
-python scripts/merge_ontology.py --include-examples
+python scripts/run_queries.py
+
+# Regenerate / check the per-module documentation
+python scripts/generate_module_docs.py
+python scripts/generate_module_docs.py --check
 ```
+
+SHACL validation merges the nine modules into the data graph and runs with inference **off**: RDFS inference over `rdfs:range` would re-type individuals and mask `sh:class` violations.
 
 ---
 
@@ -60,12 +69,16 @@ python scripts/merge_ontology.py --include-examples
 1. Human operators are **not components**. `davom:HumanOperator` and `davom:HumanOperatorRole` subclass `warrant:AgentEntity`.
 2. Components do not generate metrics. Use `obs:hasDependabilityMetric` on operational entities.
 3. Deviation typing: use `cdm:hasDeviationType` with `cdm:DeviationType` named individuals. Creating new deviation subclasses is **prohibited**.
-4. DI state: use named `di:DependabilityIndexState` individuals. Subclassing is **prohibited**.
+4. Operational state: use named `di:DependabilityIndexState` individuals. Subclassing is **prohibited**. State is assigned attribute-wise from thresholds and reported with the DI; the DI value never determines it, and responses are invoked by a `di:ResilienceTrigger`, not by a DI value.
 5. `obs:produces` range: `obs:Status` or `obs:VirtualSensorOutput` only. `cdm:Deviation` must not appear in the range.
 6. The `warrant:VisualisableEntity` range class is defined in `warrant-core.ttl`. Do not redefine it elsewhere.
 7. `warrant:VoyageSegment` and `warrant:OperationalMode` belong in `warrant-core.ttl`, not the CDM module.
 8. Raw telemetry stays outside the KG; use `obs:hasExternalRecordReference` and `obs:hasExternalTimeSeriesId`.
 9. Example individuals use `https://warrant-project.eu/data/{context}#` namespaces.
+10. No computation is encoded in the ontology (fusion, node score, typed propagation, aggregation, state assignment, triggers, response ranking, Assurance Level, Certification Readiness). Store inputs, governed configuration with version and approval, results with timestamp and `warrant:CalculationMethod`, and audit events.
+11. Every `davom:Dependency` carries a canonical `davom:hasDependencyType`; `dependencySource` is the upstream provider and `dependencyTarget` the downstream consumer.
+12. `di:DIForecast` is owned by `warrant-di` and produced by the Digital Twin; no module imports `warrant-digital-twin`.
+13. A module never declares terms in another module's namespace, and only asserts axioms about terms of modules it imports.
 
 ---
 

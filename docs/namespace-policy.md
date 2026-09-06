@@ -1,6 +1,6 @@
 # WARRaNT KG Ontology — Namespace Policy
 
-Version 0.9-poc | 2026-06-05
+Version 0.10-poc | 2026-09-06
 
 ---
 
@@ -53,7 +53,9 @@ Prefixes must be lowercase, short (≤ 6 characters), and stable across all file
 
 ## Version IRI Policy
 
-Version IRIs follow the pattern: `https://warrant-project.eu/ontology/{module}/{major}.{minor}`. Version-specific IRIs are not used until v1.0.0. Until then, `owl:versionInfo` carries the version string (e.g. `"0.9-poc"`).
+Version IRIs follow the pattern: `https://warrant-project.eu/ontology/{module}/{major}.{minor}`. Version-specific IRIs are not used until v1.0.0. Until then, `owl:versionInfo` carries the version string (e.g. `"0.10-poc"`), and all nine module files carry the same string as the repository version in `CHANGELOG.md`.
+
+A module never declares a term in another module's namespace (e.g. warrant-assurance does not declare `di:` properties); it may assert additional axioms about another module's terms (such as `rdfs:subClassOf warrant:VisualisableEntity` or a widened domain) only for modules it imports.
 
 ---
 
@@ -88,7 +90,7 @@ Version IRIs follow the pattern: `https://warrant-project.eu/ontology/{module}/{
 
 ## Rules for External Ontology Alignment
 
-In v0.1.0, all external ontology alignment is **informative only** (rdfs:comment annotations). No `owl:equivalentClass`, `owl:sameAs`, or property substitutions are added. Normative alignment is deferred to v0.2.0 pending consortium agreement. See `docs/external-ontology-alignment.md`.
+All external ontology alignment is **informative only** (rdfs:comment annotations). No `owl:equivalentClass`, `owl:sameAs`, or property substitutions are added. Normative alignment is deferred pending consortium agreement. See `docs/external-ontology-alignment.md`.
 
 ---
 
@@ -112,4 +114,7 @@ The following informative alignments are recorded as `rdfs:comment` annotations 
 | `obs:hasTimestamp` | `sosa:resultTime` | exact |
 | `mit:MitigationAction` | `saref:Command` (SAREF4ENER) | partial |
 | `davom:ControlAction` | `saref:Command` | partial |
-| `assr:Evidence` | `gsn:Evidence` (GSN/SACM) | close |
+| `assr:Evidence` | `gsn:Evidence` / SACM Artifact | close |
+| `assr:AssuranceClaim` | SACM Claim / `gsn:Goal` | close |
+| `assr:Assumption` | SACM assumed Claim / `gsn:Assumption` | close |
+| `warrant:derivedFrom` | `prov:wasDerivedFrom` (PROV-O) | close |
