@@ -2,7 +2,7 @@
 # WARRaNT Scenario Ontology Module
 # Version: 1.0.0
 # IRI: https://warrant-project.eu/ontology/scenario
-# Imports: warrant-core.ttl, warrant-cdm.ttl
+# Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-di.ttl
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
@@ -18,7 +18,7 @@
 
 <https://warrant-project.eu/ontology/scenario>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> , <warrant-di.ttl> ;
     rdfs:label "WARRaNT Scenario Module"@en ;
     rdfs:comment "Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios. The KG defines scenario semantics; the external scenario engine executes them."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;

@@ -3,7 +3,7 @@
 # Version: 1.0.0
 # IRI: https://warrant-project.eu/ontology/digital-twin
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
-#          warrant-scenario.ttl
+#          warrant-di.ttl, warrant-scenario.ttl, warrant-mitigation.ttl
 #
 # Defines the semantic interface between the KG and the Digital Twin:
 # views, visualisation layers, decision-support interfaces, scenario state,
@@ -27,7 +27,8 @@
 
 <https://warrant-project.eu/ontology/digital-twin>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> , <warrant-scenario.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> ,
+                <warrant-di.ttl> , <warrant-scenario.ttl> , <warrant-mitigation.ttl> ;
     rdfs:label "WARRaNT Digital Twin Module"@en ;
     rdfs:comment "Semantic interface between the WARRaNT KG and the Digital Twin: views, visualisation layers, decision-support, scenario execution state, and update channels. The KG defines what the DT executes, visualises, and stores — it does NOT implement the DT."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;

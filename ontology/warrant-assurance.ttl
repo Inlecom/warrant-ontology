@@ -163,10 +163,10 @@ assr:hasPenaltyValue a owl:DatatypeProperty ;
     rdfs:range xsd:decimal ;
     rdfs:label "has penalty value"@en .
 
-di:calculatedAt a owl:DatatypeProperty ;
-    rdfs:domain [ owl:unionOf ( assr:AssuranceScore ) ] ;
-    rdfs:range xsd:dateTime ;
-    rdfs:label "calculated at"@en .
+# NOTE: di:calculatedAt (used on AssuranceScore individuals) is declared in
+# warrant-di.ttl, which imports this module and includes assr:AssuranceScore
+# in its domain. It is not redeclared here (namespace policy: a module does not
+# define terms in another module's namespace).
 
 ##############################################################################
 # END warrant-assurance.ttl

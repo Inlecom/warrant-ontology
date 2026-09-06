@@ -20,7 +20,6 @@
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
 @prefix davom:   <https://warrant-project.eu/ontology/davom#> .
 @prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
-@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
@@ -252,8 +251,9 @@ cdm:producesDeviation a owl:ObjectProperty ;
 
 cdm:mayCause a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:UnsafeControlAction ) ] ;
-    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction assr:AssuranceDegradation ) ] ;
-    rdfs:label "may cause"@en .
+    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
+    rdfs:label "may cause"@en ;
+    rdfs:comment "Causal propagation within the CDM chain. The link from a Deviation, Hazard, or UnsafeControlAction to an assr:AssuranceDegradation is expressed by assr:causesAssuranceDegradation (declared in warrant-assurance, which imports this module), not by this property."@en .
 
 cdm:mayLeadTo a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
