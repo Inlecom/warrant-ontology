@@ -2,52 +2,95 @@
 # WARRaNT Dependability Index (DI) Ontology Module
 # Version: 1.0.0
 # IRI: https://warrant-project.eu/ontology/dependability-index
-# Imports: warrant-core.ttl, warrant-assurance.ttl
+# Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
+#          warrant-cdm.ttl, warrant-assurance.ttl
 #
-# Represents the full risk-propagation Dependability Index model:
-# node-level DI, propagated risk, propagation edges, system-level DI,
-# states, thresholds, weights, calculation methods, and update events.
+# Represents the outputs and configured parameters of the Dependability
+# Supervisor: node and system Dependability Index, typed risk propagation per
+# hazard class, hierarchical aggregation, attribute-wise operational state
+# and its thresholds, resilience triggers and their configuration, DI
+# forecasts, calculation methods, and update events.
 #
-# DI FORMULA (metadata only; numerical computation is EXTERNAL):
+# FORMULAS (METADATA ONLY; ALL numerical computation is EXTERNAL and results
+# are written back with method identity and timestamp):
 #
-#   Node assurance (from warrant-assurance.ttl):
-#     A_v(t) = Σ βₖ · x_v^(k)
+#   Node Dependability Score (stored as assr:AssuranceScore; weights alpha in
+#   assr:AssuranceWeight):
+#     ND_i(t) = Σ_k α_i,k^{m(t)} · d_i,k(t)
 #
-#   Propagated risk at node i:
-#     R̃_i(t) = Σ_{j ∈ N(i)} w_ji · R_j(t)
-#     where w_ji is the risk propagation weight from dependency edge j→i,
-#     R_j(t) is the risk value at upstream node j,
-#     N(i) is the set of nodes with a dependency edge into i.
+#   Typed risk propagation for hazard class h (iterated to a fixed point):
+#     R_i^{h,(r+1)}(t) = clip( R_i,0^h(t) + ρ_h · Σ_{j ∈ N_i^{-,h}} w_j,i^h · R_j^{h,(r)}(t), 0, 1 )
+#     where R_i,0^h is local/residual risk (di:hasLocalRiskValue), w_j,i^h the
+#     typed dependency weight (di:hasRiskPropagationWeight on the edge for h),
+#     N_i^{-,h} the in-neighbourhood over dependencies of a type admissible
+#     for h (cdm:propagatesOverDependencyType), ρ_h the damping factor
+#     (di:hasDampingFactor), 0 ≤ ρ_h < 1 and spr(ρ_h W^h) < 1; iteration stops
+#     when the maximum node-wise change is below di:hasConvergenceTolerance.
 #
-#   Node Dependability Index:
-#     DI_i(t) = A_i(t) - β · R̃_i(t)
-#     where β is the risk sensitivity coefficient for node i.
+#   Conservative per-node aggregation over hazard classes:
+#     R_i(t) = max_h R_i^h(t)              (di:hasAggregatedRiskValue)
 #
-#   System-level Dependability Index:
-#     DI_sys(t) = Σᵢ γᵢ · DI_i(t),  Σᵢ γᵢ = 1
-#     where γᵢ is the system aggregation weight for node i.
+#   Risk-adjusted node Dependability Index:
+#     DI_i(t) = clip( ND_i(t) − β_i · R_i(t), 0, 1 )     (di:hasDIValue, β_i = di:hasBetaWeight)
 #
-# DependabilityIndexState instances MUST be named individuals.
+#   Hierarchical aggregation through the declared hierarchy (parent p, children ch(p)):
+#     DI_p(t) = Σ_{i ∈ ch(p)} γ_p,i^{m(t)} · DI_i(t),   Σ_i γ_p,i = 1     (γ in di:DIWeight)
+#     Parent and child values are never summed in the same step; applied
+#     recursively up to the system DI (di:SystemDependabilityIndex).
+#
+#   Attribute-wise operational state (thresholds per node and attribute,
+#     1 ≥ τ^D > τ^C > τ^F > τ^U ≥ 0, in di:DIThreshold):
+#     s_i,k(t) = Normal if d ≥ τ^D; Degraded if τ^C ≤ d < τ^D; Critical if
+#     τ^F ≤ d < τ^C; Failed if τ^U ≤ d < τ^F; Unsafe if d < τ^U
+#     S(t) = max { s_i,k(t) : i critical node, k attribute }    (di:hasDIState)
+#     Normal ≺ Degraded ≺ Critical ≺ Failed ≺ Unsafe.
+#     THE DI DOES NOT DETERMINE THE STATE; it is reported alongside it.
+#
+#   Resilience trigger (any term initiates graph diagnosis and REDS):
+#     T_res(t) = T_attr(t) ∨ T_trend(t) ∨ T_pred(t)
+#     T_attr : ∃ i,k : d_i,k(t) < τ_i,k^D                         (ATTRIBUTE_BREACH)
+#     T_trend: slope_W(DI_sys)(t) ≤ −ε_W over window W            (SUSTAINED_DECLINE)
+#     T_pred : min_{ξ ∈ [t, t+T_p]} DI_sys(ξ) < φ_DI^{m(t)}      (PREDICTED_FLOOR_CROSSING)
+#     W, ε_W, T_p, φ_DI are vessel- and mode-specific controlled parameters
+#     (di:SupervisionConfiguration). The trend test is evaluated only while
+#     the weighting configuration is unchanged over the window.
+#
+#   Resilience margin (anticipatory management quantity, not a state):
+#     MR(t) = DI_sys(t) − φ_DI^{m(t)}                              (di:hasResilienceMargin)
+#
+#   (DI_sys(t), AL(t)) are always reported together (di:isReportedWith).
+#
+# DependabilityIndexState instances MUST be the five named individuals.
 # Subclassing DependabilityIndexState is PROHIBITED.
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
 @prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
 @prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
 <https://warrant-project.eu/ontology/dependability-index>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-assurance.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> ,
+                <warrant-cdm.ttl> , <warrant-assurance.ttl> ;
     rdfs:label "WARRaNT Dependability Index Module"@en ;
-    rdfs:comment """DI module: node-level DI, propagated risk, RiskPropagationEdge,
-SystemDependabilityIndex, DI states (named individuals only), thresholds,
-weights, calculation methods, and update events."""@en ;
+    rdfs:comment """DI module: the Dependability Supervisor's outputs and configuration.
+Node-level DI with typed, per-hazard-class risk propagation (PropagatedRisk,
+RiskPropagationEdge, RiskPropagationParameter), hierarchical aggregation (DIWeight,
+aggregatesInto, SystemDependabilityIndex), attribute-wise operational state
+(DependabilityIndexState named individuals, DIThreshold per node and attribute,
+hasAttributeState), resilience triggers (ResilienceTrigger, ResilienceTriggerType,
+SupervisionConfiguration), DI forecasts (DIForecast, produced by the Digital Twin or
+a predictive service), calculation methods, and update events. All computation is
+external; the KG stores inputs, configured parameters, results and audit events."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
     dcterms:modified "2026-06-08"^^xsd:date ;
@@ -66,7 +109,7 @@ di:DependabilityIndex a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Dependability Index"@en ;
-    rdfs:comment "Node-level DI for a VesselFunction: DI_i(t) = A_i(t) - β·R̃_i(t). Computed externally; inputs, weights, and result stored in the KG."@en .
+    rdfs:comment "Node-level DI for any node of the declared hierarchy (component, subsystem, function, system, or vessel): DI_i(t) = clip(ND_i(t) − β_i·R_i(t), 0, 1), where ND_i is the Node Dependability Score (assr:AssuranceScore via di:contributesTo) and R_i the aggregated propagated risk. Computed externally; inputs, weights and result stored in the KG with timestamp and method identity. The DI is a management-oriented composite: its primary value lies in its trend and in its decomposition through the graph (contributing attributes, source evidence, local hazards, typed dependency paths). It does not determine the operational state (di:hasDIState), which is assigned attribute-wise; the same DI value may accompany different states. Absolute values are not comparable across vessels or differently weighted modes."@en .
 
 di:DependabilityIndexValue a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
@@ -74,43 +117,87 @@ di:DependabilityIndexValue a owl:Class ;
 
 di:DependabilityIndexState a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
-    rdfs:label "Dependability Index State"@en ;
-    rdfs:comment "Operational state of a DI node. MUST be represented as named individuals (di:NormalState, di:DegradedState, etc.). Subclassing DependabilityIndexState is PROHIBITED."@en .
+    rdfs:label "Operational State"@en ;
+    skos:altLabel "Dependability Index State"@en ;
+    rdfs:comment "The five-valued operational state vocabulary (Normal ≺ Degraded ≺ Critical ≺ Failed ≺ Unsafe) used at three levels: per attribute value (di:hasAttributeState on assr:AssuranceAttributeValue), per node and per system (di:hasDIState on DependabilityIndex and SystemDependabilityIndex). State is assigned attribute-wise from the configured thresholds (di:DIThreshold): Normal can be asserted only when every relevant attribute meets its Normal minimum; a node's or the system's state is the most severe attribute state across its (critical) nodes and attributes. The DI is reported alongside the state and never used to derive it, so a single cybersecurity attribute breach moves the state out of Normal even when the weighted composite remains high. The class name is retained for compatibility; the label reflects the semantics. MUST be represented as the five named individuals below. Subclassing DependabilityIndexState is PROHIBITED."@en .
 
 di:DIThreshold a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
-    rdfs:label "DI Threshold"@en .
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Attribute State Threshold"@en ;
+    skos:altLabel "DI Threshold"@en ;
+    rdfs:comment "The severity thresholds τ^D > τ^C > τ^F > τ^U for one attribute (di:thresholdAppliesToAttribute) at one node (di:thresholdAppliesToNode), against which the attribute value d_i,k(t) is compared to assign its operational state: Normal if d ≥ τ^D (di:hasNormalMinimum), Degraded down to τ^C (di:hasCriticalThreshold), Critical down to τ^F (di:hasFailedThreshold), Failed down to τ^U (di:hasUnsafeThreshold), Unsafe below. Thresholds are approved, versioned configuration per vessel and mode (warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy). The former DI-value bounds (di:hasLowerThreshold, di:hasUpperThreshold, attached to a state via di:hasThreshold) are deprecated: the DI does not determine the state."@en .
 
 di:DIWeight a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
-    rdfs:label "DI Weight"@en ;
-    rdfs:comment "Stores γᵢ, the system aggregation weight for node i in the DI_sys formula."@en .
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "DI Aggregation Weight"@en ;
+    rdfs:comment "The reified hierarchical aggregation weight γ_p,i^{m(t)} of child index i (di:weightChild) within parent index p (di:weightParent): DI_p = Σ_{i ∈ ch(p)} γ_p,i·DI_i, with the weights of one parent under one context non-negative and summing to one. Mode-dependent controlled configuration: warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy. Reified so that the same child may carry different weights under different parents or modes."@en .
 
 di:DICalculationMethod a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:CalculationMethod ;
     rdfs:label "DI Calculation Method"@en ;
-    rdfs:comment "Metadata describing the formula used to compute a DI value. Numerical computation is external; this stores method identity and version."@en .
+    rdfs:comment "Metadata identifying the external method and version that produced a DI, propagated risk, forecast, or update (formula family, aggregation operator, convergence settings). Numerical computation is external; this stores method identity only."@en .
 
 di:DIUpdateEvent a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:label "DI Update Event"@en ;
-    rdfs:comment "A recorded event of a DI value being updated by the external calculation service."@en .
+    rdfs:comment "Audit record of a DI value being recalculated by the Dependability Supervisor: which index was updated (di:updatesIndex), previous and new value, the health event or assurance degradation that triggered the recalculation (di:updateTriggeredBy), the method used and the supervisor that performed it. Timestamp via di:calculatedAt. One record per recalculation supports drift analysis and the audit trail from evidence to index."@en .
 
 di:PropagatedRisk a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:label "Propagated Risk"@en ;
-    rdfs:comment "Stores R̃_i(t) = Σ w_ji·R_j(t), the risk propagated into node i from upstream dependency nodes."@en .
+    rdfs:comment "The per-hazard-class propagated risk at a node after the fixed-point iteration: R_i^h(t) (di:hasPropagatedRiskValue) together with the local or residual term R_i,0^h(t) it started from (di:hasLocalRiskValue) and the hazard class h (di:forHazardClass). A node holds one PropagatedRisk per hazard class that can reach it; the node's aggregated risk R_i = max_h R_i^h is recorded on the DependabilityIndex (di:hasAggregatedRiskValue)."@en .
 
 di:RiskPropagationEdge a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:label "Risk Propagation Edge"@en ;
-    rdfs:comment "A reified edge encoding the risk propagation weight w_ji from upstream DI node j to downstream DI node i. Mirrors the structural dependency in davom:Dependency."@en .
+    rdfs:comment "A reified, typed propagation edge from upstream index j (di:propagationSource) to downstream index i (di:propagationTarget) carrying the weight w_j,i^h for hazard class h (di:forHazardClass, di:hasRiskPropagationWeight). It mirrors a structural davom:Dependency (di:mirrorsDependency) whose davom:hasDependencyType must be admissible for h; the edge exists only for admissible (dependency type, hazard class) pairs. Direction follows the dependency: davom:dependencySource → davom:dependencyTarget corresponds to di:propagationSource → di:propagationTarget; a bidirectional dependency is mirrored by two edges."@en .
+
+di:RiskPropagationParameter a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Risk Propagation Parameter"@en ;
+    rdfs:comment "Controlled, versioned propagation parameters for one hazard class (di:forHazardClass) under one context: the damping factor ρ_h (di:hasDampingFactor, 0 ≤ ρ_h < 1; convergence also requires the spectral radius condition, checked externally) and the stopping tolerance (di:hasConvergenceTolerance). Derived from design-time hazard, asset, interface and dependency analyses and calibrated with Living Lab evidence only through controlled validation and change management (warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy)."@en .
 
 di:SystemDependabilityIndex a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "System Dependability Index"@en ;
-    rdfs:comment "Top-level DI_sys aggregating all node DIs: DI_sys(t) = Σᵢ γᵢ·DI_i(t)."@en .
+    rdfs:comment "Top-level DI_sys(t) of a vessel or system of systems, obtained by recursive hierarchical aggregation of the node indices that di:aggregatesInto it. Carries the system operational state S(t) (di:hasDIState, the most severe attribute state across critical nodes), the trend slope over the configured window (di:hasTrendSlope), the resilience margin to the configured management floor (di:hasResilienceMargin), the Assurance Level it must be reported with (di:isReportedWith), and the Living Dependability Case it is recorded in (di:isRecordedIn). State, trigger and DI are always reported together."@en .
+
+di:DependabilitySupervisor a owl:Class ;
+    rdfs:subClassOf obs:AnalyticalService ;
+    rdfs:label "Dependability Supervisor"@en ;
+    rdfs:comment "The runtime service that combines the attribute assessments produced by Node Health Monitors (confidence-aware fusion), performs typed risk propagation over the graph, calculates node and system DI values, assigns the operational state from the attribute vector, monitors the DI trend, and raises resilience triggers. It computes system trustworthiness; it does not rank responses (mit:DecisionSupportService) or act (mit:ResilienceSupervisor). Modelled as an AnalyticalService subclass so that indices, states, triggers and update events carry provenance (di:performedBy, di:raisedBy)."@en .
+
+di:DIForecast a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Dependability Index Forecast"@en ;
+    rdfs:comment "A predicted value of a node or system DI over a horizon, produced by the Digital Twin's predictive simulation, a what-if scenario execution, or a predictive analytical service (di:forecastProducedBy → obs:DataSource; the Digital Twin is declared a DataSource in warrant-digital-twin). Two uses: (1) the Supervisor's anticipatory trigger T_pred, which fires when the forecast minimum over the planning horizon falls below the configured management floor (di:triggeredByForecast); (2) the expected effect E[DI_sys(t+Δt) | u] of a candidate response u evaluated by REDS (mit:hasExpectedIndex). The forecast lives in this module so that both consumers reference a DI-module class and no module imports warrant-digital-twin."@en .
+
+di:SupervisionConfiguration a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Supervision Configuration"@en ;
+    rdfs:comment "The vessel- and mode-specific controlled parameters of the resilience criterion: trend window W (di:hasTrendWindow), sustained-decline slope threshold ε_W (di:hasTrendSlopeThreshold), prediction horizon T_p (di:hasPredictionHorizon), and DI management floor φ_DI (di:hasManagementFloor). Versioned and approved (warrant:hasVersion, warrant:approvedBy, warrant:validFrom/validTo), scoped by warrant:appliesUnder. If vessel mode or weights change, the trend window is restarted or the series rebased so that a configuration change is not mistaken for degradation."@en .
+
+di:ResilienceTrigger a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Resilience Trigger"@en ;
+    rdfs:comment "A recorded firing of the resilience criterion T_res = T_attr ∨ T_trend ∨ T_pred by the Dependability Supervisor. Its type (di:hasTriggerType) records why diagnosis and resilience evaluation were initiated: an attribute breached its Normal minimum (di:triggeredByAttributeValue), the system DI declined persistently (di:triggeredByIndex), or a forecast predicted a floor crossing (di:triggeredByForecast). Any one term initiates the Knowledge Graph query and REDS evaluation (mit:ResponseEvaluation mit:respondsToTrigger); the query result, not the DI value alone, establishes the affected nodes, causes, controls and candidate responses. A trigger is recorded in the Living Dependability Case together with the state and DI."@en .
+
+di:ResilienceTriggerType a owl:Class ;
+    rdfs:label "Resilience Trigger Type"@en ;
+    rdfs:comment "Closed controlled vocabulary of the three terms of the resilience criterion. Named individuals only."@en .
+
+di:ATTRIBUTE_BREACH          a di:ResilienceTriggerType ; rdfs:label "ATTRIBUTE_BREACH"@en ;          rdfs:comment "T_attr: some relevant attribute value fell below its Normal minimum. Implements the ontology's definition of Normal and is independent of the aggregate DI."@en .
+di:SUSTAINED_DECLINE         a di:ResilienceTriggerType ; rdfs:label "SUSTAINED_DECLINE"@en ;         rdfs:comment "T_trend: the system DI showed a negative slope of at least ε_W sustained over the configured window W (DI used as a trend signal)."@en .
+di:PREDICTED_FLOOR_CROSSING  a di:ResilienceTriggerType ; rdfs:label "PREDICTED_FLOOR_CROSSING"@en ;  rdfs:comment "T_pred: a Digital Twin or predictive forecast places the system DI below the configured management floor within the planning horizon (anticipatory warning before an observed breach)."@en .
 
 
 ##############################################################################
@@ -119,23 +206,23 @@ di:SystemDependabilityIndex a owl:Class ;
 
 di:NormalState a di:DependabilityIndexState ;
     rdfs:label "Normal"@en ;
-    rdfs:comment "DI within normal operating bounds."@en .
+    rdfs:comment "Every relevant attribute meets its Normal minimum threshold (conjunction across the attribute vector). Response: routine monitoring."@en .
 
 di:DegradedState a di:DependabilityIndexState ;
     rdfs:label "Degraded"@en ;
-    rdfs:comment "DI below normal threshold; function remains operational with reduced capability."@en .
+    rdfs:comment "The most severe relevant attribute is below its Normal minimum but at or above its Critical threshold. Response: increased monitoring and confirmation of a fail-operational option."@en .
 
 di:CriticalState a di:DependabilityIndexState ;
     rdfs:label "Critical"@en ;
-    rdfs:comment "DI indicates a critical level requiring immediate attention or action."@en .
+    rdfs:comment "The most severe relevant attribute is below its Critical threshold but at or above its Failed threshold. Response: authorised mitigation and preservation of a fail-safe option."@en .
 
 di:FailedState a di:DependabilityIndexState ;
     rdfs:label "Failed"@en ;
-    rdfs:comment "DI indicates function failure."@en .
+    rdfs:comment "The most severe relevant attribute is below its Failed threshold but at or above its Unsafe threshold. Response: failover or transition to the fail-safe branch."@en .
 
 di:UnsafeState a di:DependabilityIndexState ;
     rdfs:label "Unsafe"@en ;
-    rdfs:comment "DI indicates an unsafe operational condition requiring emergency response."@en .
+    rdfs:comment "The most severe relevant attribute is below its Unsafe threshold. Response: the applicable emergency procedure."@en .
 
 
 ##############################################################################
@@ -146,25 +233,45 @@ di:contributesTo a owl:ObjectProperty ;
     rdfs:domain assr:AssuranceScore ;
     rdfs:range di:DependabilityIndex ;
     rdfs:label "contributes to"@en ;
-    rdfs:comment "An AssuranceScore feeds into the node-level DI calculation."@en .
+    rdfs:comment "The Node Dependability Score ND_i (assr:AssuranceScore) that is the intrinsic input to this node's DI. For index-to-index hierarchical aggregation use di:aggregatesInto, not this property."@en .
 
 di:appliesTo a owl:ObjectProperty ;
-    rdfs:domain di:DependabilityIndex ;
-    rdfs:range davom:VesselFunction ;
-    rdfs:label "applies to"@en .
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "applies to"@en ;
+    rdfs:comment "The node this index characterises: a component, subsystem, function, system, or vessel (any operational entity in the declared hierarchy)."@en .
 
 di:hasDIState a owl:ObjectProperty ;
-    rdfs:domain di:DependabilityIndex ;
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
     rdfs:range di:DependabilityIndexState ;
-    rdfs:label "has DI state"@en .
+    rdfs:label "has operational state"@en ;
+    rdfs:comment "The operational state reported with this node or system index. Assigned attribute-wise (the most severe attribute state across the node's, or the critical nodes', attributes); NOT derived from the DI value. The property name is retained for compatibility."@en .
+
+di:hasAttributeState a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceAttributeValue ;
+    rdfs:range di:DependabilityIndexState ;
+    rdfs:label "has attribute state"@en ;
+    rdfs:comment "The local operational state s_i,k(t) assigned to one attribute value by comparing it with the node's threshold set for that attribute. Node and system states are the maximum over these."@en .
 
 di:hasThreshold a owl:ObjectProperty ;
+    owl:deprecated true ;
     rdfs:domain di:DependabilityIndexState ;
     rdfs:range di:DIThreshold ;
-    rdfs:label "has threshold"@en .
+    rdfs:label "has threshold (DEPRECATED)"@en ;
+    rdfs:comment "DEPRECATED. Attached DI-value bounds to a state, implying that the state is derived from the DI. Thresholds now apply per attribute and node (di:thresholdAppliesToAttribute, di:thresholdAppliesToNode) with the four ordered values. Will be removed in the next minor release."@en .
+
+di:thresholdAppliesToAttribute a owl:ObjectProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range assr:AssuranceAttribute ;
+    rdfs:label "threshold applies to attribute"@en .
+
+di:thresholdAppliesToNode a owl:ObjectProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "threshold applies to node"@en .
 
 di:usesCalculationMethod a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex di:PropagatedRisk di:DIForecast di:DIUpdateEvent ) ] ;
     rdfs:range di:DICalculationMethod ;
     rdfs:label "uses calculation method"@en .
 
@@ -172,7 +279,13 @@ di:hasPropagatedRisk a owl:ObjectProperty ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range di:PropagatedRisk ;
     rdfs:label "has propagated risk"@en ;
-    rdfs:comment "Associates the node DI with its PropagatedRisk value R̃_i(t)."@en .
+    rdfs:comment "Associates the node DI with its per-hazard-class PropagatedRisk records R_i^h(t)."@en .
+
+di:forHazardClass a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:PropagatedRisk di:RiskPropagationEdge di:RiskPropagationParameter ) ] ;
+    rdfs:range cdm:HazardClass ;
+    rdfs:label "for hazard class"@en ;
+    rdfs:comment "The hazard class h to which this propagated-risk record, propagation edge, or parameter set applies."@en .
 
 di:propagationSource a owl:ObjectProperty ;
     rdfs:domain di:RiskPropagationEdge ;
@@ -186,11 +299,116 @@ di:propagationTarget a owl:ObjectProperty ;
     rdfs:label "propagation target"@en ;
     rdfs:comment "The downstream DI node i in the propagation edge j→i."@en .
 
+di:mirrorsDependency a owl:ObjectProperty ;
+    rdfs:domain di:RiskPropagationEdge ;
+    rdfs:range davom:Dependency ;
+    rdfs:label "mirrors dependency"@en ;
+    rdfs:comment "The structural davom:Dependency this propagation edge is derived from. Its davom:hasDependencyType must be admissible for the edge's hazard class; its davom:hasDependencyWeight is the basis of the edge's propagation weight."@en .
+
+di:aggregatesInto a owl:ObjectProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:label "aggregates into"@en ;
+    rdfs:comment "Hierarchical aggregation: this child index contributes to the parent index of the enclosing node, with the weight γ_p,i recorded in a di:DIWeight. Replaces the former misuse of di:contributesTo between indices."@en .
+
 di:contributesToSystem a owl:ObjectProperty ;
+    rdfs:subPropertyOf di:aggregatesInto ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range di:SystemDependabilityIndex ;
     rdfs:label "contributes to system"@en ;
-    rdfs:comment "A node DI contributes to the system-level DI_sys aggregation."@en .
+    rdfs:comment "A node DI aggregates directly into the system-level DI_sys (the top of the hierarchy)."@en .
+
+di:weightParent a owl:ObjectProperty ;
+    rdfs:domain di:DIWeight ;
+    rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:label "weight parent"@en ;
+    rdfs:comment "The parent index p whose aggregation this weight belongs to."@en .
+
+di:weightChild a owl:ObjectProperty ;
+    rdfs:domain di:DIWeight ;
+    rdfs:range di:DependabilityIndex ;
+    rdfs:label "weight child"@en ;
+    rdfs:comment "The child index i ∈ ch(p) this weight applies to."@en .
+
+di:isReportedWith a owl:ObjectProperty ;
+    rdfs:domain di:SystemDependabilityIndex ;
+    rdfs:range assr:AssuranceLevel ;
+    rdfs:label "is reported with"@en ;
+    rdfs:comment "The Assurance Level computed for the same reporting instant. The system DI (operational condition) and the AL (confidence in the evidence) must always be reported together."@en .
+
+di:isRecordedIn a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:SystemDependabilityIndex di:DependabilityIndex di:ResilienceTrigger di:DIUpdateEvent ) ] ;
+    rdfs:range assr:LivingDependabilityCase ;
+    rdfs:label "is recorded in"@en ;
+    rdfs:comment "Records this index, state, trigger, or update in the Living Dependability Case."@en .
+
+di:forecastsIndex a owl:ObjectProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:label "forecasts index"@en .
+
+di:forecastProducedBy a owl:ObjectProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range obs:DataSource ;
+    rdfs:label "forecast produced by"@en ;
+    rdfs:comment "Provenance of the forecast: the Digital Twin, scenario engine, or predictive analytical service that produced it."@en .
+
+di:hasTriggerType a owl:ObjectProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range di:ResilienceTriggerType ;
+    rdfs:label "has trigger type"@en .
+
+di:triggeredByAttributeValue a owl:ObjectProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range assr:AssuranceAttributeValue ;
+    rdfs:label "triggered by attribute value"@en ;
+    rdfs:comment "For ATTRIBUTE_BREACH: the attribute value(s) that fell below their Normal minimum."@en .
+
+di:triggeredByIndex a owl:ObjectProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range [ owl:unionOf ( di:SystemDependabilityIndex di:DependabilityIndex ) ] ;
+    rdfs:label "triggered by index"@en ;
+    rdfs:comment "For SUSTAINED_DECLINE: the index whose trend breached the configured slope."@en .
+
+di:triggeredByForecast a owl:ObjectProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range di:DIForecast ;
+    rdfs:label "triggered by forecast"@en ;
+    rdfs:comment "For PREDICTED_FLOOR_CROSSING: the forecast that predicted the floor crossing."@en .
+
+di:usesConfiguration a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:ResilienceTrigger di:SystemDependabilityIndex di:DependabilitySupervisor ) ] ;
+    rdfs:range di:SupervisionConfiguration ;
+    rdfs:label "uses configuration"@en ;
+    rdfs:comment "The supervision configuration (window, slope threshold, horizon, floor) in force when the trigger was evaluated or the margin computed."@en .
+
+di:raisedBy a owl:ObjectProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range di:DependabilitySupervisor ;
+    rdfs:label "raised by"@en .
+
+di:configurationAppliesTo a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:SupervisionConfiguration di:RiskPropagationParameter ) ] ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "configuration applies to"@en ;
+    rdfs:comment "The vessel or system for which this configuration was approved."@en .
+
+di:updatesIndex a owl:ObjectProperty ;
+    rdfs:domain di:DIUpdateEvent ;
+    rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:label "updates index"@en .
+
+di:updateTriggeredBy a owl:ObjectProperty ;
+    rdfs:domain di:DIUpdateEvent ;
+    rdfs:range [ owl:unionOf ( obs:HealthEvent assr:AssuranceDegradation assr:AssuranceAttributeValue ) ] ;
+    rdfs:label "update triggered by"@en ;
+    rdfs:comment "The health event, assurance degradation, or new attribute assessment that caused this recalculation."@en .
+
+di:performedBy a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( di:DIUpdateEvent di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:range di:DependabilitySupervisor ;
+    rdfs:label "performed by"@en ;
+    rdfs:comment "The Dependability Supervisor instance that computed this index or update."@en .
 
 
 ##############################################################################
@@ -201,52 +419,199 @@ di:hasDIValue a owl:DatatypeProperty ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range xsd:decimal ;
     rdfs:label "has DI value"@en ;
-    rdfs:comment "The computed node DI_i(t) value."@en .
+    rdfs:comment "The computed node DI_i(t) in [0,1]."@en .
 
 di:calculatedAt a owl:DatatypeProperty ;
-    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex assr:AssuranceScore ) ] ;
+    rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex di:PropagatedRisk di:DIUpdateEvent
+                                assr:AssuranceScore assr:AssuranceLevel assr:CertificationReadiness ) ] ;
     rdfs:range xsd:dateTime ;
-    rdfs:label "calculated at"@en .
+    rdfs:label "calculated at"@en ;
+    rdfs:comment "Timestamp of the external calculation that produced this value. Every calculated value retains its timestamp."@en .
 
 di:hasLowerThreshold a owl:DatatypeProperty ;
+    owl:deprecated true ;
     rdfs:domain di:DIThreshold ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has lower threshold"@en .
+    rdfs:label "has lower threshold (DEPRECATED)"@en ;
+    rdfs:comment "DEPRECATED: DI-value bound. Use the four ordered attribute thresholds (di:hasNormalMinimum, di:hasCriticalThreshold, di:hasFailedThreshold, di:hasUnsafeThreshold). Will be removed in the next minor release."@en .
 
 di:hasUpperThreshold a owl:DatatypeProperty ;
+    owl:deprecated true ;
     rdfs:domain di:DIThreshold ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has upper threshold"@en .
+    rdfs:label "has upper threshold (DEPRECATED)"@en ;
+    rdfs:comment "DEPRECATED: DI-value bound. Use the four ordered attribute thresholds. Will be removed in the next minor release."@en .
+
+di:hasNormalMinimum a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has normal minimum"@en ;
+    rdfs:comment "τ^D: the attribute value at or above which the attribute is Normal."@en .
+
+di:hasCriticalThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has critical threshold"@en ;
+    rdfs:comment "τ^C: below this (and below τ^D) the attribute is Critical rather than Degraded."@en .
+
+di:hasFailedThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has failed threshold"@en ;
+    rdfs:comment "τ^F: below this the attribute is Failed rather than Critical."@en .
+
+di:hasUnsafeThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:DIThreshold ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has unsafe threshold"@en ;
+    rdfs:comment "τ^U: below this the attribute is Unsafe. Ordering 1 ≥ τ^D > τ^C > τ^F > τ^U ≥ 0 is checked externally and by SHACL."@en .
 
 di:hasPropagatedRiskValue a owl:DatatypeProperty ;
     rdfs:domain di:PropagatedRisk ;
     rdfs:range xsd:decimal ;
     rdfs:label "has propagated risk value"@en ;
-    rdfs:comment "The computed R̃_i(t) value."@en .
+    rdfs:comment "R_i^h(t) in [0,1]: the propagated risk for hazard class h at this node after iteration to the fixed point."@en .
+
+di:hasLocalRiskValue a owl:DatatypeProperty ;
+    rdfs:domain di:PropagatedRisk ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has local risk value"@en ;
+    rdfs:comment "R_i,0^h(t) in [0,1]: the local or residual risk for hazard class h at this node before propagation, grounded in the design-time risk evaluation (cdm:Risk with the impact triple, or a control's residual risk)."@en .
+
+di:hasAggregatedRiskValue a owl:DatatypeProperty ;
+    rdfs:domain di:DependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has aggregated risk value"@en ;
+    rdfs:comment "R_i(t) = max_h R_i^h(t) (or another configured aggregator recorded in the method): the node's conservative aggregate over hazard classes that enters DI_i = clip(ND_i − β_i·R_i)."@en .
 
 di:hasBetaWeight a owl:DatatypeProperty ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range xsd:decimal ;
     rdfs:label "has beta weight"@en ;
-    rdfs:comment "The risk sensitivity coefficient β for this node in DI_i = A_i - β·R̃_i."@en .
+    rdfs:comment "The risk sensitivity coefficient β_i for this node in DI_i = clip(ND_i − β_i·R_i, 0, 1). Configured so that the risk penalty does not duplicate degradation already embedded in an attribute value."@en .
 
 di:hasRiskPropagationWeight a owl:DatatypeProperty ;
     rdfs:domain di:RiskPropagationEdge ;
     rdfs:range xsd:decimal ;
     rdfs:label "has risk propagation weight"@en ;
-    rdfs:comment "The weight w_ji on this propagation edge, corresponding to davom:hasDependencyWeight on the structural Dependency."@en .
+    rdfs:comment "The typed weight w_j,i^h on this propagation edge for its hazard class, derived from davom:hasDependencyWeight on the mirrored Dependency."@en .
 
 di:hasSystemWeight a owl:DatatypeProperty ;
+    owl:deprecated true ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has system weight"@en ;
-    rdfs:comment "The aggregation weight γᵢ for this node in DI_sys = Σ γᵢ·DI_i."@en .
+    rdfs:label "has system weight (DEPRECATED)"@en ;
+    rdfs:comment "DEPRECATED: flat aggregation weight on the node. Use a reified di:DIWeight (weightParent, weightChild, hasAggregationWeightValue) so that weights are per parent and per mode. Will be removed in the next minor release."@en .
+
+di:hasAggregationWeightValue a owl:DatatypeProperty ;
+    rdfs:domain di:DIWeight ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has aggregation weight value"@en ;
+    rdfs:comment "γ_p,i: non-negative; the weights of one parent under one context sum to one."@en .
 
 di:hasSystemDIValue a owl:DatatypeProperty ;
     rdfs:domain di:SystemDependabilityIndex ;
     rdfs:range xsd:decimal ;
     rdfs:label "has system DI value"@en ;
-    rdfs:comment "The computed DI_sys(t) value."@en .
+    rdfs:comment "The computed DI_sys(t) in [0,1]."@en .
+
+di:hasResilienceMargin a owl:DatatypeProperty ;
+    rdfs:domain di:SystemDependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has resilience margin"@en ;
+    rdfs:comment "MR(t) = DI_sys(t) − φ_DI^{m(t)}: distance to the configured management floor. An anticipatory management quantity, not an operational-state definition; meaningful only for the vessel, mode, weights and floor it was configured for."@en .
+
+di:hasTrendSlope a owl:DatatypeProperty ;
+    rdfs:domain di:SystemDependabilityIndex ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has trend slope"@en ;
+    rdfs:comment "slope_W(DI_sys)(t): the slope of the system DI over the configured trend window (per hour), evaluated only while the weighting configuration is unchanged."@en .
+
+di:hasForecastValue a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has forecast value"@en ;
+    rdfs:comment "The predicted DI value in [0,1] at di:forecastValidAt, or the predicted minimum over the horizon when used for the T_pred test."@en .
+
+di:hasForecastHorizon a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has forecast horizon"@en ;
+    rdfs:comment "The horizon Δt or T_p over which the forecast was computed."@en .
+
+di:forecastIssuedAt a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "forecast issued at"@en .
+
+di:forecastValidAt a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "forecast valid at"@en ;
+    rdfs:comment "The future instant the forecast value refers to."@en .
+
+di:hasForecastConfidence a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has forecast confidence"@en ;
+    rdfs:comment "Confidence in [0,1] the producing model attaches to the forecast; contributes to evidence quality."@en .
+
+di:hasTrendWindow a owl:DatatypeProperty ;
+    rdfs:domain di:SupervisionConfiguration ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has trend window"@en ;
+    rdfs:comment "W: the window over which the sustained-decline slope is evaluated."@en .
+
+di:hasTrendSlopeThreshold a owl:DatatypeProperty ;
+    rdfs:domain di:SupervisionConfiguration ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has trend slope threshold"@en ;
+    rdfs:comment "ε_W: the magnitude of negative slope (per hour) that constitutes a sustained decline."@en .
+
+di:hasPredictionHorizon a owl:DatatypeProperty ;
+    rdfs:domain di:SupervisionConfiguration ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has prediction horizon"@en ;
+    rdfs:comment "T_p: the planning horizon over which a forecast floor crossing triggers resilience evaluation."@en .
+
+di:hasManagementFloor a owl:DatatypeProperty ;
+    rdfs:domain di:SupervisionConfiguration ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has management floor"@en ;
+    rdfs:comment "φ_DI^{m}: the configured DI management floor for the vessel and mode; used by T_pred and the resilience margin. Not an operational-state threshold."@en .
+
+di:triggeredAt a owl:DatatypeProperty ;
+    rdfs:domain di:ResilienceTrigger ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "triggered at"@en .
+
+di:hasPreviousValue a owl:DatatypeProperty ;
+    rdfs:domain di:DIUpdateEvent ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has previous value"@en .
+
+di:hasNewValue a owl:DatatypeProperty ;
+    rdfs:domain di:DIUpdateEvent ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has new value"@en .
+
+di:hasDampingFactor a owl:DatatypeProperty ;
+    rdfs:domain di:RiskPropagationParameter ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has damping factor"@en ;
+    rdfs:comment "ρ_h in [0,1): the damping factor of the propagation recurrence for hazard class h. Necessary but not sufficient for convergence; the spectral-radius condition spr(ρ_h·W^h) < 1 is checked by the external calculation."@en .
+
+di:hasConvergenceTolerance a owl:DatatypeProperty ;
+    rdfs:domain di:RiskPropagationParameter ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has convergence tolerance"@en ;
+    rdfs:comment "Iteration stops when the maximum node-wise change in propagated risk falls below this tolerance."@en .
+
+di:hasAggregationOperator a owl:DatatypeProperty ;
+    rdfs:domain di:DICalculationMethod ;
+    rdfs:range xsd:string ;
+    rdfs:label "has aggregation operator"@en ;
+    rdfs:comment "The operator used to aggregate per-hazard-class risk at a node: MAX (default, conservative) or another validated aggregator where the hazard model supports accumulation."@en .
 
 ##############################################################################
 # END warrant-di.ttl
