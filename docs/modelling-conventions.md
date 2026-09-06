@@ -70,7 +70,7 @@ Use a controlled vocabulary class when the set of values is small and stable, va
 | `cdm:HazardClass` | CYBER_THREAT, PHYSICAL_FAILURE, DATA_LOSS | ontology revision (each new class must declare its admissible dependency types) |
 | `obs:MonitoringLevel` | COMPONENT_LEVEL, FUNCTION_LEVEL, SYSTEM_LEVEL | closed |
 | `di:ResilienceTriggerType` | ATTRIBUTE_BREACH, SUSTAINED_DECLINE, PREDICTED_FLOOR_CROSSING | closed (the three terms of the resilience criterion) |
-| `mit:ResponseStrategyType` | RECONFIGURATION, REDUNDANCY_ACTIVATION, VIRTUAL_SENSOR_SUBSTITUTION, COMMUNICATION_REROUTING, SAFE_DEGRADED_MODE, RECOVERY, OPERATOR_ESCALATION | ontology revision |
+| `mit:ResponseStrategyType` | RECONFIGURATION, LOGICAL_ISOLATION, REDUNDANCY_ACTIVATION, VIRTUAL_SENSOR_SUBSTITUTION, COMMUNICATION_REROUTING, SAFE_DEGRADED_MODE, RECOVERY, ENHANCED_MONITORING, OPERATOR_ESCALATION | ontology revision |
 | `mit:ResiliencePosture` | FAIL_OPERATIONAL, FAIL_SAFE | closed |
 | `mit:AuthorisationStatus` | AUTHORISATION_PENDING, AUTHORISED, REJECTED, OVERRIDDEN | ontology revision |
 | `assr:ClaimStatus` | CLAIM_SUPPORTED, CLAIM_CHALLENGED, CLAIM_UNSUPPORTED | ontology revision |

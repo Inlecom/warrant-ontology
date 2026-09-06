@@ -16,7 +16,7 @@ In plain terms: it defines what words like *Deviation*, *Hazard*, *Dependability
 
 ## 2. Ontology at a glance
 
-The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 68 named individuals · 3,054 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 2,360 triples) demonstrate realistic scenarios; the LL4 GNSS failover example instantiates every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
+The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,060 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 2,360 triples) demonstrate realistic scenarios; the LL4 GNSS failover example instantiates every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
 
 ---
 
@@ -131,7 +131,7 @@ A fully **client-side** single-page application. Nothing is sent to an external 
 
 What you can do:
 - Click any of the **9 module buttons** to load that module's classes and properties
-- Click **Full Ontology** to load all 9 modules (2,100+ triples)
+- Click **Full Ontology** to load all 9 modules (3,000+ triples)
 - Click any **Living Lab example button** (LL1–LL4) — loads instance data overlaid on the full ontology so individual nodes connect to their classes
 - Pan, zoom, drag nodes to explore
 - Click any node — right panel shows IRI, module, label, and full description
@@ -153,7 +153,7 @@ Internal pipeline:
 merge_ontology.py  -->  dist/warrant-all-merged.ttl
         |
 prepare_widoco.py  -->  dist/warrant-widoco-input.ttl
-   (strips 9 module ontology headers, adds rdfs:isDefinedBy to 318 terms,
+   (strips 9 module ontology headers, adds rdfs:isDefinedBy to every term,
     injects single ontology IRI so WIDOCO recognises all terms as local)
         |
     WIDOCO jar      -->  docs/html/
@@ -167,7 +167,7 @@ http://localhost:8000/docs/html/index-en.html
 
 Sections generated:
 - **Overview** — ontology metadata, version, authors, download links
-- **Cross-reference** — Classes (159) · Object Properties (99) · Data Properties (39) · Named Individuals (21)
+- **Cross-reference** — Classes (200) · Object Properties (194) · Data Properties (128) · Named Individuals (70)
 - Each entry displays the `rdfs:label` and full `rdfs:comment` from the TTL source
 
 ---

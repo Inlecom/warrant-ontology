@@ -23,7 +23,7 @@ The WARRaNT ontology is the semantic specification of the WARRaNT continuous-ass
 
 ## What is Inside the KG
 
-- Semantic class and property definitions (200 classes, 194 object properties, 128 datatype properties, 68 named individuals across nine modules).
+- Semantic class and property definitions (200 classes, 194 object properties, 128 datatype properties, 70 named individuals across nine modules).
 - Controlled vocabularies: deviation types, operational states, operational modes, dependency types, asset roles, hazard classes, monitoring levels, trigger types, strategy types, postures, authorisation, claim and obligation statuses, execution lifecycle states.
 - Latest health events, attribute values, node scores, indices and states, triggers, evaluations, executions, claims and evidence.
 - Governed configuration (weights, thresholds, floors, damping, decision weights) with version and approval.

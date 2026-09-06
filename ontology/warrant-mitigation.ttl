@@ -77,7 +77,7 @@ mit:MitigationAction a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Mitigation Action"@en ;
-    rdfs:comment "A response alternative that reduces risk, restores an attribute, or limits DI degradation. Typed by mit:hasStrategyType (reconfiguration, redundancy activation, virtual-sensor substitution, communication rerouting, safe-degraded mode, recovery, operator escalation), carries a default resilience posture (mit:hasDefaultPosture), may implement a design-time control (mit:implementsControl), and may require authorisation from a human operator role (mit:requiresAuthorisationFrom). Its evaluation for a specific trigger is a mit:ResponseEvaluation; its coordinated execution is a mit:ResponseExecution."@en .
+    rdfs:comment "A response alternative that reduces risk, restores an attribute, or limits DI degradation. Typed by mit:hasStrategyType (reconfiguration, logical isolation, redundancy activation, virtual-sensor substitution, communication rerouting, safe-degraded mode, recovery, enhanced monitoring, operator escalation), carries a default resilience posture (mit:hasDefaultPosture), may implement a design-time control (mit:implementsControl), and may require authorisation from a human operator role (mit:requiresAuthorisationFrom). Its evaluation for a specific trigger is a mit:ResponseEvaluation; its coordinated execution is a mit:ResponseExecution."@en .
 
 mit:FailoverProcedure a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
@@ -126,15 +126,17 @@ mit:ResilienceSupervisor a owl:Class ;
 
 mit:ResponseStrategyType a owl:Class ;
     rdfs:label "Response Strategy Type"@en ;
-    rdfs:comment "Closed controlled vocabulary of the resilience strategies IRDS can coordinate. Named individuals only; adding a value requires ontology revision."@en .
+    rdfs:comment "Closed controlled vocabulary of the resilience strategies IRDS can coordinate: the seven kinds named in the framework paper plus logical isolation and enhanced monitoring, which the paper's cybersecurity section and the IRDS patent figure list as distinct mitigation classes. Named individuals only; adding a value requires ontology revision."@en .
 
-mit:RECONFIGURATION             a mit:ResponseStrategyType ; rdfs:label "RECONFIGURATION"@en ;             rdfs:comment "Reconfigure the system or function to continue delivery."@en .
+mit:RECONFIGURATION             a mit:ResponseStrategyType ; rdfs:label "RECONFIGURATION"@en ;             rdfs:comment "Reconfigure the system or function to continue delivery (technical reconfiguration)."@en .
+mit:LOGICAL_ISOLATION           a mit:ResponseStrategyType ; rdfs:label "LOGICAL_ISOLATION"@en ;           rdfs:comment "Isolate a subsystem, zone, or conduit logically (network segmentation, service disablement, trusted-source substitution) to contain a cyber threat or a faulty element while the rest of the function continues."@en .
 mit:REDUNDANCY_ACTIVATION       a mit:ResponseStrategyType ; rdfs:label "REDUNDANCY_ACTIVATION"@en ;       rdfs:comment "Activate a redundant resource or channel."@en .
 mit:VIRTUAL_SENSOR_SUBSTITUTION a mit:ResponseStrategyType ; rdfs:label "VIRTUAL_SENSOR_SUBSTITUTION"@en ; rdfs:comment "Replace a failed, degraded or untrusted physical sensor by a virtual-sensor estimate (obs:substitutesFor)."@en .
 mit:COMMUNICATION_REROUTING     a mit:ResponseStrategyType ; rdfs:label "COMMUNICATION_REROUTING"@en ;     rdfs:comment "Reroute data or control traffic over an alternative link or conduit."@en .
 mit:SAFE_DEGRADED_MODE          a mit:ResponseStrategyType ; rdfs:label "SAFE_DEGRADED_MODE"@en ;          rdfs:comment "Transition to a safe-degraded operating mode with reduced capability."@en .
-mit:RECOVERY                    a mit:ResponseStrategyType ; rdfs:label "RECOVERY"@en ;                    rdfs:comment "Restore the affected element or service (restart, restore from backup, repair)."@en .
-mit:OPERATOR_ESCALATION         a mit:ResponseStrategyType ; rdfs:label "OPERATOR_ESCALATION"@en ;         rdfs:comment "Escalate the situation to the responsible human operator for decision or intervention."@en .
+mit:RECOVERY                    a mit:ResponseStrategyType ; rdfs:label "RECOVERY"@en ;                    rdfs:comment "Restore the affected element or service (restart, restore from backup, repair), including recovery sequencing across dependent elements."@en .
+mit:ENHANCED_MONITORING         a mit:ResponseStrategyType ; rdfs:label "ENHANCED_MONITORING"@en ;         rdfs:comment "Increase monitoring intensity or coverage of the affected node (higher sampling, additional observers, cross-checks) without changing its configuration; the response for a Degraded state and an accompaniment to recovery."@en .
+mit:OPERATOR_ESCALATION         a mit:ResponseStrategyType ; rdfs:label "OPERATOR_ESCALATION"@en ;         rdfs:comment "Escalate the situation to the responsible human operator for decision or intervention (human-in-the-loop escalation)."@en .
 
 mit:ResiliencePosture a owl:Class ;
     rdfs:label "Resilience Posture"@en ;
