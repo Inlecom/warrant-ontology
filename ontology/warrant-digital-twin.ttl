@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Digital Twin Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/digital-twin
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
 #          warrant-di.ttl, warrant-scenario.ttl, warrant-mitigation.ttl
@@ -39,8 +39,8 @@
     rdfs:comment "Semantic interface between the WARRaNT KG and the Digital Twin: views, visualisation layers, decision-support, and update channels in both directions. The twin consumes the graph (visualises, monitors, executes scenarios, stores results) and produces inputs to it: as an observation data source (state estimation, virtual sensing, health events) and as the producer of DI forecasts used by the Dependability Supervisor and REDS. The KG defines what the DT executes, visualises, stores and forecasts — it does NOT implement the DT."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################

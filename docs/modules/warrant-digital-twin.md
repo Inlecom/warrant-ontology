@@ -6,7 +6,7 @@
 **Prefix:** `dt:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/digital-twin`  
 **Imports:** `warrant-core`, `warrant-davom`, `warrant-di`, `warrant-mitigation`, `warrant-observation`, `warrant-scenario`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

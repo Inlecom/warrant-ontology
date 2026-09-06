@@ -6,7 +6,7 @@
 **Prefix:** `di:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/dependability-index`  
 **Imports:** `warrant-assurance`, `warrant-cdm`, `warrant-core`, `warrant-davom`, `warrant-observation`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

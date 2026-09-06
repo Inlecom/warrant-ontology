@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: LL1 Containership Navigation/Comms OT Dependability
 # Instance namespace: https://warrant-project.eu/data/ll1#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 # Source documents:
 #   - Block diagram of bridge navigation equipment (H/N 4009/4010/4011/4012)
 #   - Bridge navigation equipment interconnection interface details

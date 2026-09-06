@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: LL4 ROC–Boatmaster Handover (LL4 Use Case 2)
 # Instance namespace: https://warrant-project.eu/data/ll4#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: MAI-W approaching Kreekraksluizen lock.
 # ROC operator initiates handover to onboard boatmaster.

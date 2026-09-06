@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: GNSS Failover (LL4 — MAI-W)
 # Instance namespace: https://warrant-project.eu/data/ll4#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: GNSS signal loss on the MAI-W inland tanker (LL4, Antwerp–Emden)
 # under remote operation. This is the proof-of-concept instantiation cited by

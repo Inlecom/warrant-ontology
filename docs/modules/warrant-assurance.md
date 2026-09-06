@@ -6,7 +6,7 @@
 **Prefix:** `assr:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/assurance`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-observation`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

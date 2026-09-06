@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: Communication Degradation (LL4 — MAI-W)
 # Instance namespace: https://warrant-project.eu/data/ll4#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: ROC–vessel communication link degrades with packet loss and latency.
 # Network monitoring service detects MORE packet loss and LATE command feedback.

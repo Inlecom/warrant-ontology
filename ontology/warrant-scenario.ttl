@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Scenario Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/scenario
 # Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-di.ttl
 ##############################################################################
@@ -23,8 +23,8 @@
     rdfs:comment "Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios, their executions (with a lifecycle state) and results. A scenario result may carry a projected operational state and produce di:DIForecast individuals, which is how Digital Twin what-if analysis feeds the Supervisor's predictive trigger and REDS's expected-effect estimates. The KG defines scenario semantics; the external scenario engine (typically hosted by the Digital Twin) executes them."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################

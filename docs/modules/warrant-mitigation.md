@@ -6,7 +6,7 @@
 **Prefix:** `mit:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/mitigation`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-davom`, `warrant-di`, `warrant-observation`, `warrant-scenario`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

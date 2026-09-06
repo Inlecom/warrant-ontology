@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: Smart Container Fire Detection (LL2 — AELER)
 # Instance namespace: https://warrant-project.eu/data/ll2#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: A smart container must reliably detect fire and communicate
 # bidirectionally with the vessel. The container operates in two modes:

@@ -6,7 +6,7 @@
 **Prefix:** `obs:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/observation`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-davom`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

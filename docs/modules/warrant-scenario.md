@@ -6,7 +6,7 @@
 **Prefix:** `scen:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/scenario`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-di`  
-**Version:** `1.0.0`
+**Version:** `0.10-poc`
 
 ---
 

@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Dependability Index (DI) Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/dependability-index
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
 #          warrant-cdm.ttl, warrant-assurance.ttl
@@ -93,8 +93,8 @@ a predictive service), calculation methods, and update events. All computation i
 external; the KG stores inputs, configured parameters, results and audit events."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################

@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT DAVOM Ontology Module
 # Dependability-Aware Vessel Operational Model
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/davom
 # Imports: warrant-core.ttl
 ##############################################################################
@@ -21,8 +21,8 @@
     rdfs:comment "Dependability-Aware Vessel Operational Model: vessel, systems, functions, components, typed dependencies, data flows, communication links, IEC 62443 security zones and conduits, primary/supporting asset roles, and human operator roles."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################

@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Observation Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/observation
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-cdm.ttl
 #
@@ -39,8 +39,8 @@
     rdfs:comment "Metrics, observers, measurements, analytical services, health events (detected and predicted), detection events, node health monitors, virtual sensors, data quality, human observations, and operator inputs."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################

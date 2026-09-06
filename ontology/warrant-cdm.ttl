@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT CDM Ontology Module
 # Causal Dependability Model (STPA / HAZOP)
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/cdm
 # Imports: warrant-core.ttl, warrant-davom.ttl
 #
@@ -41,8 +41,8 @@
     rdfs:comment "Causal Dependability Model supporting STPA/HAZOP/FMEA and cybersecurity-assessment causal reasoning. Core chain: Deviation → Hazard → Risk → Accident → Loss, with design-time Controls (and their residual risk) mitigating Hazards and ThreatScenarios, and HazardClasses declaring the dependency types over which each class of risk propagates."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
