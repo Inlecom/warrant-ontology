@@ -3,7 +3,8 @@
 #
 # Runs on every push and merge request.
 # Stages:
-#   validate  — parse all Turtle files, check namespace policy
+#   validate  — parse all Turtle files, check namespace policy, run SHACL over
+#               the examples, check generated module docs are current
 #   build     — merge all modules into dist/ (artefact, not committed)
 #
 # Optional stage (uncomment when Docker-in-Docker is available on your runner):
@@ -30,8 +31,9 @@ stages:
 validate-turtle:
   stage: validate
   script:
-    - pip install rdflib --quiet
-    - python scripts/validate_turtle.py
+    - pip install rdflib pyshacl --quiet
+    - python scripts/validate_turtle.py --shacl
+    - python scripts/generate_module_docs.py --check
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
