@@ -86,6 +86,16 @@ ll4:ROCToVesselHandoverLink a davom:CommunicationLink ;
 
 ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselHandoverLink .
 
+# ── Metric (monitored via the handover link; raw stream external) ─────────
+
+ll4:HandoverCompletionTimeMetric a obs:PerformanceMetric ;
+    warrant:hasName "Handover Completion Time" ;
+    warrant:hasDescription "Elapsed time from ROC handover initiation to confirmed boatmaster control; the LATE deviation is evaluated against the lock-approach time window." ;
+    obs:hasUnit "s" ;
+    obs:hasExternalTimeSeriesId "timeseries.handover.completion_time.MAI-W" .
+
+ll4:ROCToVesselHandoverLink obs:hasDependabilityMetric ll4:HandoverCompletionTimeMetric .
+
 # ── Operational Mode ────────────────────────────────────────────────────────
 
 # Using warrant:HandoverMode named individual from warrant-core.ttl
