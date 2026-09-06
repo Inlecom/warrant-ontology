@@ -7,8 +7,10 @@
 # Date: 2026-06-05
 #
 # This module defines shared superclasses, common properties, context classes,
-# OperationalMode controlled vocabulary, and VisualisableEntity / AgentEntity.
-# All other modules import this module.
+# OperationalMode controlled vocabulary, VisualisableEntity / AgentEntity,
+# the CalculationMethod identity class, context scoping (appliesUnder),
+# lineage (derivedFrom), and configuration governance (approvedBy,
+# hasApprovalStatus). All other modules import this module.
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
@@ -55,7 +57,12 @@ warrant:VisualisableEntity a owl:Class ;
 
 warrant:CalculationEntity a owl:Class ;
     rdfs:label "Calculation Entity"@en ;
-    rdfs:comment "Abstract superclass for entities that store calculation inputs, weights, results, and traceability. Numerical computation is always external; the KG stores only the artefacts."@en .
+    rdfs:comment "Abstract superclass for entities that store calculation inputs, configured parameters (weights, thresholds, windows, horizons, floors, damping factors), results, and traceability. Numerical computation is always external; the KG stores only the artefacts. Subclasses live in the module that owns the quantity (e.g. assr:AssuranceWeight, di:DIThreshold, di:SupervisionConfiguration, di:DIForecast, assr:AssuranceLevel)."@en .
+
+warrant:CalculationMethod a owl:Class ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Calculation Method"@en ;
+    rdfs:comment "Identity and version of an externally executed calculation (node dependability score, confidence fusion, typed risk propagation, hierarchical DI aggregation, state assignment, resilience trigger evaluation, response ranking, Assurance Level, Certification Readiness). The KG records which method produced a result; it never encodes the formula itself. Module-specific subclasses (e.g. di:DICalculationMethod) may add parameters."@en .
 
 warrant:ExternalReference a owl:Class ;
     rdfs:label "External Reference"@en ;
@@ -141,6 +148,23 @@ warrant:HandoverMode a warrant:OperationalMode ;
 
 
 ##############################################################################
+# Common Object Properties (context scoping and lineage)
+##############################################################################
+
+warrant:appliesUnder a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range warrant:ContextEntity ;
+    rdfs:label "applies under"@en ;
+    rdfs:comment "Scopes a configured artefact (attribute weight, aggregation weight, state threshold, DI management floor, supervision configuration, requirement, control) to the operational context in which it is valid: an OperationalMode, a VoyageSegment, or another ContextEntity. Weights, thresholds and floors are configured per vessel and mode/mission phase and are not comparable across contexts; an artefact with no appliesUnder triple is context-independent."@en .
+
+warrant:derivedFrom a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range owl:Thing ;
+    rdfs:label "derived from"@en ;
+    rdfs:comment "Generic lineage relation: the subject was produced from the object by filtering, correlation, fusion, aggregation, or calculation. Used for health events enriched from other health events, fused attribute values derived from per-source estimates, evidence derived from observations, and calculated values that must retain provenance to their design-time source, analytical model, or runtime observation. Informative alignment: warrant:derivedFrom ≈ prov:wasDerivedFrom."@en .
+
+
+##############################################################################
 # Common Datatype Properties
 ##############################################################################
 
@@ -192,6 +216,18 @@ warrant:validTo a owl:DatatypeProperty ;
     rdfs:domain owl:Thing ;
     rdfs:range xsd:dateTime ;
     rdfs:label "valid to"@en .
+
+warrant:approvedBy a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "approved by"@en ;
+    rdfs:comment "The technical or assurance authority (organisation, role, or board) that approved a governed configuration artefact: ontology release, hazard model, threshold set, weight set, management floor, approved control, or claim wording. Together with warrant:hasVersion, warrant:validFrom and warrant:validTo this records that such artefacts change only through a validated, versioned, and approved process rather than through runtime learning."@en .
+
+warrant:hasApprovalStatus a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "has approval status"@en ;
+    rdfs:comment "Governance status of a configuration artefact, e.g. PROPOSED, APPROVED, SUPERSEDED. Operational learning may propose a change (PROPOSED); it enters the operational baseline only when APPROVED."@en .
 
 ##############################################################################
 # END warrant-core.ttl
