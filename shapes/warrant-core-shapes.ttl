@@ -16,6 +16,7 @@
 # The deprecation shape on cdm:Deviation warns but does not block validation.
 ##############################################################################
 
+@prefix :        <https://warrant-project.eu/shapes#> .
 @prefix sh:      <http://www.w3.org/ns/shacl#> .
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
 @prefix davom:   <https://warrant-project.eu/ontology/davom#> .
@@ -78,9 +79,18 @@
         sh:message "VesselFunction must have exactly one warrant:hasName (xsd:string)." ;
     ] ;
     sh:property [
-        sh:path obs:hasDependabilityMetric ;
+        # A function is monitored either directly or through the systems, subsystems,
+        # components, or communication links that support it (metrics live on the
+        # operational entity that has them; see docs/modelling-conventions.md).
+        sh:path [ sh:alternativePath (
+            obs:hasDependabilityMetric
+            ( davom:isSupportedBy obs:hasDependabilityMetric )
+            ( davom:isSupportedBy davom:hasComponent obs:hasDependabilityMetric )
+            ( davom:isSupportedBy davom:hasSubsystem davom:hasComponent obs:hasDependabilityMetric )
+            ( davom:usesCommunicationLink obs:hasDependabilityMetric )
+        ) ] ;
         sh:minCount 1 ;
-        sh:message "VesselFunction must have at least one obs:hasDependabilityMetric triple." ;
+        sh:message "VesselFunction must be monitored: at least one obs:hasDependabilityMetric on the function itself or on a supporting system, subsystem, component, or communication link." ;
     ] .
 
 
