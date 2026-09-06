@@ -15,6 +15,13 @@
 #
 # NOTE: VoyageSegment and OperationalMode are NOT defined here.
 # They are warrant:ContextEntity subclasses in warrant-core.ttl.
+#
+# Design-time knowledge encoded here (HAZOP, FMEA/FMECA, STPA, cybersecurity
+# assessment): deviations, hazards, risks (with the safety/environmental/
+# financial impact triple), accidents, losses, failure modes (with FMEA
+# scores), controls with residual risk, threat scenarios and vulnerabilities,
+# and hazard classes with their admissible propagation dependency types.
+# Runtime responses are NOT defined here (see warrant-mitigation.ttl).
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
@@ -31,7 +38,7 @@
     a owl:Ontology ;
     owl:imports <warrant-core.ttl> , <warrant-davom.ttl> ;
     rdfs:label "WARRaNT CDM Module"@en ;
-    rdfs:comment "Causal Dependability Model supporting STPA/HAZOP-style causal reasoning. Core chain: Deviation → Hazard → Risk → Accident → Loss."@en ;
+    rdfs:comment "Causal Dependability Model supporting STPA/HAZOP/FMEA and cybersecurity-assessment causal reasoning. Core chain: Deviation → Hazard → Risk → Accident → Loss, with design-time Controls (and their residual risk) mitigating Hazards and ThreatScenarios, and HazardClasses declaring the dependency types over which each class of risk propagates."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
     dcterms:modified "2026-06-08"^^xsd:date ;
@@ -71,7 +78,37 @@ cdm:Risk a owl:Class ;
     rdfs:subClassOf cdm:CausalEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Risk"@en ;
-    rdfs:comment "Evaluation of a hazard in terms of likelihood, impact, and severity."@en .
+    rdfs:comment "Evaluation of a hazard or threat scenario in terms of likelihood and impact. Impact is assessed separately against safety, environmental, and financial consequences (cdm:hasSafetyImpact, cdm:hasEnvironmentalImpact, cdm:hasFinancialImpact); the governing value recorded in cdm:hasImpact is the most severe of the three. A Risk may be the design-time (inherent) evaluation of a hazard or the residual risk that remains after a Control (cdm:hasResidualRisk). Tag with cdm:hasHazardClass so that runtime risk propagation follows only the admissible dependency types."@en .
+
+cdm:Control a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Control"@en ;
+    rdfs:comment "A design-time safeguard, control, or mitigation measure identified by HAZOP, FMEA/FMECA, STPA, or the cybersecurity risk assessment and approved as part of the baseline (e.g. redundant positioning source, message authentication at a gateway, bridge access restriction). A Control mitigates one or more Hazards or ThreatScenarios (cdm:mitigates) and is associated with the residual risk that remains once it is in place (cdm:hasResidualRisk) rather than with an assumption of elimination. Design-time controls are what the Living Dependability Case holds claims about; the runtime response that activates or relies on a control is a mit:MitigationAction linked back through mit:implementsControl. Governed configuration: version, approval, and validity are recorded with warrant:hasVersion, warrant:approvedBy, warrant:validFrom/validTo."@en .
+
+cdm:ThreatScenario a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Threat Scenario"@en ;
+    rdfs:comment "A cybersecurity threat scenario identified at design time through Cyber-HAZOP, STPA-Sec, vulnerability assessment, or threat modelling (e.g. GNSS spoofing, AIS manipulation, denial of service, unauthorised access, malware propagation, compromised software update, adversarial input to an AI-enabled function). Represented with the same principles as a safety Hazard: it exploits a Vulnerability, degrades assets, is evaluated as a Risk (likelihood and the impact triple), is mitigated by Controls, and carries a HazardClass (normally cdm:CYBER_THREAT). Distinct from scen:Threat, which is a trigger for a what-if Scenario."@en .
+
+cdm:Vulnerability a owl:Class ;
+    rdfs:subClassOf cdm:CausalEntity ;
+    rdfs:label "Vulnerability"@en ;
+    rdfs:comment "A weakness of a component, system, link, data flow, zone, or procedure that a ThreatScenario can exploit (e.g. an unauthenticated broadcast protocol, an unpatched firmware version recorded in warrant:hasSoftwareVersion, an open update interface). Link to the affected asset with cdm:affectsComponent or cdm:degrades."@en .
+
+cdm:HazardClass a owl:Class ;
+    rdfs:label "Hazard Class"@en ;
+    rdfs:comment "Closed controlled vocabulary of hazard classes used by typed risk propagation. Each class is associated at design time with the admissible set of dependency types through which its mechanism can act (cdm:propagatesOverDependencyType); the in-neighbourhood of a node during propagation contains only nodes connected by a dependency of an admissible type for that class. Risk is propagated per class and aggregated conservatively per node (max) by the external calculation. Adding a class requires ontology revision, as for DependabilityIndexState."@en .
+
+cdm:CYBER_THREAT     a cdm:HazardClass ; rdfs:label "CYBER_THREAT"@en ;
+    rdfs:comment "Cyber threats and attacks. Propagates over DATA and CONTROL dependencies (and CYBER paths and conduits), never over PHYSICAL dependencies."@en ;
+    cdm:propagatesOverDependencyType davom:DATA , davom:CONTROL , davom:CYBER .
+cdm:PHYSICAL_FAILURE a cdm:HazardClass ; rdfs:label "PHYSICAL_FAILURE"@en ;
+    rdfs:comment "Mechanical, thermal, electrical, or structural failure. Propagates over PHYSICAL and FUNCTIONAL dependencies."@en ;
+    cdm:propagatesOverDependencyType davom:PHYSICAL , davom:FUNCTIONAL .
+cdm:DATA_LOSS        a cdm:HazardClass ; rdfs:label "DATA_LOSS"@en ;
+    rdfs:comment "Loss, unavailability, or corruption of a data product (e.g. position, heading, context data). Propagates over DATA and FUNCTIONAL dependencies."@en ;
+    cdm:propagatesOverDependencyType davom:DATA , davom:FUNCTIONAL .
 
 cdm:Deviation a owl:Class ;
     rdfs:subClassOf cdm:CausalEntity ;
@@ -224,7 +261,7 @@ cdm:CausalScenario a owl:Class ;
 cdm:FailureMode a owl:Class ;
     rdfs:subClassOf cdm:CausalEntity ;
     rdfs:label "Failure Mode"@en ;
-    rdfs:comment "A specific way in which a component or system can fail (FMEA terminology). A FailureMode affects one or more components (cdm:affectsComponent) and produces one or more deviations (cdm:producesDeviation) that propagate into the causal chain. Use cdm:hasDeviationType on the produced Deviation to tag the HAZOP guideword."@en .
+    rdfs:comment "A specific way in which a component or system can fail (FMEA/FMECA terminology). A FailureMode affects one or more components (cdm:affectsComponent) and produces one or more deviations (cdm:producesDeviation) that propagate into the causal chain. Use cdm:hasDeviationType on the produced Deviation to tag the HAZOP guideword. FMEA ratings are carried as typed integers (cdm:hasSeverityScore, cdm:hasOccurrenceScore, cdm:hasDetectionScore, cdm:hasRiskPriorityNumber) so that existing FMEA worksheets can be loaded as intended inputs to the graph."@en .
 
 
 ##############################################################################
@@ -232,16 +269,45 @@ cdm:FailureMode a owl:Class ;
 ##############################################################################
 
 cdm:hasDeviationType a owl:ObjectProperty ;
-    rdfs:domain cdm:Deviation ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw ) ] ;
     rdfs:range cdm:DeviationType ;
     rdfs:label "has deviation type"@en ;
-    rdfs:comment "Tags a Deviation individual with a HAZOP guideword from the cdm:DeviationType controlled vocabulary."@en .
+    rdfs:comment "Tags a Deviation individual (or a ProcessModelFlaw, whose divergence from reality is itself a guideword-typed condition, typically WRONG or LATE) with a HAZOP guideword from the cdm:DeviationType controlled vocabulary."@en .
+
+cdm:hasHazardClass a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:ThreatScenario cdm:Risk cdm:FailureMode ) ] ;
+    rdfs:range cdm:HazardClass ;
+    rdfs:label "has hazard class"@en ;
+    rdfs:comment "Assigns the hazard class that governs how the risk attached to this hazard, threat scenario, failure mode, or risk propagates through the dependency graph."@en .
+
+cdm:propagatesOverDependencyType a owl:ObjectProperty ;
+    rdfs:domain cdm:HazardClass ;
+    rdfs:range davom:DependencyType ;
+    rdfs:label "propagates over dependency type"@en ;
+    rdfs:comment "Declares, per hazard class, the admissible dependency types through which that class of risk can act. Declared in the ontology at design time, not inferred at runtime. This restriction is what distinguishes typed propagation from a single weighted adjacency."@en .
+
+cdm:mitigates a owl:ObjectProperty ;
+    rdfs:domain cdm:Control ;
+    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:ThreatScenario cdm:FailureMode ) ] ;
+    rdfs:label "mitigates"@en ;
+    rdfs:comment "A design-time Control reduces the likelihood or impact of a Hazard, ThreatScenario, or FailureMode. The remaining exposure is recorded with cdm:hasResidualRisk."@en .
+
+cdm:hasResidualRisk a owl:ObjectProperty ;
+    rdfs:domain cdm:Control ;
+    rdfs:range cdm:Risk ;
+    rdfs:label "has residual risk"@en ;
+    rdfs:comment "The Risk that remains once this Control is in place. The design-time assessment iterates until residual risk meets the stated objectives; the same quantity is then tracked by monitoring during operation."@en .
+
+cdm:exploits a owl:ObjectProperty ;
+    rdfs:domain cdm:ThreatScenario ;
+    rdfs:range cdm:Vulnerability ;
+    rdfs:label "exploits"@en .
 
 cdm:affectsComponent a owl:ObjectProperty ;
-    rdfs:domain cdm:FailureMode ;
+    rdfs:domain [ owl:unionOf ( cdm:FailureMode cdm:Vulnerability ) ] ;
     rdfs:range davom:Component ;
     rdfs:label "affects component"@en ;
-    rdfs:comment "Links a FailureMode to the component(s) it degrades or puts out of service. Range is davom:Component; subclasses (SensorComponent, SoftwareComponent, etc.) are valid."@en .
+    rdfs:comment "Links a FailureMode or Vulnerability to the component(s) it degrades, puts out of service, or exposes. Range is davom:Component; subclasses (SensorComponent, SoftwareComponent, etc.) are valid."@en .
 
 cdm:producesDeviation a owl:ObjectProperty ;
     rdfs:domain cdm:FailureMode ;
@@ -261,9 +327,10 @@ cdm:mayLeadTo a owl:ObjectProperty ;
     rdfs:label "may lead to"@en .
 
 cdm:isEvaluatedAs a owl:ObjectProperty ;
-    rdfs:domain cdm:Hazard ;
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:ThreatScenario ) ] ;
     rdfs:range cdm:Risk ;
-    rdfs:label "is evaluated as"@en .
+    rdfs:label "is evaluated as"@en ;
+    rdfs:comment "Links a Hazard or ThreatScenario to its risk evaluation (likelihood and impact triple)."@en .
 
 cdm:realises a owl:ObjectProperty ;
     rdfs:domain cdm:Accident ;
@@ -296,9 +363,10 @@ cdm:updates a owl:ObjectProperty ;
     rdfs:label "updates"@en .
 
 cdm:degrades a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:Deviation ) ] ;
-    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction ) ] ;
-    rdfs:label "degrades"@en .
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:Deviation cdm:ThreatScenario cdm:Vulnerability ) ] ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction davom:DataFlow davom:CommunicationLink davom:SecurityZone ) ] ;
+    rdfs:label "degrades"@en ;
+    rdfs:comment "Links a hazard, deviation, threat scenario, or vulnerability to the assets it degrades or exposes: components, systems, functions, data flows, communication links (including conduits), or security zones."@en .
 
 cdm:isCriticalUnder a owl:ObjectProperty ;
     rdfs:domain cdm:Hazard ;
@@ -346,10 +414,31 @@ cdm:hasEnvironmentalCondition a owl:ObjectProperty ;
 ##############################################################################
 
 cdm:hasLikelihood    a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has likelihood"@en .
-cdm:hasImpact        a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has impact"@en .
+cdm:hasImpact        a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has impact"@en ;
+    rdfs:comment "Governing impact value: the most severe of cdm:hasSafetyImpact, cdm:hasEnvironmentalImpact, and cdm:hasFinancialImpact when the triple is recorded; otherwise the single assessed impact."@en .
 cdm:hasSeverity      a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has severity"@en .
 cdm:hasRiskLevel     a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:string  ; rdfs:label "has risk level"@en .
 cdm:hasAcceptability a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:string  ; rdfs:label "has acceptability"@en .
+
+# Impact triple (cybersecurity risk assessment methodology): impact assessed
+# separately per consequence category; the governing value is the maximum.
+cdm:hasSafetyImpact        a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has safety impact"@en ;
+    rdfs:comment "Impact on safety of life and the vessel, normalised to [0,1]."@en .
+cdm:hasEnvironmentalImpact a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has environmental impact"@en ;
+    rdfs:comment "Impact on the environment (pollution, emissions), normalised to [0,1]."@en .
+cdm:hasFinancialImpact     a owl:DatatypeProperty ; rdfs:domain cdm:Risk ; rdfs:range xsd:decimal ; rdfs:label "has financial impact"@en ;
+    rdfs:comment "Financial and operational impact (loss of mission, damage, liability), normalised to [0,1]."@en .
+
+# FMEA / FMECA ratings on FailureMode (integer scales as used in the worksheets,
+# typically 1–10; RPN = severity × occurrence × detection).
+cdm:hasSeverityScore      a owl:DatatypeProperty ; rdfs:domain cdm:FailureMode ; rdfs:range xsd:integer ; rdfs:label "has severity score"@en ;
+    rdfs:comment "FMEA severity rating (S) of the failure mode's effect."@en .
+cdm:hasOccurrenceScore    a owl:DatatypeProperty ; rdfs:domain cdm:FailureMode ; rdfs:range xsd:integer ; rdfs:label "has occurrence score"@en ;
+    rdfs:comment "FMEA occurrence/probability rating (O)."@en .
+cdm:hasDetectionScore     a owl:DatatypeProperty ; rdfs:domain cdm:FailureMode ; rdfs:range xsd:integer ; rdfs:label "has detection score"@en ;
+    rdfs:comment "FMEA detection rating (D): higher means harder to detect before effect."@en .
+cdm:hasRiskPriorityNumber a owl:DatatypeProperty ; rdfs:domain cdm:FailureMode ; rdfs:range xsd:integer ; rdfs:label "has risk priority number"@en ;
+    rdfs:comment "FMEA risk priority number (RPN) as recorded in the worksheet. Stored, not computed, by the KG."@en .
 
 ##############################################################################
 # END warrant-cdm.ttl
