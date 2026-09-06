@@ -2,34 +2,71 @@
 # WARRaNT Assurance Ontology Module
 # Version: 1.0.0
 # IRI: https://warrant-project.eu/ontology/assurance
-# Imports: warrant-core.ttl, warrant-cdm.ttl
+# Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-observation.ttl
 #
-# Stores calculation inputs, weights, assurance attribute values, penalties,
-# assurance score results, and traceability links.
-# Numerical computation (A_v = Σ βₖ·xᵥ^(k)) is performed EXTERNALLY.
+# Two responsibilities:
+#
+# 1. Attribute scoring (input to the Dependability Index):
+#    the six dependability attributes, their per-node values d_i,k(t) with
+#    per-source confidence, mode-dependent attribute weights α_i,k, and the
+#    Node Dependability Score ND_i(t) stored as assr:AssuranceScore.
+#
+#    Formulas (METADATA ONLY; all computation is external):
+#      Confidence-aware fusion of source estimates s of attribute k at node i:
+#        d_i,k(t) = Σ_s q_i,k,s(t)·d_i,k,s(t) / Σ_s q_i,k,s(t)
+#      Node Dependability Score:
+#        ND_i(t) = Σ_k α_i,k^{m(t)} · d_i,k(t),   α ≥ 0, Σ_k α_i,k = 1, 0 ≤ d ≤ 1
+#      (α depends on mission phase / mode m(t), node criticality and approved
+#      operating policy; weights are controlled configuration, not learned.)
+#
+# 2. The Living Dependability Case (LDC) core: Requirement, AssuranceClaim,
+#    Assumption, Evidence and the traceable chain Evidence → AssuranceClaim →
+#    Requirement; EvidenceObligation (declared reference set for evidence
+#    completeness); Nonconformity; AssuranceLevel AL(t); CertificationReadiness
+#    CR(t); and the LivingDependabilityCase container.
+#
+#    Formulas (METADATA ONLY):
+#      AL(t) = ω_EC·EC + ω_EF·EF + ω_EQ·EQ + ω_MC·MC + ω_TC·TC,  ω ≥ 0, Σ ω = 1
+#      CR(t) = g(AL(t), RC(t), NC(t))   (g agreed with the assuring authority)
+#      DI_sys(t) and AL(t) are always reported together (di:isReportedWith).
+#
+# WARRaNT does not define what evidence an authority must accept. The KG
+# records which evidence supports or challenges which claim, which requirement
+# a claim addresses, and which obligations are present, missing, stale or
+# untraceable; sufficiency and acceptance remain with the assuring stakeholder.
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
 @prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
 @prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
 <https://warrant-project.eu/ontology/assurance>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> , <warrant-observation.ttl> ;
     rdfs:label "WARRaNT Assurance Module"@en ;
-    rdfs:comment """Assurance attributes, values, scores, weights, degradation, penalties, evidence,
-and calculation inputs for the WARRaNT dependability assurance model.
+    rdfs:comment """Attribute scoring and the Living Dependability Case.
 
-Node assurance formula (metadata only; computation is external):
-  A_v(t) = Σ βₖ · x_v^(k),  Σ βₖ = 1
-where x_v^(k) is the normalised value of dependability attribute k for node v,
-and βₖ is its weight. AssuranceScore stores the computed result A_v(t)."""@en ;
+Attribute scoring: the six dependability attributes (reliability, safety, cybersecurity,
+resilience, availability, maintainability), per-node attribute values d_i,k(t) with
+per-source confidence and fusion lineage, mode-dependent attribute weights α_i,k, and the
+Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t) stored as assr:AssuranceScore.
+
+Living Dependability Case: Requirement, AssuranceClaim (with status), Assumption, Evidence
+and the traceable chain Evidence → AssuranceClaim → Requirement; EvidenceObligation as the
+declared reference set for evidence completeness; Nonconformity; AssuranceLevel (EC, EF, EQ,
+MC, TC); CertificationReadiness (AL, RC, NC); LivingDependabilityCase container.
+
+All formulas are metadata only; computation is external and results are written back with
+their method identity and timestamp."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
     dcterms:modified "2026-06-08"^^xsd:date ;
@@ -59,17 +96,19 @@ assr:Maintainability a owl:Class ; rdfs:subClassOf assr:AssuranceAttribute ; rdf
 assr:AssuranceAttributeValue a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
     rdfs:label "Assurance Attribute Value"@en ;
-    rdfs:comment "The normalised value x_v^(k) for a specific assurance attribute of a node."@en .
+    rdfs:comment "The normalised operational value d_i,k(t) in [0,1] of dependability attribute k for node i, measured or estimated against the applicable requirements before the risk penalty. A value may be a single-source estimate (assr:hasValueSource with assr:hasSourceConfidence q_i,k,s: a Node Health Monitor, physical or virtual sensor, analytical model, Digital Twin, or operator observation) or the fused value derived from several such estimates (warrant:derivedFrom the source values). Confidence controls the relative influence of a source in fusion; it is not multiplied into the value. The attribute value is what the Dependability Supervisor compares against the configured attribute thresholds to assign the attribute-wise operational state (di:hasAttributeState). Timestamp: assr:assessedAt; freshness: warrant:validTo."@en .
 
 assr:AssuranceScore a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
-    rdfs:label "Assurance Score"@en ;
-    rdfs:comment "The computed assurance state A_v(t) of a node. Feeds into the DI calculation via di:contributesTo."@en .
+    rdfs:label "Node Dependability Score (ND)"@en ;
+    skos:altLabel "Assurance Score"@en ;
+    rdfs:comment "The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Feeds into the node DI via di:contributesTo (DI_i = clip(ND_i − β_i·R_i)). Computed externally; timestamp via di:calculatedAt."@en .
 
 assr:AssuranceWeight a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
     rdfs:label "Assurance Weight"@en ;
-    rdfs:comment "The weight βₖ for an assurance attribute in the node assurance formula."@en .
+    rdfs:comment "The attribute weight α_i,k in the Node Dependability Score. Weights depend on mission phase or operating mode, node criticality and approved operating policy: scope with warrant:appliesUnder, and record warrant:hasVersion, warrant:approvedBy, warrant:validFrom/validTo. They are configured for a defined vessel and mode and controlled rather than learned; consequently neither node scores nor the system DI are comparable across vessels or differently weighted modes."@en .
 
 assr:AssuranceDegradation a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
@@ -84,12 +123,87 @@ assr:Penalty a owl:Class ;
 assr:Evidence a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
     rdfs:label "Evidence"@en ;
-    rdfs:comment "Evidence supporting or undermining an assurance claim. Informative alignment: assr:Evidence ≈ gsn:Evidence."@en .
+    rdfs:comment "An item of operational or design-time evidence organised by the Living Dependability Case. It supports or challenges one or more AssuranceClaims (assr:supportsClaim, assr:challengesClaim), is sourced from an observation, health event, measurement, virtual-sensor output, operator input, response record, or analytical output (assr:hasEvidenceSource), and carries collection time, validity window (warrant:validFrom/validTo, i.e. freshness), quality (assr:hasEvidenceQuality) and lineage (warrant:derivedFrom). Operator decisions and AI-generated recommendations enter the assurance record as evidence in their own right. Informative alignment: assr:Evidence ≈ gsn:Evidence / SACM Artifact."@en .
 
 assr:CalculationInput a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
     rdfs:label "Calculation Input"@en ;
     rdfs:comment "An input to the external assurance calculation (e.g. a normalised attribute value, weight)."@en .
+
+
+##############################################################################
+# Living Dependability Case — core classes
+##############################################################################
+
+assr:Requirement a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Requirement"@en ;
+    rdfs:comment "A regulatory, stakeholder-declared, or assurance-objective requirement at the top of the traceability chain Evidence → AssuranceClaim → Requirement. Requirements are declared by the assuring stakeholder (operator, flag Administration, classification society, insurer) and may reference the governing standard through assr:hasRequirementSource (→ warrant:ExternalReference). Requirement wording is version-controlled (warrant:hasVersion, warrant:approvedBy) and may be scoped to a context (warrant:appliesUnder). Regulatory-requirement coverage RC(t) for Certification Readiness is computed over requirements whose category is REGULATORY."@en .
+
+assr:AssuranceClaim a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Assurance Claim"@en ;
+    rdfs:comment "A claim that a requirement is met for a system element or function (e.g. 'navigation integrity is maintained during remote transit'). A claim addresses a Requirement (assr:addressesRequirement), applies to an OperationalEntity (assr:claimAppliesTo), declares the evidence it expects (assr:expectsEvidence), and carries a status (assr:hasClaimStatus) that is updated from evidence and context during operation. The approved claim wording, its requirement baseline and acceptance rules are version-controlled (warrant:hasVersion, warrant:approvedBy) and are never rewritten by runtime data. A claim is revalidated only when the stakeholder-defined evidence and authority conditions are satisfied. Informative alignment: ≈ gsn:Goal / SACM Claim."@en .
+
+assr:ClaimStatus a owl:Class ;
+    rdfs:label "Claim Status"@en ;
+    rdfs:comment "Controlled vocabulary for the current evidential status of an AssuranceClaim. Named individuals only."@en .
+
+assr:CLAIM_SUPPORTED   a assr:ClaimStatus ; rdfs:label "CLAIM_SUPPORTED"@en ;   rdfs:comment "Current evidence supports the claim and no unresolved challenge exists (includes a claim revalidated after a challenge)."@en .
+assr:CLAIM_CHALLENGED  a assr:ClaimStatus ; rdfs:label "CLAIM_CHALLENGED"@en ;  rdfs:comment "An evidence item, health event, or invalidated assumption challenges the claim and the challenge has not been resolved."@en .
+assr:CLAIM_UNSUPPORTED a assr:ClaimStatus ; rdfs:label "CLAIM_UNSUPPORTED"@en ; rdfs:comment "No current, valid supporting evidence exists for the claim (e.g. expected evidence missing or stale)."@en .
+
+assr:Assumption a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Assumption"@en ;
+    rdfs:comment "A design-time assumption, scope statement, or context condition on which hazard analyses, controls, and claims rest (e.g. 'GNSS augmentation is available on the route', 'the ROC link latency stays below 300 ms'). Represented explicitly so that its invalidation during operation becomes a monitored condition: a HealthEvent may challenge it (assr:isChallengedBy), its validity status is tracked (assr:hasValidityStatus), and a changed or invalidated assumption may challenge previously supported claims (assr:challengesClaim). Informative alignment: ≈ SACM Assumption / gsn:Assumption."@en .
+
+assr:EvidenceObligation a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Evidence Obligation"@en ;
+    rdfs:comment "A stakeholder-declared expectation that a particular kind of evidence exists, is current, and is traceable for a claim or requirement (e.g. 'a position-integrity measurement not older than 60 s from an independent source'). Obligations form the declared reference set against which evidence completeness EC(t) is computed: EC reports how many obligations are PRESENT (fulfilled by current, traceable evidence), rather than counting whatever data happen to have been collected. An unfulfilled obligation is MISSING; one fulfilled only by evidence outside its validity period is STALE; one fulfilled by evidence whose source cannot be traced is UNTRACEABLE. Obligations do not declare that fulfilling evidence is acceptable; acceptance remains with the stakeholder."@en .
+
+assr:ObligationStatus a owl:Class ;
+    rdfs:label "Obligation Status"@en ;
+    rdfs:comment "Controlled vocabulary for the fulfilment status of an EvidenceObligation. Named individuals only."@en .
+
+assr:PRESENT     a assr:ObligationStatus ; rdfs:label "PRESENT"@en ;     rdfs:comment "Fulfilled by evidence that is current and traceable."@en .
+assr:MISSING     a assr:ObligationStatus ; rdfs:label "MISSING"@en ;     rdfs:comment "No fulfilling evidence exists."@en .
+assr:STALE       a assr:ObligationStatus ; rdfs:label "STALE"@en ;       rdfs:comment "Fulfilling evidence exists but is outside its validity period."@en .
+assr:UNTRACEABLE a assr:ObligationStatus ; rdfs:label "UNTRACEABLE"@en ; rdfs:comment "Fulfilling evidence exists but its source or provenance cannot be traced."@en .
+
+assr:Nonconformity a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:label "Nonconformity"@en ;
+    rdfs:comment "A recorded departure from a requirement (audit finding, unmet regulatory obligation, invalidated control) with a severity and a resolution status. The number and severity of unresolved nonconformities is the NC(t) term of Certification Readiness."@en .
+
+assr:AssuranceLevel a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Assurance Level (AL)"@en ;
+    rdfs:comment "Confidence in the evidence supporting the dependability assessment: AL(t) = ω_EC·EC(t) + ω_EF·EF(t) + ω_EQ·EQ(t) + ω_MC·MC(t) + ω_TC·TC(t), where EC is evidence completeness against the declared obligations, EF evidence freshness, EQ evidence quality (validity, confidence, operating-domain coverage, uncertainty, agreement between independent sources), MC monitoring coverage, and TC traceability coverage. The component values, the result, the weight set used (assr:usesAssuranceLevelWeights) and the method identity (assr:usesCalculationMethod) are stored; the calculation is external; timestamp via di:calculatedAt. AL describes confidence in the evidence, not operational condition: it must always be reported together with the system DI (di:isReportedWith). A high DI with low AL is apparently satisfactory operation on weak evidence; a low DI with high AL is a well-supported finding of degradation. Neither changes the attribute-wise operational state. AL is a management indicator, not a regulatory or classification decision."@en .
+
+assr:AssuranceLevelWeightSet a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Assurance Level Weight Set"@en ;
+    rdfs:comment "The stakeholder-defined weights ω_EC, ω_EF, ω_EQ, ω_MC, ω_TC (non-negative, summing to one) and any mandatory gates used to compute an AssuranceLevel. Controlled configuration: warrant:hasVersion, warrant:approvedBy, warrant:appliesUnder."@en .
+
+assr:CertificationReadiness a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Certification Readiness (CR)"@en ;
+    rdfs:comment "An evidence-management indicator, not a certification decision: CR(t) = g(AL(t), RC(t), NC(t)), increasing with the Assurance Level and with regulatory-requirement coverage RC and decreasing with unresolved nonconformities NC. The mapping g, its weights and any acceptance thresholds must be agreed with the relevant assurance, regulatory or classification authority; the KG stores the inputs, the result and the method identity only."@en .
+
+assr:LivingDependabilityCase a owl:Class ;
+    rdfs:subClassOf assr:AssuranceEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Living Dependability Case (LDC)"@en ;
+    rdfs:comment "The assurance layer container for a vessel or system: it extends the design-time dependability case with current operational evidence while preserving the approved baseline (assr:hasBaselineVersion), configuration history and authority boundaries. It consolidates requirements, claims, assumptions, evidence and nonconformities (assr:includes*), the current Assurance Level and Certification Readiness, and the runtime records that downstream modules attach to it: system DI, operational state and resilience triggers (di:isRecordedIn) and evaluated and executed responses with their authority, timing, posture and outcome (mit:isRecordedIn). The LDC maintains the traceable path from Evidence through AssuranceClaim to Requirement continuously rather than only at audit points; it does not determine what evidence an authority must accept."@en .
 
 
 ##############################################################################
@@ -137,6 +251,132 @@ assr:hasPenalty a owl:ObjectProperty ;
     rdfs:range assr:Penalty ;
     rdfs:label "has penalty"@en .
 
+assr:hasValueSource a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceAttributeValue ;
+    rdfs:range obs:DataSource ;
+    rdfs:label "has value source"@en ;
+    rdfs:comment "The source s (Node Health Monitor, sensor, virtual sensor, analytical service, Digital Twin, or operator role) that supplied this single-source attribute estimate. A fused value has no direct source; it is warrant:derivedFrom its source values."@en .
+
+
+##############################################################################
+# Living Dependability Case — object properties
+##############################################################################
+
+assr:addressesRequirement a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceClaim ;
+    rdfs:range assr:Requirement ;
+    rdfs:label "addresses requirement"@en ;
+    rdfs:comment "The requirement this claim argues is satisfied. Second link of the chain Evidence → AssuranceClaim → Requirement."@en .
+
+assr:claimAppliesTo a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceClaim ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:Control ) ] ;
+    rdfs:label "claim applies to"@en ;
+    rdfs:comment "The system element, function, or design-time control the claim is about."@en .
+
+assr:hasClaimStatus a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceClaim ;
+    rdfs:range assr:ClaimStatus ;
+    rdfs:label "has claim status"@en ;
+    rdfs:comment "Current status from the assr:ClaimStatus vocabulary. Updated from evidence and context at runtime; the claim wording itself is not."@en .
+
+assr:supportsClaim a owl:ObjectProperty ;
+    rdfs:domain assr:Evidence ;
+    rdfs:range assr:AssuranceClaim ;
+    rdfs:label "supports claim"@en ;
+    rdfs:comment "First link of the chain Evidence → AssuranceClaim → Requirement: this evidence item supports the claim."@en .
+
+assr:challengesClaim a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( assr:Evidence obs:HealthEvent assr:Assumption ) ] ;
+    rdfs:range assr:AssuranceClaim ;
+    rdfs:label "challenges claim"@en ;
+    rdfs:comment "An evidence item, a health event (e.g. GNSS spoofing detected), or a changed/invalidated assumption challenges a previously supported claim, prompting its re-evaluation."@en .
+
+assr:hasEvidenceSource a owl:ObjectProperty ;
+    rdfs:domain assr:Evidence ;
+    rdfs:range [ owl:unionOf ( obs:EvidenceEntity obs:DataSource ) ] ;
+    rdfs:label "has evidence source"@en ;
+    rdfs:comment "The observation-layer item this evidence is drawn from (a Measurement, HealthEvent, VirtualSensorOutput, HumanObservation, OperatorInput, Status) or the data source that produced it. Raw telemetry stays in the external store; the graph holds identifiers, provenance and interpreted evidential meaning."@en .
+
+assr:expectsEvidence a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( assr:AssuranceClaim assr:Requirement ) ] ;
+    rdfs:range assr:EvidenceObligation ;
+    rdfs:label "expects evidence"@en ;
+    rdfs:comment "Declares an obligation that belongs to the reference set for this claim or requirement."@en .
+
+assr:isFulfilledBy a owl:ObjectProperty ;
+    rdfs:domain assr:EvidenceObligation ;
+    rdfs:range assr:Evidence ;
+    rdfs:label "is fulfilled by"@en ;
+    rdfs:comment "The evidence item(s) currently satisfying this obligation."@en .
+
+assr:hasObligationStatus a owl:ObjectProperty ;
+    rdfs:domain assr:EvidenceObligation ;
+    rdfs:range assr:ObligationStatus ;
+    rdfs:label "has obligation status"@en .
+
+assr:assumptionAppliesTo a owl:ObjectProperty ;
+    rdfs:domain assr:Assumption ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:CausalEntity assr:AssuranceClaim warrant:ContextEntity ) ] ;
+    rdfs:label "assumption applies to"@en ;
+    rdfs:comment "The element, hazard analysis artefact, claim, or context the assumption underpins."@en .
+
+assr:isChallengedBy a owl:ObjectProperty ;
+    rdfs:domain assr:Assumption ;
+    rdfs:range [ owl:unionOf ( obs:HealthEvent assr:Evidence ) ] ;
+    rdfs:label "is challenged by"@en ;
+    rdfs:comment "The health event or evidence that indicates the assumption may no longer hold. This is how an assumption's invalidation becomes a monitored condition."@en .
+
+assr:relatesToRequirement a owl:ObjectProperty ;
+    rdfs:domain assr:Nonconformity ;
+    rdfs:range assr:Requirement ;
+    rdfs:label "relates to requirement"@en .
+
+assr:hasRequirementSource a owl:ObjectProperty ;
+    rdfs:domain assr:Requirement ;
+    rdfs:range warrant:ExternalReference ;
+    rdfs:label "has requirement source"@en ;
+    rdfs:comment "The standard, regulation, guideline, or class notation from which the requirement derives (IMO, IACS UR E26/E27, IEC 62443, DNV RP, stakeholder policy)."@en .
+
+assr:usesAssuranceLevelWeights a owl:ObjectProperty ;
+    rdfs:domain assr:AssuranceLevel ;
+    rdfs:range assr:AssuranceLevelWeightSet ;
+    rdfs:label "uses assurance level weights"@en .
+
+assr:derivesFromAssuranceLevel a owl:ObjectProperty ;
+    rdfs:domain assr:CertificationReadiness ;
+    rdfs:range assr:AssuranceLevel ;
+    rdfs:label "derives from assurance level"@en .
+
+assr:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( assr:AssuranceScore assr:AssuranceAttributeValue assr:AssuranceLevel assr:CertificationReadiness ) ] ;
+    rdfs:range warrant:CalculationMethod ;
+    rdfs:label "uses calculation method"@en ;
+    rdfs:comment "Identity and version of the external method that produced this score, fused value, Assurance Level, or readiness indicator."@en .
+
+assr:caseAppliesTo a owl:ObjectProperty ;
+    rdfs:domain assr:LivingDependabilityCase ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "case applies to"@en ;
+    rdfs:comment "The vessel or system of systems this Living Dependability Case is maintained for."@en .
+
+assr:includesRequirement   a owl:ObjectProperty ; rdfs:domain assr:LivingDependabilityCase ; rdfs:range assr:Requirement ;      rdfs:label "includes requirement"@en .
+assr:includesClaim         a owl:ObjectProperty ; rdfs:domain assr:LivingDependabilityCase ; rdfs:range assr:AssuranceClaim ;   rdfs:label "includes claim"@en .
+assr:includesEvidence      a owl:ObjectProperty ; rdfs:domain assr:LivingDependabilityCase ; rdfs:range assr:Evidence ;         rdfs:label "includes evidence"@en .
+assr:includesAssumption    a owl:ObjectProperty ; rdfs:domain assr:LivingDependabilityCase ; rdfs:range assr:Assumption ;       rdfs:label "includes assumption"@en .
+assr:includesNonconformity a owl:ObjectProperty ; rdfs:domain assr:LivingDependabilityCase ; rdfs:range assr:Nonconformity ;    rdfs:label "includes nonconformity"@en .
+
+assr:hasAssuranceLevel a owl:ObjectProperty ;
+    rdfs:domain assr:LivingDependabilityCase ;
+    rdfs:range assr:AssuranceLevel ;
+    rdfs:label "has assurance level"@en ;
+    rdfs:comment "The current (latest) Assurance Level of the case; earlier values remain as history with their timestamps."@en .
+
+assr:hasCertificationReadiness a owl:ObjectProperty ;
+    rdfs:domain assr:LivingDependabilityCase ;
+    rdfs:range assr:CertificationReadiness ;
+    rdfs:label "has certification readiness"@en .
+
 
 ##############################################################################
 # Datatype Properties
@@ -146,27 +386,135 @@ assr:hasScoreValue a owl:DatatypeProperty ;
     rdfs:domain assr:AssuranceScore ;
     rdfs:range xsd:decimal ;
     rdfs:label "has score value"@en ;
-    rdfs:comment "The computed assurance score A_v(t). Stored by the external calculation service."@en .
+    rdfs:comment "The computed Node Dependability Score ND_i(t) in [0,1]. Stored by the external calculation service."@en .
 
 assr:hasAttributeValueNumber a owl:DatatypeProperty ;
     rdfs:domain assr:AssuranceAttributeValue ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has attribute value number"@en .
+    rdfs:label "has attribute value number"@en ;
+    rdfs:comment "The normalised attribute value d_i,k(t) in [0,1]; 1 is the best condition."@en .
+
+assr:hasSourceConfidence a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceAttributeValue ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has source confidence"@en ;
+    rdfs:comment "The explicit confidence q_i,k,s(t) in [0,1] the source attaches to this single-source estimate. Used as the weight in confidence-aware fusion and as an input to evidence quality; never applied as a separate degradation of the value."@en .
+
+assr:assessedAt a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceAttributeValue ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "assessed at"@en ;
+    rdfs:comment "Time at which this attribute value was measured, estimated, or fused."@en .
 
 assr:hasWeightValue a owl:DatatypeProperty ;
     rdfs:domain assr:AssuranceWeight ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has weight value"@en .
+    rdfs:label "has weight value"@en ;
+    rdfs:comment "The attribute weight α_i,k (non-negative; the weights of one node under one context sum to one)."@en .
 
 assr:hasPenaltyValue a owl:DatatypeProperty ;
     rdfs:domain assr:Penalty ;
     rdfs:range xsd:decimal ;
     rdfs:label "has penalty value"@en .
 
-# NOTE: di:calculatedAt (used on AssuranceScore individuals) is declared in
-# warrant-di.ttl, which imports this module and includes assr:AssuranceScore
-# in its domain. It is not redeclared here (namespace policy: a module does not
-# define terms in another module's namespace).
+##############################################################################
+# Living Dependability Case — datatype properties
+##############################################################################
+
+assr:declaredBy a owl:DatatypeProperty ;
+    rdfs:domain [ owl:unionOf ( assr:Requirement assr:EvidenceObligation assr:AssuranceLevelWeightSet ) ] ;
+    rdfs:range xsd:string ;
+    rdfs:label "declared by"@en ;
+    rdfs:comment "The assuring stakeholder (operator, flag Administration, classification society, insurer, project) that declared this requirement, obligation, or weight set."@en .
+
+assr:hasRequirementCategory a owl:DatatypeProperty ;
+    rdfs:domain assr:Requirement ;
+    rdfs:range xsd:string ;
+    rdfs:label "has requirement category"@en ;
+    rdfs:comment "REGULATORY, STAKEHOLDER, or ASSURANCE_OBJECTIVE. Regulatory-requirement coverage RC(t) is computed over REGULATORY requirements."@en .
+
+assr:claimStatusUpdatedAt a owl:DatatypeProperty ;
+    rdfs:domain assr:AssuranceClaim ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "claim status updated at"@en .
+
+assr:hasValidityStatus a owl:DatatypeProperty ;
+    rdfs:domain assr:Assumption ;
+    rdfs:range xsd:string ;
+    rdfs:label "has validity status"@en ;
+    rdfs:comment "VALID, UNDER_REVIEW, or INVALIDATED."@en .
+
+assr:evidenceCollectedAt a owl:DatatypeProperty ;
+    rdfs:domain assr:Evidence ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "evidence collected at"@en ;
+    rdfs:comment "Time the evidence was collected or generated. Freshness is judged against warrant:validTo and the obligation's validity period."@en .
+
+assr:hasEvidenceQuality a owl:DatatypeProperty ;
+    rdfs:domain assr:Evidence ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has evidence quality"@en ;
+    rdfs:comment "Quality of this evidence item in [0,1], combining source confidence, validity, operating-domain coverage, uncertainty, and agreement with independent sources. Input to EQ(t)."@en .
+
+assr:hasValidityPeriod a owl:DatatypeProperty ;
+    rdfs:domain assr:EvidenceObligation ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has validity period"@en ;
+    rdfs:comment "Maximum age of fulfilling evidence before the obligation becomes STALE."@en .
+
+assr:hasNonconformitySeverity a owl:DatatypeProperty ;
+    rdfs:domain assr:Nonconformity ;
+    rdfs:range xsd:string ;
+    rdfs:label "has nonconformity severity"@en ;
+    rdfs:comment "MINOR, MAJOR, or CRITICAL, as classified by the assuring stakeholder."@en .
+
+assr:isResolved a owl:DatatypeProperty ;
+    rdfs:domain assr:Nonconformity ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is resolved"@en .
+
+# Assurance Level components and result (all in [0,1])
+assr:hasEvidenceCompleteness  a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has evidence completeness"@en ;
+    rdfs:comment "EC(t): share of declared evidence obligations that are PRESENT."@en .
+assr:hasEvidenceFreshness     a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has evidence freshness"@en ;
+    rdfs:comment "EF(t): currency of the supporting evidence relative to the obligations' validity periods."@en .
+assr:hasEvidenceQualityValue  a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has evidence quality value"@en ;
+    rdfs:comment "EQ(t): aggregate quality of the supporting evidence."@en .
+assr:hasMonitoringCoverage    a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has monitoring coverage"@en ;
+    rdfs:comment "MC(t): share of relevant nodes and attributes under active monitoring."@en .
+assr:hasTraceabilityCoverage  a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has traceability coverage"@en ;
+    rdfs:comment "TC(t): share of claims with a complete, traceable Evidence → Claim → Requirement chain."@en .
+assr:hasAssuranceLevelValue   a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevel ; rdfs:range xsd:decimal ; rdfs:label "has assurance level value"@en ;
+    rdfs:comment "AL(t), the weighted result."@en .
+
+# Assurance Level weights (non-negative, summing to one)
+assr:hasCompletenessWeight  a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevelWeightSet ; rdfs:range xsd:decimal ; rdfs:label "has completeness weight"@en ;  rdfs:comment "ω_EC"@en .
+assr:hasFreshnessWeight     a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevelWeightSet ; rdfs:range xsd:decimal ; rdfs:label "has freshness weight"@en ;     rdfs:comment "ω_EF"@en .
+assr:hasQualityWeight       a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevelWeightSet ; rdfs:range xsd:decimal ; rdfs:label "has quality weight"@en ;       rdfs:comment "ω_EQ"@en .
+assr:hasMonitoringWeight    a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevelWeightSet ; rdfs:range xsd:decimal ; rdfs:label "has monitoring weight"@en ;    rdfs:comment "ω_MC"@en .
+assr:hasTraceabilityWeight  a owl:DatatypeProperty ; rdfs:domain assr:AssuranceLevelWeightSet ; rdfs:range xsd:decimal ; rdfs:label "has traceability weight"@en ;  rdfs:comment "ω_TC"@en .
+
+# Certification Readiness inputs and result
+assr:hasRequirementCoverage a owl:DatatypeProperty ; rdfs:domain assr:CertificationReadiness ; rdfs:range xsd:decimal ; rdfs:label "has requirement coverage"@en ;
+    rdfs:comment "RC(t): coverage of applicable regulatory requirements by supported claims, in [0,1]."@en .
+assr:hasUnresolvedNonconformityCount a owl:DatatypeProperty ; rdfs:domain assr:CertificationReadiness ; rdfs:range xsd:integer ; rdfs:label "has unresolved nonconformity count"@en ;
+    rdfs:comment "Number of unresolved nonconformities at the time of calculation."@en .
+assr:hasNonconformitySeverityIndex a owl:DatatypeProperty ; rdfs:domain assr:CertificationReadiness ; rdfs:range xsd:decimal ; rdfs:label "has nonconformity severity index"@en ;
+    rdfs:comment "NC(t): severity-weighted measure of unresolved nonconformities as defined by the agreed mapping g."@en .
+assr:hasReadinessValue a owl:DatatypeProperty ; rdfs:domain assr:CertificationReadiness ; rdfs:range xsd:decimal ; rdfs:label "has readiness value"@en ;
+    rdfs:comment "CR(t) in [0,1]."@en .
+
+assr:hasBaselineVersion a owl:DatatypeProperty ;
+    rdfs:domain assr:LivingDependabilityCase ;
+    rdfs:range xsd:string ;
+    rdfs:label "has baseline version"@en ;
+    rdfs:comment "Version of the approved design-time dependability case (claim wording, requirement baseline, model structure, acceptance rules) that this living case extends. Runtime data never rewrites the baseline; changes enter through the governed, versioned approval process."@en .
+
+# NOTE: di:calculatedAt (used on AssuranceScore, AssuranceLevel and
+# CertificationReadiness individuals) is declared in warrant-di.ttl, which
+# imports this module and includes these classes in its domain. It is not
+# redeclared here (namespace policy: a module does not define terms in another
+# module's namespace).
 
 ##############################################################################
 # END warrant-assurance.ttl
