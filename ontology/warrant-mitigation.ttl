@@ -230,15 +230,16 @@ mit:isTriggeredBy a owl:ObjectProperty ;
     rdfs:comment "The deviation, hazard, health event, resilience trigger, or state in response to which the action was recommended or executed."@en .
 
 mit:hasStrategyType a owl:ObjectProperty ;
-    rdfs:domain mit:MitigationAction ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
     rdfs:range mit:ResponseStrategyType ;
-    rdfs:label "has strategy type"@en .
+    rdfs:label "has strategy type"@en ;
+    rdfs:comment "The kind of resilience strategy this response represents. Applies to a FailoverProcedure as much as to a MitigationAction: a procedure is a response with a strategy, not merely the thing an action activates."@en .
 
 mit:hasDefaultPosture a owl:ObjectProperty ;
-    rdfs:domain mit:MitigationAction ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
     rdfs:range mit:ResiliencePosture ;
     rdfs:label "has default posture"@en ;
-    rdfs:comment "The assurance posture (fail-operational or fail-safe) this action places the system in when executed as designed."@en .
+    rdfs:comment "The assurance posture (fail-operational or fail-safe) this action or procedure places the system in when executed as designed."@en .
 
 mit:implementsControl a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
@@ -247,10 +248,10 @@ mit:implementsControl a owl:ObjectProperty ;
     rdfs:comment "The design-time control (safeguard) that this runtime action activates or relies on. Links the runtime response back to the hazard analysis and to the claims the Living Dependability Case holds about the control."@en .
 
 mit:requiresAuthorisationFrom a owl:ObjectProperty ;
-    rdfs:domain mit:MitigationAction ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
     rdfs:range davom:HumanOperatorRole ;
     rdfs:label "requires authorisation from"@en ;
-    rdfs:comment "The human operator role whose authorisation is a precondition for executing this action. An action with no such triple may be authorised automatically within the configured authority allocation."@en .
+    rdfs:comment "The human operator role whose authorisation is a precondition for executing this action or procedure. A response with no such triple may be authorised automatically within the configured authority allocation."@en .
 
 
 ##############################################################################
