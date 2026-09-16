@@ -213,9 +213,10 @@ davom:hasSubsystem a owl:ObjectProperty ;
     rdfs:label "has subsystem"@en .
 
 davom:hasComponent a owl:ObjectProperty ;
-    rdfs:domain davom:Subsystem ;
+    rdfs:domain [ owl:unionOf ( davom:System davom:Subsystem ) ] ;
     rdfs:range davom:Component ;
-    rdfs:label "has component"@en .
+    rdfs:label "has component"@en ;
+    rdfs:comment "Component membership. A System may hold components directly where no subsystem decomposition is modelled, or through a Subsystem where it is; both are valid and the Living Lab inventories use both."@en .
 
 davom:dependsOn a owl:ObjectProperty ;
     rdfs:domain warrant:OperationalEntity ;
@@ -301,15 +302,15 @@ davom:participatesIn a owl:ObjectProperty ;
 
 davom:dependencySource a owl:ObjectProperty ;
     rdfs:domain davom:Dependency ;
-    rdfs:range warrant:OperationalEntity ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
     rdfs:label "dependency source"@en ;
-    rdfs:comment "The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target."@en .
+    rdfs:comment "The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target. Human operator roles are admissible at either end, which is what davom:HumanSupervisionDependency requires."@en .
 
 davom:dependencyTarget a owl:ObjectProperty ;
     rdfs:domain davom:Dependency ;
-    rdfs:range warrant:OperationalEntity ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
     rdfs:label "dependency target"@en ;
-    rdfs:comment "The downstream entity (consumer) of the dependency: the entity that depends on the source."@en .
+    rdfs:comment "The downstream entity (consumer) of the dependency: the entity that depends on the source. Human operator roles are admissible at either end."@en .
 
 davom:hasDependencyType a owl:ObjectProperty ;
     rdfs:domain davom:Dependency ;

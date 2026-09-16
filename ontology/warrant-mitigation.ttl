@@ -193,9 +193,9 @@ mit:matchesRule a owl:ObjectProperty ;
 
 mit:recommends a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( mit:MitigationRule cdm:Risk ) ] ;
-    rdfs:range mit:MitigationAction ;
+    rdfs:range [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
     rdfs:label "recommends"@en ;
-    rdfs:comment "A rule (or a design-time risk evaluation) names a candidate action. The runtime recommendation among candidates is mit:isRecommended on a ResponseEvaluation."@en .
+    rdfs:comment "A rule (or a design-time risk evaluation) names a candidate response: either a MitigationAction, or a FailoverProcedure where the rule points straight at an existing procedure rather than at an advisory wrapping it. The runtime recommendation among candidates is mit:isRecommended on a ResponseEvaluation."@en .
 
 mit:activates a owl:ObjectProperty ;
     rdfs:domain mit:MitigationAction ;

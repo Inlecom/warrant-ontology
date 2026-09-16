@@ -116,12 +116,12 @@ dependencies over which risk propagates.
 | `davom:carriesDataFlow` | `davom:CommunicationLink` ∪ `davom:System` ∪ `davom:Component` | `davom:DataFlow` | carries data flow |
 | `davom:connectsZone` | `davom:Conduit` | `davom:SecurityZone` | A Conduit joins two or more security zones; assert one triple per zone. |
 | `davom:controls` | `davom:Component` ∪ `davom:HumanOperatorRole` | `davom:Component` | controls |
-| `davom:dependencySource` | `davom:Dependency` | `warrant:OperationalEntity` | The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target. |
-| `davom:dependencyTarget` | `davom:Dependency` | `warrant:OperationalEntity` | The downstream entity (consumer) of the dependency: the entity that depends on the source. |
+| `davom:dependencySource` | `davom:Dependency` | `warrant:OperationalEntity` ∪ `warrant:AgentEntity` | The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target. Human operator roles are admissible at either end, which is what davom:HumanSupervisionDependency requires. |
+| `davom:dependencyTarget` | `davom:Dependency` | `warrant:OperationalEntity` ∪ `warrant:AgentEntity` | The downstream entity (consumer) of the dependency: the entity that depends on the source. Human operator roles are admissible at either end. |
 | `davom:dependsOn` | `warrant:OperationalEntity` | `warrant:OperationalEntity` | Simple traversal relation between operational entities. Use reified Dependency when weight, criticality, or redundancy level must be recorded. |
 | `davom:executes` | `davom:HumanOperatorRole` | `davom:OperationalProcedure` | executes |
 | `davom:hasAssetRole` | `warrant:OperationalEntity` ∪ `warrant:AgentEntity` | `davom:AssetRole` | Tags an operational entity or human operator role as a PRIMARY_ASSET or SUPPORTING_ASSET in the cybersecurity asset inventory. |
-| `davom:hasComponent` | `davom:Subsystem` | `davom:Component` | has component |
+| `davom:hasComponent` | `davom:System` ∪ `davom:Subsystem` | `davom:Component` | Component membership. A System may hold components directly where no subsystem decomposition is modelled, or through a Subsystem where it is; both are valid and the Living Lab inventories use both. |
 | `davom:hasDataFlow` | `davom:VesselFunction` ∪ `davom:System` ∪ `davom:Component` | `davom:DataFlow` | has data flow |
 | `davom:hasDependencyType` | `davom:Dependency` | `davom:DependencyType` | Tags a Dependency with one or more canonical propagation types from the davom:DependencyType vocabulary (FUNCTIONAL, DATA, CONTROL, PHYSICAL, CYBER). Used by typed risk propagation to decide whether a given hazard class may act through this dependency. |
 | `davom:hasFunction` | `davom:Vessel` | `davom:VesselFunction` | has function |

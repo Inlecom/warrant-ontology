@@ -305,9 +305,9 @@ cdm:exploits a owl:ObjectProperty ;
 
 cdm:affectsComponent a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:FailureMode cdm:Vulnerability ) ] ;
-    rdfs:range davom:Component ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:Subsystem ) ] ;
     rdfs:label "affects component"@en ;
-    rdfs:comment "Links a FailureMode or Vulnerability to the component(s) it degrades, puts out of service, or exposes. Range is davom:Component; subclasses (SensorComponent, SoftwareComponent, etc.) are valid."@en .
+    rdfs:comment "Links a FailureMode or Vulnerability to the element(s) it degrades, puts out of service, or exposes. Normally a Component and its subclasses (SensorComponent, SoftwareComponent, etc.); a System or Subsystem is admissible where the failure mode is analysed at that level, as in a software system whose data output goes stale."@en .
 
 cdm:producesDeviation a owl:ObjectProperty ;
     rdfs:domain cdm:FailureMode ;
@@ -317,9 +317,9 @@ cdm:producesDeviation a owl:ObjectProperty ;
 
 cdm:mayCause a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:UnsafeControlAction ) ] ;
-    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
+    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction cdm:ProcessModelFlaw ) ] ;
     rdfs:label "may cause"@en ;
-    rdfs:comment "Causal propagation within the CDM chain. The link from a Deviation, Hazard, or UnsafeControlAction to an assr:AssuranceDegradation is expressed by assr:causesAssuranceDegradation (declared in warrant-assurance, which imports this module), not by this property."@en .
+    rdfs:comment "Causal propagation within the CDM chain. A deviation or an unsafe input may also cause a ProcessModelFlaw, which is the STPA path by which a wrong or falsified input corrupts the controller's model of the process before any unsafe control action is issued. The link from a Deviation, Hazard, or UnsafeControlAction to an assr:AssuranceDegradation is expressed by assr:causesAssuranceDegradation (declared in warrant-assurance, which imports this module), not by this property."@en .
 
 cdm:mayLeadTo a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
