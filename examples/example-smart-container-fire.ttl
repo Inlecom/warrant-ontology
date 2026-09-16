@@ -645,10 +645,10 @@ ll2:UpstreamCommAssuranceScore    di:contributesTo ll2:DI_UpstreamComm .
 ll2:CyberAssuranceScore           di:contributesTo ll2:DI_Cyber .
 ll2:ContextAwarenessAssuranceScore di:contributesTo ll2:DI_ContextAwareness .
 
-ll2:DI_SensorDetection  di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_UpstreamComm     di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_Cyber            di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_ContextAwareness di:contributesTo ll2:DI_LL2_FireSystem .
+ll2:DI_SensorDetection  di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_UpstreamComm     di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_Cyber            di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_ContextAwareness di:aggregatesInto ll2:DI_LL2_FireSystem .
 
 ll2:DI_SensorDetection  di:appliesTo ll2:FireDetectionFunction .
 ll2:DI_UpstreamComm     di:appliesTo ll2:FireDetectionFunction .

@@ -112,7 +112,16 @@ ll4:ProcessModelFlawWrongVesselState a cdm:ProcessModelFlaw ;
     warrant:hasDescription "ROC operator believes vessel is in idle mode when it is still operating in ROT mode." ;
     cdm:hasDeviationType cdm:WRONG .
 
-ll4:RemoteOperatorProcessModel cdm:updates ll4:RemoteOperatorProcessModel .
+ll4:VesselStateFeedback a cdm:Feedback ;
+    warrant:hasName "Vessel State Feedback to the ROC" ;
+    warrant:hasDescription "Position, speed, heading and control-mode indications presented to the ROC operator over the handover link; the feedback that keeps the operator's process model aligned with the vessel." .
+
+ll4:VesselCourseAndModeProcess a cdm:ControlledProcess ;
+    warrant:hasName "Vessel Course and Control Mode (Controlled Process)" .
+
+ll4:VesselCourseAndModeProcess cdm:providesFeedback ll4:VesselStateFeedback .
+ll4:VesselStateFeedback cdm:updates ll4:RemoteOperatorProcessModel .
+ll4:HandoverControlAction cdm:actsOn ll4:VesselCourseAndModeProcess .
 
 # ── Unsafe Control Action ──────────────────────────────────────────────────
 
