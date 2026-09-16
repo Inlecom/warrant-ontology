@@ -14,7 +14,9 @@ typed per-hazard-class risk propagation, hierarchical DI aggregation,
 resilience triggers and forecasts, the REDS/IRDS decision layer, and the
 Living Dependability Case. Branch `feature/methodology-alignment-2026-09-06`.
 Inventory: 200 classes · 194 object properties · 128 datatype properties ·
-70 named individuals · 3,060 module triples (was 159 · 99 · 39 · 21 · 1,598).
+70 named individuals · 3,094 module triples (was 159 · 99 · 39 · 21 · 1,598).
+All five examples (2,577 triples) pass syntax, namespace, domain and range,
+and SHACL validation, and all ten competency queries return rows.
 
 ### Added
 - `warrant-core.ttl`: `warrant:CalculationMethod`; `warrant:appliesUnder` (context scoping of weights, thresholds, floors, requirements); `warrant:derivedFrom` (lineage); `warrant:approvedBy`, `warrant:hasApprovalStatus` (configuration governance).
@@ -29,7 +31,9 @@ Inventory: 200 classes · 194 object properties · 128 datatype properties ·
 - `shapes/warrant-core-shapes.ttl`: shapes for `obs:HealthEvent`, `assr:AssuranceClaim`, `assr:Evidence`, `di:DIThreshold` (ordered thresholds), `di:ResilienceTrigger`, `mit:ResponseEvaluation`, `mit:ResponseExecution`.
 - `queries/competency-queries.sparql`: Q7 evidence→claim→requirement traceability, Q8 trigger→evaluation→execution→outcome, Q9 attribute-wise state vs DI, Q10 forecasts against the management floor.
 - `scripts/validate_turtle.py --shacl`; `scripts/generate_module_docs.py` (generated `docs/modules/*.md`, `--check` in CI).
-- `examples/example-gnss-failover.ttl`: extended to instantiate every layer of the framework (826 triples).
+- `scripts/validate_turtle.py`: domain and range check on every example assertion, following `rdfs:subClassOf` and `owl:unionOf`. SHACL constrains the shapes it targets, not every property use, so these errors passed validation silently; an audit found 62 across the five examples.
+- `examples/example-gnss-failover.ttl`: extended to instantiate every layer of the framework, and now the reference for how each Section 6 quantity is derived.
+- `examples/example-ecdis-spoofing.ttl`: a second STPA path for AIS target spoofing (`WrongTrafficPictureProcessModelFlaw`, `WrongCollisionAvoidanceUCA`), a course-alteration `ControlAction` and an explicit officer `ProcessModel`, and detection events for the eight deviations that had none.
 
 ### Changed
 - **Operational state is attribute-wise.** `di:DependabilityIndexState` keeps its IRI and five individuals but is labelled "Operational State"; state is assigned per attribute from `di:DIThreshold`s and reported with the index; the DI value never determines it. `di:hasDIState` domain widened to `di:SystemDependabilityIndex`.
@@ -47,6 +51,13 @@ Inventory: 200 classes · 194 object properties · 128 datatype properties ·
 - `examples/example-roc-handover.ttl`: added a handover-completion metric so the function is monitored; `examples/example-smart-container-fire.ttl`: the fire event is an `obs:HealthEvent` (it identifies no deviation).
 - Documentation regenerated/rewritten: `docs/modules/*.md` (generated), `docs/modules/warrant-integration.md`, `docs/modelling-conventions.md`, `docs/kg-boundary.md`, `docs/external-ontology-alignment.md`, `docs/namespace-policy.md`, `docs/stack-overview.md`, `README.md`, `CONTRIBUTING.md`.
 - Version strings in all module and example headers set to `0.10-poc` (were inconsistently `1.0.0`).
+
+### Fixed
+- Five domains and ranges were narrower than the modelling they are meant to support, which accounted for 51 of the 62 violations found by the new check: `davom:hasComponent` domain (a System may hold components directly), `davom:dependencySource`/`dependencyTarget` range (AgentEntity, without which `HumanSupervisionDependency` between two operator roles is unusable), `cdm:mayCause` range (ProcessModelFlaw, the STPA path by which a falsified input corrupts the controller's model), `cdm:affectsComponent` range (System, Subsystem), `mit:recommends` range (FailoverProcedure).
+- `examples/example-gnss-failover.ttl`: propagated risk did not satisfy the documented recurrence; a trend slope breached its threshold with no trigger recorded; the post-response state had no attribute values to derive it from; two indices had no node score; and the response completed 68 s after detection against a 60 s requirement it claimed to satisfy. Every stated value now follows from the formulas.
+- `examples/example-gnss-failover.ttl`: three maritime errors. AIS was used as an independent position source although own-ship AIS position is GNSS-derived; "INS" was used for inertial navigation although IMO and IEC use it for an Integrated Navigation System and no inertial unit is fitted; and the carrier-to-noise threshold (10 dB-Hz against a tracking floor around 25 to 30) was below the level at which a receiver has already lost lock and could not detect the spoofing scenario linked to it. The failover is now dead reckoning cross-checked against radar and AIS cooperative context, and detection uses both C/N0 and a RAIM protection level.
+- `examples/example-ecdis-spoofing.ttl`: AIS spoofing was asserted to put a false own-ship position on the ECDIS. ECDIS takes own-ship position from the GNSS receiver over IEC 61162; AIS carries target data. The causal chain is split so that AIS spoofing leads to a wrong traffic picture and a wrong collision-avoidance manoeuvre, while GNSS spoofing and ECDIS compromise keep the wrong own-ship position and the wrong course alteration.
+- Index-to-index aggregation used `di:contributesTo`, which carries a node score into an index, in LL1 and LL2; it now uses `di:aggregatesInto` and `di:contributesToSystem`, and the LL1 vessel index is a `SystemDependabilityIndex`. Also fixed: the LL1 STPA loop skipped the control action, the LL1 VDR was typed as a system but used as a component, and the ROC handover process model updated itself.
 
 ### Deprecated
 - `di:hasThreshold`, `di:hasLowerThreshold`, `di:hasUpperThreshold` — DI-value bounds attached to a state implied that the state is derived from the DI; use the per-attribute thresholds. Will be removed in the next minor release.

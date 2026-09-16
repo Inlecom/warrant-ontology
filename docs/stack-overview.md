@@ -16,7 +16,7 @@ In plain terms: it defines what words like *Deviation*, *Hazard*, *Dependability
 
 ## 2. Ontology at a glance
 
-The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,060 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 2,360 triples) demonstrate realistic scenarios; the LL4 GNSS failover example instantiates every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
+The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,094 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 2,577 triples) demonstrate realistic scenarios; the LL4 GNSS failover example instantiates every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
 
 ---
 
@@ -100,10 +100,11 @@ python scripts/validate_turtle.py --shacl
 - Parses every `.ttl` file under `ontology/`, `examples/` and `shapes/` using rdflib
 - Reports triple count per file
 - Warns if any example individual IRI uses an ontology module namespace (namespace policy check)
+- Checks every example assertion against the declared `rdfs:domain` and `rdfs:range`, following subclasses and unions
 - With `--shacl`: validates every example against the shapes with pySHACL (modules merged into the data graph, inference off)
 - Exits 0 (all pass) or 1 (any failure or violation)
 
-**Current status:** 16 files · 5,767 triples · 0 failures · all five examples conform to the 13 shapes · all 10 competency queries return rows
+**Current status:** 16 files · 6,020 triples · 0 failures · zero domain and range violations · all five examples conform to the 13 shapes · all 10 competency queries return rows
 
 ### 4.2 Merge
 
