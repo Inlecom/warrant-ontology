@@ -1,149 +1,80 @@
-# `warrant-scenario` — Scenario Module
+# `warrant-scenario` — Scenario
 
-**Namespace:** `https://w3id.org/warrant/scenario#`  
-**Prefix:** `scenario:`  
-**Status:** Stable  
-**Role:** Simulation layer — defines the vocabulary for representing, triggering, executing, and recording the outcomes of operational and risk scenarios within the WARRaNT Digital Twin.
+<!-- GENERATED FILE: narrative lives in scripts/generate_module_docs.py; tables come from the .ttl. Do not edit by hand. -->
+
+**Namespace:** `https://warrant-project.eu/ontology/scenario#`  
+**Prefix:** `scen:`  
+**Ontology IRI:** `https://warrant-project.eu/ontology/scenario`  
+**Imports:** `warrant-cdm`, `warrant-core`, `warrant-di`  
+**Version:** `0.10-poc`
 
 ---
 
 ## Purpose
 
-`warrant-scenario` enables the Digital Twin to move beyond passive monitoring into **active "what-if" reasoning**. A scenario is a structured description of a potential operational situation — a failure mode, a cyber attack, a weather degradation event — that can be executed in the Digital Twin to project its effects on the DI, assurance scores, and required mitigations.
+Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios, their executions (with a lifecycle state) and results. A scenario result may carry a projected operational state and produce di:DIForecast individuals, which is how Digital Twin what-if analysis feeds the Supervisor's predictive trigger and REDS's expected-effect estimates. The KG defines scenario semantics; the external scenario engine (typically hosted by the Digital Twin) executes them.
 
-Scenarios are both *descriptive* (documenting known risk scenarios from safety analyses) and *executable* (the Digital Twin can run them to project DI evolution and mitigation effectiveness).
+**Role:** what-if semantics. Scenario types (cyberattack, failure, degraded
+operation, environmental, unsafe control), triggers, executions with a
+lifecycle state, and results that carry a projected operational state and
+produce DI forecasts.
 
----
+**Design rules**
 
-## Class Hierarchy
-
-```
-Scenario
-├── FailureScenario          (component or system failure)
-├── DegradationScenario      (gradual performance reduction)
-├── CyberattackScenario      (adversarial cyber intervention)
-├── WeatherScenario          (environmental condition change)
-└── HumanErrorScenario       (operator error or procedure violation)
-
-ScenarioExecution            (a specific run of a Scenario in the Digital Twin)
-ScenarioResult               (the recorded outcome of a ScenarioExecution)
-
-ScenarioTrigger              (what initiates a scenario)
-├── FailureTrigger           (triggered by component failure)
-├── ThreatTrigger            (triggered by a detected threat)
-├── EventTrigger             (triggered by a DetectionEvent)
-└── DeviationTrigger         (triggered by a specific Deviation)
-```
+1. The graph defines scenario semantics; the external scenario engine (typically hosted by the Digital Twin) executes them and writes back `ScenarioResult`.
+2. `ScenarioExecutionState` (PENDING, RUNNING, COMPLETED, FAILED) is an execution lifecycle; it is not a dependability state. The projected operational state is `hasProjectedState` on the result.
+3. `producesForecast` is how a scenario execution feeds the Supervisor's predictive trigger and the REDS expected-effect estimate.
 
 ---
 
-## Scenario Lifecycle
+## Classes (14)
 
-A scenario follows a defined lifecycle when executed in the Digital Twin:
+| Class | Subclass of | Label | Description |
+|---|---|---|---|
+| `scen:CyberattackScenario` | `scen:Scenario` | Cyberattack Scenario |  |
+| `scen:DegradedOperationScenario` | `scen:Scenario` | Degraded Operation Scenario |  |
+| `scen:DeviationTrigger` | `scen:ScenarioTrigger` | Deviation Trigger |  |
+| `scen:EnvironmentalScenario` | `scen:Scenario` | Environmental Scenario |  |
+| `scen:EventTrigger` | `scen:ScenarioTrigger` | Event Trigger |  |
+| `scen:Failure` | `scen:ScenarioTrigger` | Failure |  |
+| `scen:FailureScenario` | `scen:Scenario` | Failure Scenario |  |
+| `scen:Scenario` | `warrant:VisualisableEntity` | Scenario | A simulated what-if case: cyberattack, failure, degraded operation, environmental, or unsafe control. The external scenario engine executes it. |
+| `scen:ScenarioExecution` | `warrant:VisualisableEntity` | Scenario Execution | A specific execution instance of a Scenario, with state, timestamps, and result. |
+| `scen:ScenarioExecutionState` | — | Scenario Execution State | Controlled vocabulary for the lifecycle of a ScenarioExecution: PENDING → RUNNING → COMPLETED \| FAILED. Named individuals only. This is an execution lifecycle, not a dependability state; it must not be confused with di:DependabilityIndexState. Moved here from warrant-digital-twin, where the class existed without individuals. |
+| `scen:ScenarioResult` | — | Scenario Result | Stores the outcome of a ScenarioExecution: result summary, the projected operational state if the scenario plays out (scen:hasProjectedState), and the quantitative DI forecasts it produced (scen:producesForecast → di:DIForecast), e.g. the projected system DI unmitigated and under each candidate response. Owned by this module; the DT module references but does not redefine it. |
+| `scen:ScenarioTrigger` | — | Scenario Trigger |  |
+| `scen:Threat` | `scen:ScenarioTrigger` | Threat |  |
+| `scen:UnsafeControlScenario` | `scen:Scenario` | Unsafe Control Scenario |  |
 
-```
-Scenario
-  → scenario:hasTrigger → ScenarioTrigger
-      [trigger conditions met]
-  → scenario:executes → ScenarioExecution
-      [lifecycle: PENDING → RUNNING → COMPLETED | FAILED]
-  → scenario:hasResult → ScenarioResult
-      [DI projection, assurance impact, recommended mitigations]
-```
+## Controlled vocabularies (named individuals)
 
-The lifecycle state of a `ScenarioExecution` is tracked by `warrant-digital-twin` as a `ScenarioExecutionState` — the scenario module defines the semantic content; the digital-twin module manages the execution state.
+### `scen:ScenarioExecutionState`
 
----
+| Individual | Label | Description |
+|---|---|---|
+| `scen:COMPLETED` | COMPLETED | Execution finished; ScenarioResult available. |
+| `scen:FAILED` | FAILED | Execution failed; partial results may be available. |
+| `scen:PENDING` | PENDING | Scenario queued; trigger confirmed but execution not yet started. |
+| `scen:RUNNING` | RUNNING | Execution in progress; projections being computed. |
 
-## Trigger Types
-
-| Class | Trigger condition |
-|---|---|
-| `FailureTrigger` | A `Component` or `System` transitions to a failed state |
-| `ThreatTrigger` | A security threat is identified (e.g., cyber attack detected by IDS) |
-| `EventTrigger` | A `DetectionEvent` with a specified type is produced |
-| `DeviationTrigger` | A `Deviation` of a specified `hasDeviationType` is recorded |
-
-Triggers connect the passive observation layer (`warrant-observation`) to the active scenario layer — a `DetectionEvent` or `Deviation` can automatically initiate a scenario execution in the Digital Twin.
-
----
-
-## Scenario Content
-
-Each `Scenario` individual specifies:
-
-- **`hasTrigger`** → the condition that initiates it
-- **`involvesDeviation`** → the deviation(s) it models
-- **`involvesHazard`** → the hazard(s) it addresses
-- **`involvesRisk`** → the risk(s) it evaluates
-- **`affectsComponent`** / **`affectsSystem`** / **`affectsVesselFunction`** → the structural scope
-- **`underCondition`** → the `EnvironmentalCondition` context
-- **`hasProjectedDIState`** → the DI state projected if the scenario plays out unmitigated
-
----
-
-## Key Object Properties
+## Object properties (9)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
-| `scenario:hasTrigger` | `Scenario` | `ScenarioTrigger` | What initiates this scenario |
-| `scenario:involvesDeviation` | `Scenario` | `Deviation` | Deviation(s) central to this scenario |
-| `scenario:involvesHazard` | `Scenario` | `Hazard` | Hazard(s) this scenario models |
-| `scenario:involvesRisk` | `Scenario` | `Risk` | Risk(s) assessed in this scenario |
-| `scenario:affectsComponent` | `Scenario` | `Component` | Component(s) in scope |
-| `scenario:affectsSystem` | `Scenario` | `System` | System(s) in scope |
-| `scenario:affectsVesselFunction` | `Scenario` | `VesselFunction` | Function(s) in scope |
-| `scenario:underCondition` | `Scenario` | `EnvironmentalCondition` | Environmental context |
-| `scenario:hasProjectedDIState` | `Scenario` | `DependabilityIndexState` | Projected DI outcome |
-| `scenario:executes` | `DigitalTwin` | `ScenarioExecution` | DT runs this scenario |
-| `scenario:hasResult` | `ScenarioExecution` | `ScenarioResult` | Recorded execution outcome |
+| `scen:affects` | `scen:Scenario` ∪ `cdm:Deviation` ∪ `cdm:Hazard` | `davom:Component` ∪ `davom:System` ∪ `davom:VesselFunction` | affects |
+| `scen:causes` | `scen:Scenario` | `cdm:Risk` ∪ `cdm:Hazard` | causes |
+| `scen:hasExecutionState` | `scen:ScenarioExecution` | `scen:ScenarioExecutionState` | Lifecycle state of the execution (PENDING, RUNNING, COMPLETED, FAILED). Formerly ranged over di:DependabilityIndexState, which conflated the execution lifecycle with the operational state; the projected operational state is now scen:hasProjectedState on the result. |
+| `scen:hasProjectedState` | `scen:ScenarioResult` | `di:DependabilityIndexState` | The operational state the scenario projects for the affected node or system if it plays out (unmitigated unless the result is for a specific response). |
+| `scen:hasScenarioExecution` | `scen:Scenario` | `scen:ScenarioExecution` | has scenario execution |
+| `scen:hasScenarioParameter` | `scen:Scenario` | `owl:Thing` | has scenario parameter |
+| `scen:hasScenarioResult` | `scen:ScenarioExecution` | `scen:ScenarioResult` | has scenario result |
+| `scen:hasTrigger` | `scen:Scenario` | `cdm:Deviation` ∪ `scen:Failure` ∪ `scen:Threat` ∪ `warrant:EnvironmentalCondition` ∪ `scen:EventTrigger` | has trigger |
+| `scen:producesForecast` | `scen:ScenarioResult` | `di:DIForecast` | A DI forecast generated by this scenario execution: the projected node or system DI over the horizon, either unmitigated or conditional on a candidate response. Consumed by the Supervisor's predictive trigger (di:triggeredByForecast) and by REDS (mit:hasExpectedIndex). |
 
----
-
-## Key Datatype Properties
+## Datatype properties (2)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
-| `scenario:scenarioId` | `Scenario` | `xsd:string` | Unique scenario identifier |
-| `scenario:description` | `Scenario` | `xsd:string` | Human-readable description |
-| `scenario:executionStatus` | `ScenarioExecution` | `xsd:string` | PENDING / RUNNING / COMPLETED / FAILED |
-| `scenario:startedAt` | `ScenarioExecution` | `xsd:dateTime` | Execution start timestamp |
-| `scenario:completedAt` | `ScenarioExecution` | `xsd:dateTime` | Execution completion timestamp |
-| `scenario:projectedDIValue` | `ScenarioResult` | `xsd:decimal` | Projected DI if scenario plays out |
-| `scenario:mitigationEffectiveness` | `ScenarioResult` | `xsd:decimal` | Projected DI if mitigations applied |
+| `scen:hasExecutionTimestamp` | `scen:ScenarioExecution` | `xsd:dateTime` | has execution timestamp |
+| `scen:hasResultSummary` | `scen:ScenarioResult` | `xsd:string` | Human-readable outcome description of the scenario execution. |
 
----
-
-## Relationship to Other Modules
-
-| Module | Relationship |
-|---|---|
-| `warrant-cdm` | Scenarios involve `Deviation`, `Hazard`, `Risk` from CDM |
-| `warrant-davom` | Scenarios affect `Component`, `System`, `VesselFunction` from DAVOM |
-| `warrant-observation` | `EventTrigger` / `DeviationTrigger` respond to `DetectionEvent` / `Deviation` |
-| `warrant-di` | `hasProjectedDIState` references DI state named individuals; `ScenarioResult` carries projected DI values |
-| `warrant-mitigation` | Scenario results inform mitigation selection; mitigations reference scenarios they address |
-| `warrant-digital-twin` | `DigitalTwin` executes scenarios and stores `ScenarioExecution` results |
-
----
-
-## Design Principles
-
-1. **Scenarios are both documentation and execution.** A `Scenario` individual can exist as a documented risk scenario (linked to safety analysis artefacts) and be activated for execution in the DT — they are the same individual.
-2. **Triggers are typed.** The four trigger types enable the DT to automatically initiate the right scenario when specific detection events or deviations are observed.
-3. **Results are first-class.** `ScenarioResult` individuals carry projected DI values and mitigation effectiveness scores, making scenario outcomes queryable and comparable across runs.
-
----
-
-## Imports
-
-- `warrant-core`
-- `warrant-davom`
-- `warrant-cdm`
-- `warrant-di`
-
----
-
-## Downstream Dependents
-
-`warrant-mitigation` · `warrant-digital-twin`

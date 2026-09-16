@@ -1,11 +1,12 @@
 ##############################################################################
 # WARRaNT Observation Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/observation
-# Imports: warrant-core.ttl, warrant-davom.ttl
+# Imports: warrant-core.ttl, warrant-davom.ttl, warrant-cdm.ttl
 #
-# Models metrics, observers, measurements, analytical services, detection
-# events, virtual sensors, data quality, human observations, and operator inputs.
+# Models metrics, observers, measurements, analytical services, health events
+# (detected and predicted), detection events, node health monitors, virtual
+# sensors, data quality, human observations, and operator inputs.
 #
 # Critical modelling rules:
 # - Components do NOT generate metrics; operational entities HAVE metrics.
@@ -13,6 +14,10 @@
 # - Production path: AnalyticalService → producesDetectionEvent →
 #   DetectionEvent → detectionEventDetects → Deviation.
 # - obs:detects is a SPARQL shortcut only; its domain is DetectionEvent.
+# - obs:HealthEvent is the structured health-event record exchanged between
+#   Node Health Monitors. DetectionEvent is the HealthEvent that identifies a
+#   Deviation (the detection-event rule applies to it); PredictedConditionEvent
+#   is the HealthEvent that anticipates a condition (no Deviation required).
 # - Raw time-series data stays outside the KG; use hasExternalRecordReference
 #   and hasExternalTimeSeriesId to link to external stores.
 ##############################################################################
@@ -29,13 +34,13 @@
 
 <https://warrant-project.eu/ontology/observation>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-cdm.ttl> ;
     rdfs:label "WARRaNT Observation Module"@en ;
-    rdfs:comment "Metrics, observers, measurements, analytical services, detection events, virtual sensors, data quality, human observations, and operator inputs."@en ;
+    rdfs:comment "Metrics, observers, measurements, analytical services, health events (detected and predicted), detection events, node health monitors, virtual sensors, data quality, human observations, and operator inputs."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
@@ -112,7 +117,7 @@ obs:APIConnector    a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "API
 obs:LogCollector    a owl:Class ; rdfs:subClassOf obs:Observer ; rdfs:label "Log Collector"@en .
 obs:VirtualSensor   a owl:Class ; rdfs:subClassOf obs:Observer ;
     rdfs:label "Virtual Sensor"@en ;
-    rdfs:comment "Software-based observer that estimates a metric from other data streams. Informative alignment: obs:VirtualSensor ≈ sosa:Sensor (software-only variant)."@en .
+    rdfs:comment "Software-based observer that estimates a metric from other data streams (model-based estimator, observer bank, fusion algorithm, ML inference, or a Digital Twin state estimate). May substitute a failed physical observer (obs:substitutesFor), which is one of the fail-operational responses the resilience layer can select. Informative alignment: obs:VirtualSensor ≈ sosa:Sensor (software-only variant)."@en .
 
 obs:VirtualSensorOutput a owl:Class ;
     rdfs:subClassOf obs:EvidenceEntity ;
@@ -126,7 +131,20 @@ obs:VirtualSensorOutput a owl:Class ;
 obs:AnalyticalService a owl:Class ;
     rdfs:subClassOf obs:DataSource ;
     rdfs:label "Analytical Service"@en ;
-    rdfs:comment "A computational service that consumes metrics and produces Status, VirtualSensorOutput, or DetectionEvents. It does NOT produce Deviation directly — use the DetectionEvent production path."@en .
+    rdfs:comment "A computational service that consumes metrics and produces Status, VirtualSensorOutput, or HealthEvents (including DetectionEvents). It does NOT produce Deviation directly — use the DetectionEvent production path. The WARRaNT runtime agents are modelled as subclasses so that their outputs carry provenance: obs:NodeHealthMonitor (here), di:DependabilitySupervisor, mit:DecisionSupportService (REDS), and mit:ResilienceSupervisor (IRDS)."@en .
+
+obs:NodeHealthMonitor a owl:Class ;
+    rdfs:subClassOf obs:AnalyticalService ;
+    rdfs:label "Node Health Monitor"@en ;
+    rdfs:comment "A distributed reasoning agent responsible for one node (component, function, or system) that interprets local observations, evaluates potential future states, estimates operational consequences, and communicates dependency-aware health assessments to the monitors of dependent nodes. It produces HealthEvents for its node and attribute assessments (assr:AssuranceAttributeValue with source confidence) that the Dependability Supervisor fuses. Beyond fault severity it considers persistence and duration. Health information exchanged between monitors follows the dependency topology encoded in the graph (obs:exchangesHealthEventWith)."@en .
+
+obs:MonitoringLevel a owl:Class ;
+    rdfs:label "Monitoring Level"@en ;
+    rdfs:comment "Controlled vocabulary for the hierarchy level at which a Node Health Monitor operates. As information moves upward the focus shifts from component observations to subsystem impacts, functional consequences, and system-level dependability implications."@en .
+
+obs:COMPONENT_LEVEL a obs:MonitoringLevel ; rdfs:label "COMPONENT_LEVEL"@en ; rdfs:comment "Monitor responsible for a Component or a Subsystem."@en .
+obs:FUNCTION_LEVEL  a obs:MonitoringLevel ; rdfs:label "FUNCTION_LEVEL"@en ;  rdfs:comment "Monitor responsible for a VesselFunction."@en .
+obs:SYSTEM_LEVEL    a obs:MonitoringLevel ; rdfs:label "SYSTEM_LEVEL"@en ;    rdfs:comment "Monitor responsible for a System, the Vessel, or a system of systems."@en .
 
 obs:DetectionRule    a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Detection Rule"@en .
 
@@ -141,13 +159,29 @@ obs:OperatorInput a owl:Class ;
 
 
 ##############################################################################
-# DetectionEvent
+# HealthEvent, DetectionEvent, PredictedConditionEvent
 ##############################################################################
 
-obs:DetectionEvent a owl:Class ;
+obs:HealthEvent a owl:Class ;
     rdfs:subClassOf obs:EvidenceEntity ;
+    rdfs:label "Health Event"@en ;
+    rdfs:comment """The structured health-event record into which runtime observations are transformed (detected, filtered, correlated, fused, contextualised, and classified against the hazard and remedy knowledge in the graph) and which Node Health Monitors exchange along dependency paths. It describes a detected fault, a predicted failure, or an abnormal operating condition. Its named fields map to properties as follows:
+  eventId → warrant:hasIdentifier; time → obs:hasTimestamp; source/provenance → obs:hasSource and warrant:derivedFrom;
+  affectedAsset → obs:affectsAsset; condition → obs:indicatesCondition (and, for a DetectionEvent, obs:detectionEventDetects);
+  confidence → obs:hasConfidenceValue; severity → obs:hasSeverityLevel; duration/persistence → obs:hasDuration, obs:isPersistent;
+  operationalImpact → obs:hasOperationalImpact; rootCause → obs:hasRootCause; missionContext → obs:hasMissionContext;
+  controlStatus → obs:hasControlStatus; trend → obs:hasTrendIndicator.
+Fields may be unknown when the event is first created and enriched as diagnosis proceeds. A HealthEvent is admissible as the source of an assr:Evidence item and may challenge an assr:AssuranceClaim. Interpreted events reside in the graph; raw telemetry stays in the external store."""@en .
+
+obs:DetectionEvent a owl:Class ;
+    rdfs:subClassOf obs:HealthEvent ;
     rdfs:label "Detection Event"@en ;
-    rdfs:comment "An interpreted event produced by a DetectionRule, AnalyticalService, or VirtualSensor indicating that a Deviation has been detected. This is the ONLY production path to Deviation: AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation. obs:detects is a SPARQL shortcut only."@en .
+    rdfs:comment "A HealthEvent produced by a DetectionRule, AnalyticalService, NodeHealthMonitor, or VirtualSensor indicating that a Deviation has been detected. This is the ONLY production path to Deviation: AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation. obs:detects is a SPARQL shortcut only. Inherits the full health-event record from obs:HealthEvent."@en .
+
+obs:PredictedConditionEvent a owl:Class ;
+    rdfs:subClassOf obs:HealthEvent ;
+    rdfs:label "Predicted Condition Event"@en ;
+    rdfs:comment "A HealthEvent that anticipates rather than detects: a predicted failure or degradation produced by a Node Health Monitor evaluating potential future states, a Digital Twin prediction, or a predictive analytical model. It carries the same record as any HealthEvent, with obs:indicatesCondition naming the anticipated Hazard, FailureMode, or Deviation and obs:hasConfidenceValue the prediction confidence. The detection-event rule does not apply: a PredictedConditionEvent does not assert that a Deviation has occurred. Quantitative DI forecasts are stored separately as di:DIForecast."@en .
 
 
 ##############################################################################
@@ -229,10 +263,64 @@ obs:supportsDetection a owl:ObjectProperty ;
     rdfs:label "supports detection"@en ;
     rdfs:comment "A measurement provides evidence contributing to a detection event."@en .
 
+obs:producesHealthEvent a owl:ObjectProperty ;
+    rdfs:domain obs:DataSource ;
+    rdfs:range obs:HealthEvent ;
+    rdfs:label "produces health event"@en ;
+    rdfs:comment "A data source (sensor, virtual sensor, analytical service, Node Health Monitor, cybersecurity monitor, Digital Twin, operator role, or vessel automation system) produces a structured HealthEvent. obs:producesDetectionEvent is the specialisation for events that identify a Deviation."@en .
+
 obs:producesDetectionEvent a owl:ObjectProperty ;
+    rdfs:subPropertyOf obs:producesHealthEvent ;
     rdfs:domain [ owl:unionOf ( obs:AnalyticalService obs:VirtualSensor obs:DetectionRule ) ] ;
     rdfs:range obs:DetectionEvent ;
     rdfs:label "produces detection event"@en .
+
+obs:monitorsNode a owl:ObjectProperty ;
+    rdfs:domain obs:NodeHealthMonitor ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "monitors node"@en ;
+    rdfs:comment "The component, subsystem, function, system, or vessel for which this Node Health Monitor is responsible."@en .
+
+obs:hasMonitoringLevel a owl:ObjectProperty ;
+    rdfs:domain obs:NodeHealthMonitor ;
+    rdfs:range obs:MonitoringLevel ;
+    rdfs:label "has monitoring level"@en .
+
+obs:exchangesHealthEventWith a owl:ObjectProperty ;
+    rdfs:domain obs:NodeHealthMonitor ;
+    rdfs:range obs:NodeHealthMonitor ;
+    rdfs:label "exchanges health event with"@en ;
+    rdfs:comment "Peer exchange of interpreted health assessments between Node Health Monitors. Which monitors receive updates is determined by the dependency topology in the graph: a monitor exchanges with the monitors of the nodes its node depends on and of the nodes that depend on it."@en .
+
+obs:affectsAsset a owl:ObjectProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
+    rdfs:label "affects asset"@en ;
+    rdfs:comment "The affected component, subsystem, function, system, link, or operational role (health-event field affectedAsset)."@en .
+
+obs:indicatesCondition a owl:ObjectProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range [ owl:unionOf ( cdm:Hazard cdm:FailureMode cdm:Deviation cdm:ThreatScenario ) ] ;
+    rdfs:label "indicates condition"@en ;
+    rdfs:comment "The condition or hazard class the event has been classified against in the design-time knowledge (health-event field condition). For a DetectionEvent the detected Deviation is asserted with obs:detectionEventDetects; this property may additionally name the Hazard or FailureMode the event was classified under."@en .
+
+obs:hasRootCause a owl:ObjectProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range [ owl:unionOf ( cdm:CausalEntity obs:HealthEvent warrant:OperationalEntity ) ] ;
+    rdfs:label "has root cause"@en ;
+    rdfs:comment "Root-cause information when known (health-event field rootCause): the originating deviation, failure mode, upstream health event, or upstream node identified by diagnosis (e.g. observer-based fault isolation) or by graph traversal along the dependency path."@en .
+
+obs:hasMissionContext a owl:ObjectProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range warrant:ContextEntity ;
+    rdfs:label "has mission context"@en ;
+    rdfs:comment "Mission and operational context at the time of the event (health-event field missionContext): OperationalMode, VoyageSegment, or EnvironmentalCondition."@en .
+
+obs:substitutesFor a owl:ObjectProperty ;
+    rdfs:domain obs:VirtualSensor ;
+    rdfs:range obs:Observer ;
+    rdfs:label "substitutes for"@en ;
+    rdfs:comment "The physical or other observer whose measurements this virtual sensor replaces when that observer is failed, degraded, or untrusted (virtual-sensor substitution, a fail-operational response)."@en .
 
 obs:detectionEventDetects a owl:ObjectProperty ;
     rdfs:domain obs:DetectionEvent ;
@@ -256,7 +344,7 @@ obs:hasValue a owl:DatatypeProperty ;
     rdfs:label "has value"@en .
 
 obs:hasTimestamp a owl:DatatypeProperty ;
-    rdfs:domain [ owl:unionOf ( obs:Measurement obs:HumanObservation obs:OperatorInput obs:DetectionEvent ) ] ;
+    rdfs:domain [ owl:unionOf ( obs:Measurement obs:HumanObservation obs:OperatorInput obs:HealthEvent ) ] ;
     rdfs:range xsd:dateTime ;
     rdfs:label "has timestamp"@en .
 
@@ -272,9 +360,46 @@ obs:hasSamplingRate a owl:DatatypeProperty ;
     rdfs:label "has sampling rate"@en .
 
 obs:hasConfidenceValue a owl:DatatypeProperty ;
-    rdfs:domain [ owl:unionOf ( obs:ConfidenceLevel obs:VirtualSensorOutput obs:HumanObservation ) ] ;
+    rdfs:domain [ owl:unionOf ( obs:ConfidenceLevel obs:VirtualSensorOutput obs:HumanObservation obs:HealthEvent ) ] ;
     rdfs:range xsd:decimal ;
-    rdfs:label "has confidence value"@en .
+    rdfs:label "has confidence value"@en ;
+    rdfs:comment "Confidence in [0,1] associated with a detection, prediction, estimate, or human observation. Confidence controls the influence of a source in attribute fusion and contributes to evidence quality; it is never multiplied into an operational value as a separate degradation."@en .
+
+obs:hasSeverityLevel a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:string ;
+    rdfs:label "has severity level"@en ;
+    rdfs:comment "Severity classification of the event (health-event field severity), e.g. LOW, MEDIUM, HIGH, CRITICAL. Distinct from cdm:hasSeverity (a design-time risk score) and from the operational state, which is assigned attribute-wise by the Dependability Supervisor."@en .
+
+obs:hasDuration a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has duration"@en ;
+    rdfs:comment "Observed or estimated duration of the condition (health-event field duration). Monitors weigh persistence: temporary disturbances may be negligible, persistent degradations progressively reduce assurance."@en .
+
+obs:isPersistent a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is persistent"@en ;
+    rdfs:comment "True when the condition has persisted beyond the configured transient window and should be treated as a sustained degradation rather than a temporary disturbance."@en .
+
+obs:hasOperationalImpact a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:string ;
+    rdfs:label "has operational impact"@en ;
+    rdfs:comment "Expected operational impact of the condition as assessed by the monitor (health-event field operationalImpact)."@en .
+
+obs:hasControlStatus a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:string ;
+    rdfs:label "has control status"@en ;
+    rdfs:comment "Current control or authorisation status of the condition (health-event field controlStatus): e.g. UNCONTROLLED, LOCALLY_CONTROLLED, MITIGATION_PENDING_AUTHORISATION, MITIGATED. A locally controlled fault may have limited influence on system dependability; the Supervisor evaluates both intrinsic severity and propagated consequences."@en .
+
+obs:hasTrendIndicator a owl:DatatypeProperty ;
+    rdfs:domain obs:HealthEvent ;
+    rdfs:range xsd:string ;
+    rdfs:label "has trend indicator"@en ;
+    rdfs:comment "Direction of the monitored node's health as assessed by the monitor: IMPROVING, STABLE, or DECLINING."@en .
 
 obs:hasQualityValue a owl:DatatypeProperty ;
     rdfs:domain obs:DataQualityIndicator ;

@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: LL4 ROC–Boatmaster Handover (LL4 Use Case 2)
 # Instance namespace: https://warrant-project.eu/data/ll4#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: MAI-W approaching Kreekraksluizen lock.
 # ROC operator initiates handover to onboard boatmaster.
@@ -86,6 +86,16 @@ ll4:ROCToVesselHandoverLink a davom:CommunicationLink ;
 
 ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselHandoverLink .
 
+# ── Metric (monitored via the handover link; raw stream external) ─────────
+
+ll4:HandoverCompletionTimeMetric a obs:PerformanceMetric ;
+    warrant:hasName "Handover Completion Time" ;
+    warrant:hasDescription "Elapsed time from ROC handover initiation to confirmed boatmaster control; the LATE deviation is evaluated against the lock-approach time window." ;
+    obs:hasUnit "s" ;
+    obs:hasExternalTimeSeriesId "timeseries.handover.completion_time.MAI-W" .
+
+ll4:ROCToVesselHandoverLink obs:hasDependabilityMetric ll4:HandoverCompletionTimeMetric .
+
 # ── Operational Mode ────────────────────────────────────────────────────────
 
 # Using warrant:HandoverMode named individual from warrant-core.ttl
@@ -102,7 +112,16 @@ ll4:ProcessModelFlawWrongVesselState a cdm:ProcessModelFlaw ;
     warrant:hasDescription "ROC operator believes vessel is in idle mode when it is still operating in ROT mode." ;
     cdm:hasDeviationType cdm:WRONG .
 
-ll4:RemoteOperatorProcessModel cdm:updates ll4:RemoteOperatorProcessModel .
+ll4:VesselStateFeedback a cdm:Feedback ;
+    warrant:hasName "Vessel State Feedback to the ROC" ;
+    warrant:hasDescription "Position, speed, heading and control-mode indications presented to the ROC operator over the handover link; the feedback that keeps the operator's process model aligned with the vessel." .
+
+ll4:VesselCourseAndModeProcess a cdm:ControlledProcess ;
+    warrant:hasName "Vessel Course and Control Mode (Controlled Process)" .
+
+ll4:VesselCourseAndModeProcess cdm:providesFeedback ll4:VesselStateFeedback .
+ll4:VesselStateFeedback cdm:updates ll4:RemoteOperatorProcessModel .
+ll4:HandoverControlAction cdm:actsOn ll4:VesselCourseAndModeProcess .
 
 # ── Unsafe Control Action ──────────────────────────────────────────────────
 

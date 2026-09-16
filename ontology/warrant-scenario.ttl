@@ -1,8 +1,8 @@
 ##############################################################################
 # WARRaNT Scenario Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/scenario
-# Imports: warrant-core.ttl, warrant-cdm.ttl
+# Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-di.ttl
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
@@ -18,13 +18,13 @@
 
 <https://warrant-project.eu/ontology/scenario>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> , <warrant-di.ttl> ;
     rdfs:label "WARRaNT Scenario Module"@en ;
-    rdfs:comment "Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios. The KG defines scenario semantics; the external scenario engine executes them."@en ;
+    rdfs:comment "Scenario semantics for what-if cases: cyberattack, failure, degraded operation, environmental, and unsafe control scenarios, their executions (with a lifecycle state) and results. A scenario result may carry a projected operational state and produce di:DIForecast individuals, which is how Digital Twin what-if analysis feeds the Supervisor's predictive trigger and REDS's expected-effect estimates. The KG defines scenario semantics; the external scenario engine (typically hosted by the Digital Twin) executes them."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
@@ -49,7 +49,16 @@ scen:ScenarioExecution a owl:Class ;
 
 scen:ScenarioResult a owl:Class ;
     rdfs:label "Scenario Result"@en ;
-    rdfs:comment "Stores the outcome of a ScenarioExecution: result metadata, timestamps, and references to DI states and deviation events produced during execution. Owned by this module; the DT module references but does not redefine it."@en .
+    rdfs:comment "Stores the outcome of a ScenarioExecution: result summary, the projected operational state if the scenario plays out (scen:hasProjectedState), and the quantitative DI forecasts it produced (scen:producesForecast → di:DIForecast), e.g. the projected system DI unmitigated and under each candidate response. Owned by this module; the DT module references but does not redefine it."@en .
+
+scen:ScenarioExecutionState a owl:Class ;
+    rdfs:label "Scenario Execution State"@en ;
+    rdfs:comment "Controlled vocabulary for the lifecycle of a ScenarioExecution: PENDING → RUNNING → COMPLETED | FAILED. Named individuals only. This is an execution lifecycle, not a dependability state; it must not be confused with di:DependabilityIndexState. Moved here from warrant-digital-twin, where the class existed without individuals."@en .
+
+scen:PENDING   a scen:ScenarioExecutionState ; rdfs:label "PENDING"@en ;   rdfs:comment "Scenario queued; trigger confirmed but execution not yet started."@en .
+scen:RUNNING   a scen:ScenarioExecutionState ; rdfs:label "RUNNING"@en ;   rdfs:comment "Execution in progress; projections being computed."@en .
+scen:COMPLETED a scen:ScenarioExecutionState ; rdfs:label "COMPLETED"@en ; rdfs:comment "Execution finished; ScenarioResult available."@en .
+scen:FAILED    a scen:ScenarioExecutionState ; rdfs:label "FAILED"@en ;    rdfs:comment "Execution failed; partial results may be available."@en .
 
 scen:ScenarioTrigger  a owl:Class ; rdfs:label "Scenario Trigger"@en .
 scen:Failure          a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:label "Failure"@en .
@@ -94,8 +103,21 @@ scen:hasScenarioParameter a owl:ObjectProperty ;
 
 scen:hasExecutionState a owl:ObjectProperty ;
     rdfs:domain scen:ScenarioExecution ;
+    rdfs:range scen:ScenarioExecutionState ;
+    rdfs:label "has execution state"@en ;
+    rdfs:comment "Lifecycle state of the execution (PENDING, RUNNING, COMPLETED, FAILED). Formerly ranged over di:DependabilityIndexState, which conflated the execution lifecycle with the operational state; the projected operational state is now scen:hasProjectedState on the result."@en .
+
+scen:hasProjectedState a owl:ObjectProperty ;
+    rdfs:domain scen:ScenarioResult ;
     rdfs:range di:DependabilityIndexState ;
-    rdfs:label "has execution state"@en .
+    rdfs:label "has projected state"@en ;
+    rdfs:comment "The operational state the scenario projects for the affected node or system if it plays out (unmitigated unless the result is for a specific response)."@en .
+
+scen:producesForecast a owl:ObjectProperty ;
+    rdfs:domain scen:ScenarioResult ;
+    rdfs:range di:DIForecast ;
+    rdfs:label "produces forecast"@en ;
+    rdfs:comment "A DI forecast generated by this scenario execution: the projected node or system DI over the horizon, either unmitigated or conditional on a candidate response. Consumed by the Supervisor's predictive trigger (di:triggeredByForecast) and by REDS (mit:hasExpectedIndex)."@en .
 
 
 ##############################################################################

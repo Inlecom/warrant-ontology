@@ -1,13 +1,19 @@
 ##############################################################################
 # WARRaNT Digital Twin Ontology Module
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/digital-twin
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
-#          warrant-scenario.ttl
+#          warrant-di.ttl, warrant-scenario.ttl, warrant-mitigation.ttl
 #
 # Defines the semantic interface between the KG and the Digital Twin:
-# views, visualisation layers, decision-support interfaces, scenario state,
-# and update channels.
+# views, visualisation layers, decision-support interfaces, and update
+# channels — in both directions. The twin CONSUMES the graph (visualises,
+# monitors, executes scenarios, stores results) and PRODUCES inputs to it:
+# it is an obs:DataSource (state estimates, virtual sensing, health events)
+# and it produces di:DIForecast individuals (predictive simulation, what-if
+# analysis) that feed the Dependability Supervisor's predictive trigger and
+# REDS's expected-effect estimates. The forecast class lives in warrant-di so
+# that no module needs to import this one.
 #
 # IMPORTANT: warrant:VisualisableEntity is defined in warrant-core.ttl.
 # Do NOT redefine dt:VisualisableEntity here. Import and use the core class.
@@ -27,13 +33,14 @@
 
 <https://warrant-project.eu/ontology/digital-twin>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> , <warrant-scenario.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-observation.ttl> ,
+                <warrant-di.ttl> , <warrant-scenario.ttl> , <warrant-mitigation.ttl> ;
     rdfs:label "WARRaNT Digital Twin Module"@en ;
-    rdfs:comment "Semantic interface between the WARRaNT KG and the Digital Twin: views, visualisation layers, decision-support, scenario execution state, and update channels. The KG defines what the DT executes, visualises, and stores — it does NOT implement the DT."@en ;
+    rdfs:comment "Semantic interface between the WARRaNT KG and the Digital Twin: views, visualisation layers, decision-support, and update channels in both directions. The twin consumes the graph (visualises, monitors, executes scenarios, stores results) and produces inputs to it: as an observation data source (state estimation, virtual sensing, health events) and as the producer of DI forecasts used by the Dependability Supervisor and REDS. The KG defines what the DT executes, visualises, stores and forecasts — it does NOT implement the DT."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
@@ -54,8 +61,9 @@ warrant:AgentEntity         rdfs:subClassOf warrant:VisualisableEntity .
 ##############################################################################
 
 dt:DigitalTwin a owl:Class ;
+    rdfs:subClassOf obs:DataSource ;
     rdfs:label "Digital Twin"@en ;
-    rdfs:comment "A digital representation of a vessel or system. Executes scenarios, visualises DI and failover procedures, monitors operational entities, and receives live updates from analytical services."@en .
+    rdfs:comment "A synchronised digital representation of a vessel or system integrating physics-based models, data-driven models, virtual sensors, operational telemetry and simulation. It provides real-time state estimation, virtual sensing, predictive analysis, scenario exploration and what-if evaluation. Consumer role: executes scenarios, visualises indices, states, triggers, hazards, evaluations and failover procedures, monitors operational entities, and receives live updates from analytical services. Producer role: as an obs:DataSource its state estimates and predictions are admissible sources of measurements, virtual-sensor outputs and health events (obs:hasSource, obs:producesHealthEvent); it provides virtual sensors (dt:providesVirtualSensor); and it produces DI forecasts (dt:producesForecast → di:DIForecast) that feed the Supervisor's predictive resilience trigger and REDS's expected-effect estimates."@en .
 
 dt:DigitalTwinView a owl:Class ;
     rdfs:label "Digital Twin View"@en ;
@@ -68,11 +76,12 @@ dt:VisualisationLayer a owl:Class ;
 dt:DecisionSupportView a owl:Class ;
     rdfs:subClassOf dt:DigitalTwinView ;
     rdfs:label "Decision Support View"@en ;
-    rdfs:comment "A specialised DigitalTwinView for operator decision-support: presents DI state, recommended mitigations, and scenario results side-by-side."@en .
+    rdfs:comment "A specialised DigitalTwinView for operator decision-support: presents the operational state and DI (always with the Assurance Level), active resilience triggers, the ranked REDS response evaluations with their expected-effect forecasts, the authorisation status of the selected response, and scenario results side-by-side. The operator approves or overrides from here; the input is recorded as evidence."@en .
 
 dt:ScenarioExecutionState a owl:Class ;
-    rdfs:label "Scenario Execution State"@en ;
-    rdfs:comment "Transient execution state during a scenario run. Lifecycle: PENDING → RUNNING → COMPLETED | FAILED."@en .
+    owl:deprecated true ;
+    rdfs:label "Scenario Execution State (DEPRECATED)"@en ;
+    rdfs:comment "DEPRECATED. Use scen:ScenarioExecutionState (warrant-scenario), which carries the PENDING, RUNNING, COMPLETED and FAILED individuals and is the range of scen:hasExecutionState. This class had no individuals and no property used it. Will be removed in the next minor release."@en .
 
 
 ##############################################################################
@@ -124,7 +133,19 @@ dt:receivesUpdateFrom a owl:ObjectProperty ;
     rdfs:domain dt:DigitalTwin ;
     rdfs:range obs:DataSource ;
     rdfs:label "receives update from"@en ;
-    rdfs:comment "Documents that the DT receives live updates from analytical services, sensors, or operator inputs."@en .
+    rdfs:comment "Documents that the DT receives live updates from analytical services, sensors, node health monitors, or operator inputs."@en .
+
+dt:producesForecast a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range di:DIForecast ;
+    rdfs:label "produces forecast"@en ;
+    rdfs:comment "The twin's predictive simulation or what-if analysis produced this DI forecast. This is the Digital Twin → Dependability Supervisor / REDS direction of the framework: the forecast is consumed by di:ResilienceTrigger (PREDICTED_FLOOR_CROSSING) and by mit:ResponseEvaluation (expected effect of a candidate response). Declared here so that neither warrant-di nor warrant-mitigation imports this module; the forecast should also carry di:forecastProducedBy pointing back at the twin."@en .
+
+dt:providesVirtualSensor a owl:ObjectProperty ;
+    rdfs:domain dt:DigitalTwin ;
+    rdfs:range obs:VirtualSensor ;
+    rdfs:label "provides virtual sensor"@en ;
+    rdfs:comment "A virtual sensor (model-based state estimate) hosted by the twin, which may substitute a failed or untrusted physical observer (obs:substitutesFor) as a fail-operational response."@en .
 
 ##############################################################################
 # END warrant-digital-twin.ttl

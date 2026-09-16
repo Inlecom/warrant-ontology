@@ -1,14 +1,46 @@
 ##############################################################################
-# WARRaNT Mitigation and Failover Ontology Module
-# Version: 1.0.0
+# WARRaNT Mitigation and Resilience Response Ontology Module
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/mitigation
-# Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-di.ttl
+# Imports: warrant-core.ttl, warrant-davom.ttl, warrant-cdm.ttl,
+#          warrant-observation.ttl, warrant-di.ttl, warrant-scenario.ttl
+#
+# Three layers of the adaptive dependability and resilience management loop:
+#
+#   1. Response library (design-time): MitigationRule, MitigationAction
+#      (AdvisoryAction, MachineActionableAction), FailoverProcedure,
+#      RedundantResource, RecoveryEffect; actions implement design-time
+#      cdm:Controls and are typed by ResponseStrategyType and default
+#      ResiliencePosture.
+#
+#   2. Risk Evaluation and Decision Support (REDS, runtime): a
+#      DecisionSupportService, invoked by a di:ResilienceTrigger, records one
+#      ResponseEvaluation per feasible alternative u with its expected effect
+#      (di:DIForecast), cost, residual-exposure penalty, admissibility, rank and
+#      explanation. Objective (METADATA ONLY; computed externally):
+#        u*(t) = argmax_{u ∈ U_safe} { E[DI_sys(t+Δt) | u] − λ·C(u) − η·V(u) }
+#      U_safe contains only actions permitted by operational, safety,
+#      cybersecurity, regulatory and human-authority constraints; hard
+#      violations are excluded rather than penalised. REDS does not calculate
+#      the DI and does not execute actions.
+#
+#   3. Intelligent Resilience and Dependability Supervisor (IRDS, runtime): a
+#      ResilienceSupervisor coordinates only the selected and authorised
+#      response and records it as a ResponseExecution with authorisation
+#      status and authority, timing, resilience posture (fail-operational or
+#      fail-safe) and outcome in the Living Dependability Case.
+#
+# Assessment (di:), recommendation (ResponseEvaluation), authorisation and
+# actuation (ResponseExecution) are kept distinct.
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
 @prefix davom:   <https://warrant-project.eu/ontology/davom#> .
 @prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
 @prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -18,17 +50,18 @@
 
 <https://warrant-project.eu/ontology/mitigation>
     a owl:Ontology ;
-    owl:imports <warrant-core.ttl> , <warrant-cdm.ttl> , <warrant-di.ttl> ;
+    owl:imports <warrant-core.ttl> , <warrant-davom.ttl> , <warrant-cdm.ttl> ,
+                <warrant-observation.ttl> , <warrant-di.ttl> , <warrant-scenario.ttl> ;
     rdfs:label "WARRaNT Mitigation Module"@en ;
-    rdfs:comment "Mitigation rules, actions, failover procedures, redundant resources, recovery effects, advisory actions, and machine-actionable actions."@en ;
+    rdfs:comment "Mitigation rules, actions, failover procedures, redundant resources and recovery effects (the response library); REDS response evaluations with expected effect, cost, penalty, admissibility and rank; IRDS response executions with authorisation, posture and outcome; the response strategy, resilience posture and authorisation status vocabularies. Ranking and expected-effect estimation are external computations; the KG stores their inputs, configured weights and results."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
-# Classes
+# Classes — response library
 ##############################################################################
 
 mit:MitigationEntity a owl:Class ;
@@ -38,19 +71,19 @@ mit:MitigationEntity a owl:Class ;
 mit:MitigationRule a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
     rdfs:label "Mitigation Rule"@en ;
-    rdfs:comment "A rule matching a Deviation, Hazard, or DependabilityIndexState and recommending a MitigationAction."@en .
+    rdfs:comment "A declarative rule of the response library matching a Deviation, Hazard, ResilienceTrigger, or operational state and recommending one or more MitigationActions as candidate alternatives. Rules populate the feasible set that REDS evaluates; they do not rank or execute."@en .
 
 mit:MitigationAction a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Mitigation Action"@en ;
-    rdfs:comment "An action that reduces risk, assurance degradation, or DI degradation."@en .
+    rdfs:comment "A response alternative that reduces risk, restores an attribute, or limits DI degradation. Typed by mit:hasStrategyType (reconfiguration, logical isolation, redundancy activation, virtual-sensor substitution, communication rerouting, safe-degraded mode, recovery, enhanced monitoring, operator escalation), carries a default resilience posture (mit:hasDefaultPosture), may implement a design-time control (mit:implementsControl), and may require authorisation from a human operator role (mit:requiresAuthorisationFrom). Its evaluation for a specific trigger is a mit:ResponseEvaluation; its coordinated execution is a mit:ResponseExecution."@en .
 
 mit:FailoverProcedure a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Failover Procedure"@en ;
-    rdfs:comment "A defined fallback or recovery process. In the WARRaNT v0.1.0 PoC, failover procedures are visualised or advisory — they are NOT automatically executed."@en .
+    rdfs:comment "A defined fallback or recovery process. In the WARRaNT proof of concept, failover procedures are visualised or advisory — they are NOT automatically executed."@en .
 
 mit:RedundantResource a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
@@ -58,7 +91,8 @@ mit:RedundantResource a owl:Class ;
 
 mit:RecoveryEffect a owl:Class ;
     rdfs:subClassOf mit:MitigationEntity ;
-    rdfs:label "Recovery Effect"@en .
+    rdfs:label "Recovery Effect"@en ;
+    rdfs:comment "The expected effect of a failover procedure or action, as estimated at design time or by simulation: projected DI gain, projected risk reduction, recovery time, and the confidence of the projection. A runtime, trigger-specific expected effect is instead recorded as a di:DIForecast on a mit:ResponseEvaluation."@en .
 
 mit:AdvisoryAction a owl:Class ;
     rdfs:subClassOf mit:MitigationAction ;
@@ -68,22 +102,100 @@ mit:AdvisoryAction a owl:Class ;
 mit:MachineActionableAction a owl:Class ;
     rdfs:subClassOf mit:MitigationAction ;
     rdfs:label "Machine-Actionable Action"@en ;
-    rdfs:comment "A subclass of MitigationAction representing a future automation-executable action. Defined for semantic completeness and forward compatibility. All WARRaNT v0.1.0 PoC instances MUST use mit:AdvisoryAction or mit:FailoverProcedure instead. Informative alignment: mit:MachineActionableAction ≈ saref:Command (SAREF4ENER)."@en .
+    rdfs:comment "A subclass of MitigationAction representing an automation-executable action. Defined for semantic completeness and forward compatibility. All WARRaNT PoC instances MUST use mit:AdvisoryAction or mit:FailoverProcedure instead. Informative alignment: mit:MachineActionableAction ≈ saref:Command (SAREF4ENER)."@en .
 
 
 ##############################################################################
-# Object Properties
+# Classes — runtime agents (REDS, IRDS)
+##############################################################################
+
+mit:DecisionSupportService a owl:Class ;
+    rdfs:subClassOf obs:AnalyticalService ;
+    rdfs:label "Risk Evaluation and Decision Support (REDS)"@en ;
+    rdfs:comment "The runtime service that, when a resilience trigger fires, receives the attribute assessments, DI trend, predicted states and the Knowledge Graph diagnosis, compares feasible mitigation alternatives, estimates their expected effect with the Digital Twin, applies operational and authority constraints, and provides a ranked recommendation with an explanation and evidence trail (mit:ResponseEvaluation). It does not calculate the DI and does not execute actions."@en .
+
+mit:ResilienceSupervisor a owl:Class ;
+    rdfs:subClassOf obs:AnalyticalService ;
+    rdfs:label "Intelligent Resilience and Dependability Supervisor (IRDS)"@en ;
+    rdfs:comment "The runtime resilience-orchestration layer. It receives health assessments, the operational state, DI and trend, Digital Twin forecasts and REDS recommendations, and coordinates the selected response only after the applicable automated or human authorisation condition is satisfied, recording action, authority, timing, posture and outcome (mit:ResponseExecution) in the Living Dependability Case. It selects between fail-operational and fail-safe postures, not merely between actions."@en .
+
+
+##############################################################################
+# Controlled vocabularies
+##############################################################################
+
+mit:ResponseStrategyType a owl:Class ;
+    rdfs:label "Response Strategy Type"@en ;
+    rdfs:comment "Closed controlled vocabulary of the resilience strategies IRDS can coordinate: the seven kinds named in the framework paper plus logical isolation and enhanced monitoring, which the paper's cybersecurity section and the IRDS patent figure list as distinct mitigation classes. Named individuals only; adding a value requires ontology revision."@en .
+
+mit:RECONFIGURATION             a mit:ResponseStrategyType ; rdfs:label "RECONFIGURATION"@en ;             rdfs:comment "Reconfigure the system or function to continue delivery (technical reconfiguration)."@en .
+mit:LOGICAL_ISOLATION           a mit:ResponseStrategyType ; rdfs:label "LOGICAL_ISOLATION"@en ;           rdfs:comment "Isolate a subsystem, zone, or conduit logically (network segmentation, service disablement, trusted-source substitution) to contain a cyber threat or a faulty element while the rest of the function continues."@en .
+mit:REDUNDANCY_ACTIVATION       a mit:ResponseStrategyType ; rdfs:label "REDUNDANCY_ACTIVATION"@en ;       rdfs:comment "Activate a redundant resource or channel."@en .
+mit:VIRTUAL_SENSOR_SUBSTITUTION a mit:ResponseStrategyType ; rdfs:label "VIRTUAL_SENSOR_SUBSTITUTION"@en ; rdfs:comment "Replace a failed, degraded or untrusted physical sensor by a virtual-sensor estimate (obs:substitutesFor)."@en .
+mit:COMMUNICATION_REROUTING     a mit:ResponseStrategyType ; rdfs:label "COMMUNICATION_REROUTING"@en ;     rdfs:comment "Reroute data or control traffic over an alternative link or conduit."@en .
+mit:SAFE_DEGRADED_MODE          a mit:ResponseStrategyType ; rdfs:label "SAFE_DEGRADED_MODE"@en ;          rdfs:comment "Transition to a safe-degraded operating mode with reduced capability."@en .
+mit:RECOVERY                    a mit:ResponseStrategyType ; rdfs:label "RECOVERY"@en ;                    rdfs:comment "Restore the affected element or service (restart, restore from backup, repair), including recovery sequencing across dependent elements."@en .
+mit:ENHANCED_MONITORING         a mit:ResponseStrategyType ; rdfs:label "ENHANCED_MONITORING"@en ;         rdfs:comment "Increase monitoring intensity or coverage of the affected node (higher sampling, additional observers, cross-checks) without changing its configuration; the response for a Degraded state and an accompaniment to recovery."@en .
+mit:OPERATOR_ESCALATION         a mit:ResponseStrategyType ; rdfs:label "OPERATOR_ESCALATION"@en ;         rdfs:comment "Escalate the situation to the responsible human operator for decision or intervention (human-in-the-loop escalation)."@en .
+
+mit:ResiliencePosture a owl:Class ;
+    rdfs:label "Resilience Posture"@en ;
+    rdfs:comment "Closed controlled vocabulary of the two qualitatively different assurance postures a response can place the system in. The Living Dependability Case records which posture was in force at each point of the operation. Named individuals only."@en .
+
+mit:FAIL_OPERATIONAL a mit:ResiliencePosture ; rdfs:label "FAIL_OPERATIONAL"@en ;
+    rdfs:comment "The mission is preserved: the affected function continues to be delivered through redundancy, reconfiguration, or virtual-sensor substitution with degraded but acceptable performance."@en .
+mit:FAIL_SAFE        a mit:ResiliencePosture ; rdfs:label "FAIL_SAFE"@en ;
+    rdfs:comment "The mission objective is abandoned in favour of a state of reduced hazard exposure, e.g. a fail-safe trajectory bringing the vessel to a safe stop or holding state. The existence of a feasible fail-safe option is itself a precondition for continuing in the nominal mode."@en .
+
+mit:AuthorisationStatus a owl:Class ;
+    rdfs:label "Authorisation Status"@en ;
+    rdfs:comment "Closed controlled vocabulary for the authorisation state of a response execution. Named individuals only."@en .
+
+mit:AUTHORISATION_PENDING a mit:AuthorisationStatus ; rdfs:label "AUTHORISATION_PENDING"@en ; rdfs:comment "Recommended; the authorisation condition is not yet satisfied."@en .
+mit:AUTHORISED            a mit:AuthorisationStatus ; rdfs:label "AUTHORISED"@en ;            rdfs:comment "The applicable automated or human authorisation condition is satisfied; IRDS may coordinate the response."@en .
+mit:REJECTED              a mit:AuthorisationStatus ; rdfs:label "REJECTED"@en ;              rdfs:comment "The responsible authority declined the recommended response."@en .
+mit:OVERRIDDEN            a mit:AuthorisationStatus ; rdfs:label "OVERRIDDEN"@en ;            rdfs:comment "The operator substituted a different action or intervened manually; the override is recorded as evidence."@en .
+
+
+##############################################################################
+# Classes — runtime records
+##############################################################################
+
+mit:ResponseEvaluation a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Response Evaluation"@en ;
+    rdfs:comment "The REDS record for one candidate response u in answer to one resilience trigger: the action evaluated, its expected effect E[DI_sys(t+Δt) | u] as a di:DIForecast (typically produced by the Digital Twin or a scenario execution), the implementation cost or disruption C(u), the residual-exposure or soft-preference penalty V(u), whether the action is admissible (u ∈ U_safe) and, if not, which constraint it violates, the resulting rank, whether it is the recommendation, and a human-readable explanation. Hard constraint violations exclude an action from U_safe rather than penalising it twice. The ranking itself is computed externally with the weights in mit:DecisionConfiguration."@en .
+
+mit:DecisionConfiguration a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Decision Configuration"@en ;
+    rdfs:comment "The controlled, versioned weights of the REDS objective for a vessel and context: cost weight λ (mit:hasCostWeight) and penalty weight η (mit:hasPenaltyWeight). warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy."@en .
+
+mit:ResponseExecution a owl:Class ;
+    rdfs:subClassOf mit:MitigationEntity ;
+    rdfs:subClassOf warrant:VisualisableEntity ;
+    rdfs:label "Response Execution"@en ;
+    rdfs:comment "The IRDS record of a selected response: the action executed and the evaluation it was selected from, the authorisation status and the authority that granted it (a human operator role or an automated authorisation service), authorisation, start and completion times, the resilience posture in force, the outcome and the post-response index, any operator input (approval, override, intervention) recorded as evidence, and the Living Dependability Case it is recorded in. Connects assessment and recommendation with accountable operational intervention; the outcome re-enters the loop at sensing."@en .
+
+
+##############################################################################
+# Object Properties — response library
 ##############################################################################
 
 mit:matchesRule a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState ) ] ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState di:ResilienceTrigger ) ] ;
     rdfs:range mit:MitigationRule ;
-    rdfs:label "matches rule"@en .
+    rdfs:label "matches rule"@en ;
+    rdfs:comment "A deviation, hazard, resilience trigger, or operational state matches a rule of the response library. Prefer matching on a ResilienceTrigger or attribute-wise state; matching on a DI-node state is retained for compatibility but the DI value itself never triggers a response."@en .
 
 mit:recommends a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( mit:MitigationRule cdm:Risk ) ] ;
-    rdfs:range mit:MitigationAction ;
-    rdfs:label "recommends"@en .
+    rdfs:range [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:label "recommends"@en ;
+    rdfs:comment "A rule (or a design-time risk evaluation) names a candidate response: either a MitigationAction, or a FailoverProcedure where the rule points straight at an existing procedure rather than at an advisory wrapping it. The runtime recommendation among candidates is mit:isRecommended on a ResponseEvaluation."@en .
 
 mit:activates a owl:ObjectProperty ;
     rdfs:domain mit:MitigationAction ;
@@ -91,9 +203,10 @@ mit:activates a owl:ObjectProperty ;
     rdfs:label "activates"@en .
 
 mit:addresses a owl:ObjectProperty ;
-    rdfs:domain mit:FailoverProcedure ;
-    rdfs:range [ owl:unionOf ( davom:VesselFunction davom:System davom:Component ) ] ;
-    rdfs:label "addresses"@en .
+    rdfs:domain [ owl:unionOf ( mit:FailoverProcedure mit:MitigationAction ) ] ;
+    rdfs:range [ owl:unionOf ( davom:VesselFunction davom:System davom:Component davom:CommunicationLink davom:DataFlow ) ] ;
+    rdfs:label "addresses"@en ;
+    rdfs:comment "The function, system, component, link, or data flow the procedure or action is intended to recover or protect."@en .
 
 mit:uses a owl:ObjectProperty ;
     rdfs:domain mit:FailoverProcedure ;
@@ -101,7 +214,7 @@ mit:uses a owl:ObjectProperty ;
     rdfs:label "uses"@en .
 
 mit:hasExpectedEffect a owl:ObjectProperty ;
-    rdfs:domain mit:FailoverProcedure ;
+    rdfs:domain [ owl:unionOf ( mit:FailoverProcedure mit:MitigationAction ) ] ;
     rdfs:range mit:RecoveryEffect ;
     rdfs:label "has expected effect"@en .
 
@@ -112,8 +225,246 @@ mit:performsMitigation a owl:ObjectProperty ;
 
 mit:isTriggeredBy a owl:ObjectProperty ;
     rdfs:domain mit:MitigationAction ;
-    rdfs:range [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState ) ] ;
-    rdfs:label "is triggered by"@en .
+    rdfs:range [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState di:ResilienceTrigger obs:HealthEvent ) ] ;
+    rdfs:label "is triggered by"@en ;
+    rdfs:comment "The deviation, hazard, health event, resilience trigger, or state in response to which the action was recommended or executed."@en .
+
+mit:hasStrategyType a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:range mit:ResponseStrategyType ;
+    rdfs:label "has strategy type"@en ;
+    rdfs:comment "The kind of resilience strategy this response represents. Applies to a FailoverProcedure as much as to a MitigationAction: a procedure is a response with a strategy, not merely the thing an action activates."@en .
+
+mit:hasDefaultPosture a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:range mit:ResiliencePosture ;
+    rdfs:label "has default posture"@en ;
+    rdfs:comment "The assurance posture (fail-operational or fail-safe) this action or procedure places the system in when executed as designed."@en .
+
+mit:implementsControl a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:range cdm:Control ;
+    rdfs:label "implements control"@en ;
+    rdfs:comment "The design-time control (safeguard) that this runtime action activates or relies on. Links the runtime response back to the hazard analysis and to the claims the Living Dependability Case holds about the control."@en .
+
+mit:requiresAuthorisationFrom a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:range davom:HumanOperatorRole ;
+    rdfs:label "requires authorisation from"@en ;
+    rdfs:comment "The human operator role whose authorisation is a precondition for executing this action or procedure. A response with no such triple may be authorised automatically within the configured authority allocation."@en .
+
+
+##############################################################################
+# Object Properties — REDS evaluation
+##############################################################################
+
+mit:evaluatesAction a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range mit:MitigationAction ;
+    rdfs:label "evaluates action"@en .
+
+mit:respondsToTrigger a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range di:ResilienceTrigger ;
+    rdfs:label "responds to trigger"@en ;
+    rdfs:comment "The resilience trigger that invoked this evaluation. All evaluations for one trigger form the ranked alternative set."@en .
+
+mit:hasExpectedIndex a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range di:DIForecast ;
+    rdfs:label "has expected index"@en ;
+    rdfs:comment "E[DI_sys(t+Δt) | u]: the forecast of the system (or affected node) DI conditional on executing the evaluated action, estimated with the Digital Twin or a scenario execution."@en .
+
+mit:violatesConstraint a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range [ owl:unionOf ( cdm:SafetyConstraint assr:Requirement ) ] ;
+    rdfs:label "violates constraint"@en ;
+    rdfs:comment "For an inadmissible alternative: the operational, safety, cybersecurity, regulatory, or authority constraint that excludes it from U_safe."@en .
+
+mit:evaluatedWithScenario a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range scen:Scenario ;
+    rdfs:label "evaluated with scenario"@en ;
+    rdfs:comment "The what-if scenario whose execution produced the expected-effect forecast."@en .
+
+mit:evaluatedBy a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range mit:DecisionSupportService ;
+    rdfs:label "evaluated by"@en .
+
+mit:usesDecisionConfiguration a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range mit:DecisionConfiguration ;
+    rdfs:label "uses decision configuration"@en .
+
+
+##############################################################################
+# Object Properties — IRDS execution
+##############################################################################
+
+mit:executesAction a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range mit:MitigationAction ;
+    rdfs:label "executes action"@en .
+
+mit:selectedFrom a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range mit:ResponseEvaluation ;
+    rdfs:label "selected from"@en ;
+    rdfs:comment "The evaluation whose action was selected; preserves the evidence trail from trigger to recommendation to execution."@en .
+
+mit:hasAuthorisationStatus a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range mit:AuthorisationStatus ;
+    rdfs:label "has authorisation status"@en .
+
+mit:authorisedBy a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range [ owl:unionOf ( davom:HumanOperatorRole obs:AnalyticalService ) ] ;
+    rdfs:label "authorised by"@en ;
+    rdfs:comment "The authority that satisfied the authorisation condition: a human operator role, or an automated authorisation service within the configured authority allocation."@en .
+
+mit:hasOutcomeIndex a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
+    rdfs:label "has outcome index"@en ;
+    rdfs:comment "The index value recorded after the response, closing the loop from action to reassessment. A DI recovery is a trend signal; the graph and the affected claims must confirm that the diagnosed causes are resolved."@en .
+
+mit:hasResiliencePosture a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range mit:ResiliencePosture ;
+    rdfs:label "has resilience posture"@en ;
+    rdfs:comment "The posture (fail-operational or fail-safe) in force as a result of this execution."@en .
+
+mit:coordinatedBy a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range mit:ResilienceSupervisor ;
+    rdfs:label "coordinated by"@en .
+
+mit:recordedOperatorInput a owl:ObjectProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range obs:OperatorInput ;
+    rdfs:label "recorded operator input"@en ;
+    rdfs:comment "The operator approval, rejection, override, or intervention associated with this execution. Operator actions are part of the evolving dependability case and admissible as evidence."@en .
+
+mit:isRecordedIn a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:ResponseExecution mit:ResponseEvaluation ) ] ;
+    rdfs:range assr:LivingDependabilityCase ;
+    rdfs:label "is recorded in"@en ;
+    rdfs:comment "Records the evaluation or execution (action, rationale, authority, timing, posture, outcome) in the Living Dependability Case."@en .
+
+
+##############################################################################
+# Datatype Properties
+##############################################################################
+
+# REDS evaluation
+mit:hasImplementationCost a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has implementation cost"@en ;
+    rdfs:comment "C(u): implementation cost or operational disruption of the alternative, normalised to [0,1]."@en .
+
+mit:hasResidualExposurePenalty a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has residual exposure penalty"@en ;
+    rdfs:comment "V(u): residual exposure or soft-preference penalty among otherwise feasible actions, normalised to [0,1]. Hard violations are excluded from U_safe, not penalised here."@en .
+
+mit:hasObjectiveValue a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has objective value"@en ;
+    rdfs:comment "The computed value of E[DI_sys | u] − λ·C(u) − η·V(u) for this alternative."@en .
+
+mit:hasRank a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:integer ;
+    rdfs:label "has rank"@en ;
+    rdfs:comment "Rank among the admissible alternatives for the same trigger; 1 is the preferred response."@en .
+
+mit:isAdmissible a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is admissible"@en ;
+    rdfs:comment "True when the action belongs to U_safe (permitted by operational, safety, cybersecurity, regulatory and human-authority constraints)."@en .
+
+mit:isRecommended a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is recommended"@en ;
+    rdfs:comment "True for the alternative REDS presents as its recommendation (normally rank 1)."@en .
+
+mit:hasExplanation a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:string ;
+    rdfs:label "has explanation"@en ;
+    rdfs:comment "Human-readable rationale for the rank, referencing the diagnosis, constraints and expected effect."@en .
+
+mit:evaluatedAt a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseEvaluation ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "evaluated at"@en .
+
+# Decision configuration
+mit:hasCostWeight a owl:DatatypeProperty ;
+    rdfs:domain mit:DecisionConfiguration ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has cost weight"@en ;
+    rdfs:comment "λ: weight of the implementation cost term."@en .
+
+mit:hasPenaltyWeight a owl:DatatypeProperty ;
+    rdfs:domain mit:DecisionConfiguration ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has penalty weight"@en ;
+    rdfs:comment "η: weight of the residual-exposure penalty term."@en .
+
+# IRDS execution
+mit:authorisedAt a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "authorised at"@en .
+
+mit:startedAt a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "started at"@en .
+
+mit:completedAt a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "completed at"@en .
+
+mit:hasOutcome a owl:DatatypeProperty ;
+    rdfs:domain mit:ResponseExecution ;
+    rdfs:range xsd:string ;
+    rdfs:label "has outcome"@en ;
+    rdfs:comment "Outcome of the response as assessed after execution (e.g. SUCCESSFUL, PARTIAL, FAILED) with a short description."@en .
+
+# Recovery effect
+mit:hasProjectedIndexGain a owl:DatatypeProperty ;
+    rdfs:domain mit:RecoveryEffect ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has projected index gain"@en ;
+    rdfs:comment "Expected DI improvement after the procedure or action, in [0,1]."@en .
+
+mit:hasProjectedRiskReduction a owl:DatatypeProperty ;
+    rdfs:domain mit:RecoveryEffect ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has projected risk reduction"@en ;
+    rdfs:comment "Expected reduction of the aggregated propagated risk, in [0,1]."@en .
+
+mit:hasRecoveryTime a owl:DatatypeProperty ;
+    rdfs:domain mit:RecoveryEffect ;
+    rdfs:range xsd:duration ;
+    rdfs:label "has recovery time"@en ;
+    rdfs:comment "Expected time from activation to recovery of the addressed function."@en .
+
+mit:hasEffectConfidence a owl:DatatypeProperty ;
+    rdfs:domain mit:RecoveryEffect ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has effect confidence"@en ;
+    rdfs:comment "Confidence in the projected effect, in [0,1] (historical data, simulation, or expert judgement)."@en .
 
 ##############################################################################
 # END warrant-mitigation.ttl
