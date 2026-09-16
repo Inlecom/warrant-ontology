@@ -16,7 +16,7 @@
 #                           Node Health Monitor and the GNSS monitoring service
 #                           produce a fully populated health event (detection
 #                           event, UNAVAILABLE); the Digital Twin produces a
-#                           predicted-condition event and provides an INS
+#                           predicted-condition event and provides a dead-
 #                           virtual sensor substituting the GNSS sensor
 #   attribute assessment    four attribute values on the navigation function
 #                           with per-source confidence and one fused value;
@@ -31,7 +31,7 @@
 #                           sustained decline, predicted floor crossing)
 #   decision (REDS)         three ranked response evaluations with expected
 #                           effect, cost, penalty and explanation
-#   response (IRDS)         INS/AIS failover executed, authorised by the ROC
+#   response (IRDS)         dead-reckoning failover executed, authorised by the
 #                           operator, fail-operational posture, outcome and
 #                           post-response index
 #   assurance (LDC)         evidence (detection event, virtual-sensor estimate,
@@ -43,6 +43,27 @@
 #   digital twin            visualises the above; receives updates; executes
 #                           the degraded-transit scenario whose result carries
 #                           the forecasts
+#
+# SCOPE. This is an inland and coastal remote-operation scenario, and the
+# numbers only make sense there. Three things would differ in deep-sea
+# shipping and the example must not be read as covering it:
+#   * Continuous remote operation does not exist deep sea. The ROC link here
+#     is terrestrial LTE/5G with a latency budget in the hundreds of
+#     milliseconds; an ocean link is geostationary satellite at roughly half a
+#     second round trip. LL1 is the deep-sea case and uses onboard roles.
+#   * The consequence timing is confined-water timing. In open ocean a
+#     45-second outage is close to a non-event: dead reckoning on gyro and
+#     speed log holds adequate accuracy for hours and there is sea room, so
+#     the same deviation would sit at Normal or Degraded rather than driving
+#     the safety attribute to Critical within seconds. The deep-sea concern is
+#     a prolonged or undetected degradation near landfall or in a traffic
+#     separation scheme, and spoofing or jamming in known affected regions.
+#   * The failure mechanism is inland. Blockage by bridges, locks and quay
+#     cranes is the dominant cause here; offshore, with a multi-constellation
+#     receiver, a total loss implies jamming, antenna or receiver failure.
+# What does carry over unchanged: AIS is never an independent position source
+# (own-ship AIS position is GNSS-derived), dead reckoning is not inertial
+# navigation, and carrier-to-noise density cannot detect spoofing.
 #
 # Numbers are illustrative but exact: every stated value follows from the
 # formulas documented in the modules, so the example can be checked by hand.
@@ -136,7 +157,7 @@ ll4:PositioningSystem a davom:TechnicalSystem ;
 
 ll4:BridgeNavigationZone a davom:SecurityZone ;
     warrant:hasName "Bridge Navigation OT Zone" ;
-    warrant:hasDescription "On-board navigation OT: GNSS, INS, VCS." .
+    warrant:hasDescription "On-board navigation OT: GNSS receiver, gyrocompass, speed log, VCS." .
 
 ll4:ShoreROCZone a davom:SecurityZone ;
     warrant:hasName "Shore ROC Zone" ;
@@ -213,7 +234,7 @@ ll4:UnauthenticatedGNSSSignalVulnerability a cdm:Vulnerability ;
 
 ll4:GNSSSpoofingThreatScenario a cdm:ThreatScenario ;
     warrant:hasName "GNSS Spoofing during Remote Transit" ;
-    warrant:hasDescription "Adversary broadcasts counterfeit GNSS signals; receiver reports a plausible but false position. Related to the outage scenario because both remove trusted positioning." ;
+    warrant:hasDescription "Adversary broadcasts counterfeit GNSS signals; receiver reports a plausible but false position. Related to the outage scenario because both remove trusted positioning, but the detection path differs: a spoofed signal normally arrives at normal or elevated carrier-to-noise density, so signal-quality monitoring cannot see it. It is detected by the integrity and consistency checks instead, namely the RAIM protection level, the residual against the dead-reckoning estimate, radar ranges to charted features, disagreement between constellations, and a receiver clock jump. Likelihood is strongly region-dependent in practice and is elevated near areas of known interference rather than uniform along a route." ;
     cdm:exploits ll4:UnauthenticatedGNSSSignalVulnerability ;
     cdm:degrades ll4:GNSSReceiverComponent ;
     cdm:hasHazardClass cdm:CYBER_THREAT ;
@@ -234,8 +255,8 @@ ll4:GNSSSpoofingRisk a cdm:Risk ;
 
 ll4:CTRL_RedundantPositioning a cdm:Control ;
     warrant:hasIdentifier "CTRL-NAV-003" ;
-    warrant:hasName "Redundant INS/AIS positioning source" ;
-    warrant:hasDescription "Inertial dead-reckoning fused with AIS-derived position is kept available as an independent position source so that loss or distrust of GNSS does not leave the vessel without positioning." ;
+    warrant:hasName "Redundant dead-reckoning positioning source" ;
+    warrant:hasDescription "Dead reckoning from gyrocompass heading and speed-log speed, corrected for known set and drift and cross-checked against radar ranges to charted features and against AIS cooperative traffic context, is kept available as an independent position source so that loss or distrust of GNSS does not leave the vessel without positioning. AIS is not itself a position source: own-ship AIS position is taken from the electronic position fixing system and is therefore GNSS-derived, so it is lost when GNSS is lost and falsified when GNSS is spoofed. AIS contributes only a cooperative cross-check against the reported positions of surrounding traffic." ;
     warrant:hasVersion "1.1" ;
     warrant:approvedBy "Seafar ROS safety board" ;
     warrant:hasApprovalStatus "APPROVED" ;
@@ -258,7 +279,7 @@ ll4:ResidualCollisionRisk a cdm:Risk ;
 
 ll4:ExtRef_IACS_UR_E26 a warrant:ExternalReference ;
     warrant:hasName "IACS UR E26 Rev.1 — Cyber Resilience of Ships" ;
-    warrant:hasDescription "Referenced for the resilience-of-positioning expectation; the requirement wording below is the operator's, not a quotation of the standard." .
+    warrant:hasDescription "Cited as the governing cyber-resilience instrument for the vessel. UR E26 does not itself impose a positioning-redundancy time limit: the 60-second figure in the requirement below is the operator's own ROS operating policy, which is why that requirement is categorised STAKEHOLDER and declared by Seafar rather than categorised REGULATORY." .
 
 ll4:REQ_NAV_INT_001 a assr:Requirement ;
     warrant:hasIdentifier "REQ-NAV-INT-001" ;
@@ -285,7 +306,7 @@ ll4:CLM_NavigationIntegrity a assr:AssuranceClaim ;
 
 ll4:ASM_GNSSAvailableOnRoute a assr:Assumption ;
     warrant:hasName "GNSS coverage available along the Antwerp–Emden route" ;
-    warrant:hasDescription "Design-time assumption of the navigation hazard analysis: at least four GNSS satellites in view along the route; positioning outages shorter than 10 s." ;
+    warrant:hasDescription "Design-time assumption of the navigation hazard analysis: a multi-constellation receiver (GPS, Galileo, GLONASS, BeiDou) holds at least four satellites in view along the route and positioning outages are shorter than 10 s. The route is inland and coastal, where the dominant outage mechanism is blockage by bridges, locks, quay structures and cranes rather than the loss of an entire constellation." ;
     assr:assumptionAppliesTo ll4:PositionUncertaintyHazard , ll4:CLM_NavigationIntegrity ;
     assr:hasValidityStatus "UNDER_REVIEW" ;
     assr:isChallengedBy ll4:GNSSSignalLossDetectionEvent ;
@@ -298,7 +319,7 @@ ll4:OBL_IndependentPositionSource a assr:EvidenceObligation ;
     assr:declaredBy "Seafar (operator)" ;
     assr:hasValidityPeriod "PT30M"^^xsd:duration ;
     assr:hasObligationStatus assr:PRESENT ;
-    assr:isFulfilledBy ll4:EV_ROCOperatorApproval , ll4:EV_INSPositionEstimate .
+    assr:isFulfilledBy ll4:EV_ROCOperatorApproval , ll4:EV_IndependentPositionEstimate .
 
 ll4:OBL_GNSSIntegrityLog a assr:EvidenceObligation ;
     warrant:hasName "GNSS receiver integrity (RAIM) log for the transit" ;
@@ -314,9 +335,16 @@ ll4:OBL_GNSSIntegrityLog a assr:EvidenceObligation ;
 # ── Metrics ────────────────────────────────────────────────────────────────
 
 ll4:GNSSSignalQualityMetric a obs:DependabilityMetric ;
-    warrant:hasName "GNSS Signal Quality" ;
+    warrant:hasName "GNSS Signal Quality (carrier-to-noise density)" ;
+    warrant:hasDescription "Mean C/N0 over the tracked constellation. Healthy tracking is roughly 35 to 50 dB-Hz and a receiver typically loses lock below about 25 to 30 dB-Hz, so the alarm threshold is set at 28 dB-Hz. This metric detects a weak or absent signal. It cannot detect spoofing, because a spoofed signal normally arrives at normal or elevated C/N0; that is what ll4:GNSSIntegrityMetric is for." ;
     obs:hasUnit "dBHz" ;
     obs:hasExternalTimeSeriesId "timeseries.gnss.signal_quality.MAI-W" .
+
+ll4:GNSSIntegrityMetric a obs:SafetyMetric ;
+    warrant:hasName "GNSS Position Integrity (RAIM horizontal protection level)" ;
+    warrant:hasDescription "Horizontal protection level computed by receiver autonomous integrity monitoring, compared with the horizontal alert limit for the phase of navigation (25 m on this inland and harbour route). Unlike carrier-to-noise density this indicates a position that cannot be trusted rather than a signal that is weak, so it covers the degradation, the total loss and the spoofing cases alike. A consistency residual against the dead-reckoning estimate and radar ranges is the second, independent check." ;
+    obs:hasUnit "m" ;
+    obs:hasExternalTimeSeriesId "timeseries.gnss.raim_hpl.MAI-W" .
 
 ll4:CommandLatencyMetric a obs:PerformanceMetric ;
     warrant:hasName "ROC Command Latency" ;
@@ -329,6 +357,7 @@ ll4:VesselPositionMetric a obs:DependabilityMetric ;
     obs:hasExternalTimeSeriesId "timeseries.navigation.position.MAI-W" .
 
 ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSSignalQualityMetric .
+ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSIntegrityMetric .
 ll4:ROCToVesselCommandLink  obs:hasDependabilityMetric ll4:CommandLatencyMetric .
 ll4:RemoteNavigationFunction obs:hasDependabilityMetric ll4:VesselPositionMetric .
 
@@ -337,9 +366,9 @@ ll4:RemoteNavigationFunction obs:hasDependabilityMetric ll4:VesselPositionMetric
 ll4:GNSSSignalSensor a obs:Sensor ;
     warrant:hasName "On-board GNSS Signal Sensor" .
 
-ll4:INSDeadReckoningVirtualSensor a obs:VirtualSensor ;
-    warrant:hasName "INS/AIS Dead-Reckoning Virtual Sensor" ;
-    warrant:hasDescription "Model-based position estimate hosted by the Digital Twin: inertial dead reckoning corrected by AIS-derived position; substitutes the GNSS sensor when GNSS is lost or untrusted." ;
+ll4:DeadReckoningVirtualSensor a obs:VirtualSensor ;
+    warrant:hasName "Dead-Reckoning Virtual Sensor" ;
+    warrant:hasDescription "Model-based position estimate hosted by the Digital Twin: dead reckoning propagated from the last trusted fix using gyrocompass heading and speed-log speed through water, with the twin's hydrodynamic model supplying set and drift, cross-checked against radar ranges and AIS cooperative traffic context. Substitutes the GNSS sensor when GNSS is lost or untrusted. This is dead reckoning, not inertial navigation: in IMO and IEC usage INS denotes an Integrated Navigation System (IEC 61924-2), and an inertial unit is not fitted to this vessel class. Accuracy degrades with time since the last fix, dominated by unmodelled current and leeway." ;
     obs:substitutesFor ll4:GNSSSignalSensor ;
     obs:estimates ll4:VesselPositionMetric .
 
@@ -361,22 +390,34 @@ ll4:RemoteNavigationNodeHealthMonitor a obs:NodeHealthMonitor ;
     obs:hasMonitoringLevel obs:FUNCTION_LEVEL .
 
 ll4:GNSSSignalSensor obs:measures ll4:GNSSSignalQualityMetric .
+ll4:GNSSSignalSensor obs:measures ll4:GNSSIntegrityMetric .
 ll4:GNSSMonitoringService obs:consumes ll4:GNSSSignalQualityMetric .
+ll4:GNSSMonitoringService obs:consumes ll4:GNSSIntegrityMetric .
 
 # ── Measurement (semantic event; raw stream external) ─────────────────────
 
 ll4:GNSSSignalMeasurement_T1 a obs:Measurement ;
-    obs:hasValue "5.2"^^xsd:decimal ;
+    warrant:hasDescription "Last C/N0 reported before the receiver dropped lock; 21.4 dB-Hz is below the 28 dB-Hz alarm threshold and at the edge of the tracking floor." ;
+    obs:hasValue "21.4"^^xsd:decimal ;
     obs:hasUnit "dBHz" ;
     obs:hasTimestamp "2026-05-17T10:15:00Z"^^xsd:dateTime ;
     obs:hasSource ll4:GNSSSignalSensor ;
     obs:hasExternalRecordReference "timeseries.gnss.signal_quality.MAI-W::1747476900" .
 
-ll4:GNSSSignalQualityMetric obs:hasMeasurement ll4:GNSSSignalMeasurement_T1 .
+ll4:GNSSIntegrityMeasurement_T1 a obs:Measurement ;
+    warrant:hasDescription "RAIM horizontal protection level of 48 m against a 25 m alert limit: the reported position cannot be trusted for this phase of navigation." ;
+    obs:hasValue "48.0"^^xsd:decimal ;
+    obs:hasUnit "m" ;
+    obs:hasTimestamp "2026-05-17T10:15:01Z"^^xsd:dateTime ;
+    obs:hasSource ll4:GNSSSignalSensor ;
+    obs:hasExternalRecordReference "timeseries.gnss.raim_hpl.MAI-W::1747476901" .
 
-ll4:INSPositionEstimate_T1 a obs:VirtualSensorOutput ;
-    warrant:hasName "INS/AIS position estimate after failover" ;
-    obs:hasSource ll4:INSDeadReckoningVirtualSensor ;
+ll4:GNSSSignalQualityMetric obs:hasMeasurement ll4:GNSSSignalMeasurement_T1 .
+ll4:GNSSIntegrityMetric obs:hasMeasurement ll4:GNSSIntegrityMeasurement_T1 .
+
+ll4:DeadReckoningPositionEstimate_T1 a obs:VirtualSensorOutput ;
+    warrant:hasName "Dead-reckoning position estimate after failover" ;
+    obs:hasSource ll4:DeadReckoningVirtualSensor ;
     obs:hasConfidenceValue "0.70"^^xsd:decimal .
 
 # ── Detection Event = fully populated health event ─────────────────────────
@@ -384,7 +425,7 @@ ll4:INSPositionEstimate_T1 a obs:VirtualSensorOutput ;
 ll4:GNSSSignalLossDetectionEvent a obs:DetectionEvent ;
     warrant:hasIdentifier "HE-MAIW-20260517-0001" ;
     warrant:hasName "GNSS Signal Loss Detection Event" ;
-    warrant:hasDescription "Produced by GNSSMonitoringService when signal quality falls below 10 dBHz threshold; enriched by the GNSS receiver Node Health Monitor." ;
+    warrant:hasDescription "Produced by GNSSMonitoringService on two concurrent indications: mean C/N0 below the 28 dB-Hz alarm threshold, and a RAIM horizontal protection level above the 25 m alert limit. Enriched by the GNSS receiver Node Health Monitor with persistence, operational impact and root cause." ;
     obs:hasTimestamp "2026-05-17T10:15:02Z"^^xsd:dateTime ;
     obs:hasSource ll4:GNSSMonitoringService ;
     obs:affectsAsset ll4:GNSSReceiverComponent , ll4:RemoteNavigationFunction ;
@@ -401,6 +442,7 @@ ll4:GNSSSignalLossDetectionEvent a obs:DetectionEvent ;
     assr:challengesClaim ll4:CLM_NavigationIntegrity .
 
 ll4:GNSSSignalMeasurement_T1 obs:supportsDetection ll4:GNSSSignalLossDetectionEvent .
+ll4:GNSSIntegrityMeasurement_T1 obs:supportsDetection ll4:GNSSSignalLossDetectionEvent .
 ll4:GNSSMonitoringService obs:producesDetectionEvent ll4:GNSSSignalLossDetectionEvent .
 ll4:GNSSReceiverNodeHealthMonitor obs:producesHealthEvent ll4:GNSSSignalLossDetectionEvent .
 
@@ -869,8 +911,8 @@ ll4:SystemDIForecast_Unmitigated a di:DIForecast ;
     di:hasForecastConfidence "0.75"^^xsd:decimal ;
     di:forecastProducedBy ll4:MAI_W_DigitalTwin .
 
-ll4:SystemDIForecast_INSAIS a di:DIForecast ;
-    warrant:hasName "Forecast DI_sys — INS/AIS failover" ;
+ll4:SystemDIForecast_DeadReckoning a di:DIForecast ;
+    warrant:hasName "Forecast DI_sys — dead-reckoning failover" ;
     di:forecastsIndex ll4:MAI_W_SystemDI ;
     di:hasForecastValue "0.68"^^xsd:decimal ;
     di:hasForecastHorizon "PT15M"^^xsd:duration ;
@@ -950,9 +992,9 @@ ll4:GNSSLossScenarioExecution_T1 a scen:ScenarioExecution ;
     scen:hasScenarioResult ll4:GNSSLossScenarioResult_T1 .
 
 ll4:GNSSLossScenarioResult_T1 a scen:ScenarioResult ;
-    scen:hasResultSummary "Unmitigated: DI_sys falls to 0.41 within 15 min and the navigation function reaches Failed. INS/AIS failover restores DI_sys to 0.68; safe-degraded transit 0.60; controlled stop 0.55." ;
+    scen:hasResultSummary "Unmitigated: DI_sys falls to 0.41 within 15 min and the navigation function reaches Failed. Dead-reckoning failover restores DI_sys to 0.68; safe-degraded transit 0.60; controlled stop 0.55." ;
     scen:hasProjectedState di:FailedState ;
-    scen:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_INSAIS ,
+    scen:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_DeadReckoning ,
                           ll4:SystemDIForecast_SafeDegraded , ll4:SystemDIForecast_HoldPosition .
 
 
@@ -964,23 +1006,23 @@ ll4:GNSSLossScenarioResult_T1 a scen:ScenarioResult ;
 
 ll4:GNSSFailoverRule a mit:MitigationRule ;
     warrant:hasName "GNSS Loss Mitigation Rule" ;
-    warrant:hasDescription "On GNSS unavailability or a positioning attribute breach: evaluate INS/AIS failover, safe-degraded transit, and controlled stop; alert ROC operator." ;
-    mit:recommends ll4:SwitchToINSAISFailover , ll4:SafeDegradedTransitAction , ll4:ControlledStopAction .
+    warrant:hasDescription "On GNSS unavailability or a positioning attribute breach: evaluate dead-reckoning failover, safe-degraded transit, and controlled stop; alert ROC operator." ;
+    mit:recommends ll4:SwitchToDeadReckoningFailover , ll4:SafeDegradedTransitAction , ll4:ControlledStopAction .
 
 ll4:GNSSSignalLossDeviation mit:matchesRule ll4:GNSSFailoverRule .
 
-ll4:SwitchToINSAISFailover a mit:AdvisoryAction ;
-    warrant:hasName "Switch to INS/AIS Positioning" ;
-    warrant:hasDescription "Advisory: activate inertial navigation and AIS-based position estimation via the Digital Twin virtual sensor. Notify ROC operator." ;
+ll4:SwitchToDeadReckoningFailover a mit:AdvisoryAction ;
+    warrant:hasName "Switch to Dead-Reckoning Positioning" ;
+    warrant:hasDescription "Advisory: activate dead-reckoning positioning via the Digital Twin virtual sensor and start the radar and AIS cooperative cross-check. Notify ROC operator." ;
     mit:hasStrategyType mit:VIRTUAL_SENSOR_SUBSTITUTION ;
     mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
     mit:implementsControl ll4:CTRL_RedundantPositioning ;
     mit:requiresAuthorisationFrom ll4:RemoteOperatorRole ;
     mit:isTriggeredBy ll4:Trigger_AttributeBreach_T1 ;
     mit:addresses ll4:RemoteNavigationFunction ;
-    mit:hasExpectedEffect ll4:INSFailoverRecoveryEffect .
+    mit:hasExpectedEffect ll4:DeadReckoningRecoveryEffect .
 
-ll4:INSFailoverRecoveryEffect a mit:RecoveryEffect ;
+ll4:DeadReckoningRecoveryEffect a mit:RecoveryEffect ;
     mit:hasProjectedIndexGain "0.30"^^xsd:decimal ;
     mit:hasProjectedRiskReduction "0.10"^^xsd:decimal ;
     mit:hasRecoveryTime "PT30S"^^xsd:duration ;
@@ -1002,13 +1044,13 @@ ll4:ControlledStopAction a mit:AdvisoryAction ;
     mit:requiresAuthorisationFrom ll4:RemoteOperatorRole ;
     mit:addresses ll4:RemoteNavigationFunction .
 
-ll4:INSPositioningFailover a mit:FailoverProcedure ;
-    warrant:hasName "INS-based Positioning Failover Procedure" ;
-    warrant:hasDescription "Visualised procedure: enable INS/AIS positioning and notify the ROC operator." ;
+ll4:DeadReckoningPositioningFailover a mit:FailoverProcedure ;
+    warrant:hasName "Dead-Reckoning Positioning Failover Procedure" ;
+    warrant:hasDescription "Visualised procedure: mark the last trusted fix, enable dead-reckoning positioning from the Digital Twin virtual sensor, start the radar and AIS cooperative cross-check, and notify the ROC operator." ;
     mit:implementsControl ll4:CTRL_RedundantPositioning .
 
-ll4:SwitchToINSAISFailover mit:activates ll4:INSPositioningFailover .
-ll4:INSPositioningFailover mit:addresses ll4:RemoteNavigationFunction .
+ll4:SwitchToDeadReckoningFailover mit:activates ll4:DeadReckoningPositioningFailover .
+ll4:DeadReckoningPositioningFailover mit:addresses ll4:RemoteNavigationFunction .
 
 # ── REDS: ranked evaluations, objective = E[DI|u] − 0.3·C − 0.2·V ──────────
 
@@ -1023,10 +1065,10 @@ ll4:MAI_W_DecisionConfig a mit:DecisionConfiguration ;
     warrant:hasVersion "1.0" ;
     warrant:approvedBy "Seafar ROS safety board" .
 
-ll4:Eval_INSAISFailover_T1 a mit:ResponseEvaluation ;
-    mit:evaluatesAction ll4:SwitchToINSAISFailover ;
+ll4:Eval_DeadReckoningFailover_T1 a mit:ResponseEvaluation ;
+    mit:evaluatesAction ll4:SwitchToDeadReckoningFailover ;
     mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
-    mit:hasExpectedIndex ll4:SystemDIForecast_INSAIS ;
+    mit:hasExpectedIndex ll4:SystemDIForecast_DeadReckoning ;
     mit:hasImplementationCost "0.15"^^xsd:decimal ;
     mit:hasResidualExposurePenalty "0.10"^^xsd:decimal ;
     mit:hasObjectiveValue "0.615"^^xsd:decimal ;
@@ -1080,27 +1122,27 @@ ll4:MAI_W_IRDS a mit:ResilienceSupervisor ;
     warrant:hasName "MAI-W Intelligent Resilience and Dependability Supervisor" .
 
 ll4:ROCOperatorApproval_T1 a obs:OperatorInput ;
-    warrant:hasName "ROC operator approval of INS/AIS failover" ;
+    warrant:hasName "ROC operator approval of dead-reckoning failover" ;
     obs:hasTimestamp "2026-05-17T10:15:40Z"^^xsd:dateTime ;
     obs:hasSource ll4:RemoteOperatorRole .
 
-ll4:INSAISFailoverExecution_T1 a mit:ResponseExecution ;
-    warrant:hasName "INS/AIS failover execution" ;
-    mit:executesAction ll4:SwitchToINSAISFailover ;
-    mit:selectedFrom ll4:Eval_INSAISFailover_T1 ;
+ll4:DeadReckoningFailoverExecution_T1 a mit:ResponseExecution ;
+    warrant:hasName "Dead-reckoning failover execution" ;
+    mit:executesAction ll4:SwitchToDeadReckoningFailover ;
+    mit:selectedFrom ll4:Eval_DeadReckoningFailover_T1 ;
     mit:hasAuthorisationStatus mit:AUTHORISED ;
     mit:authorisedBy ll4:RemoteOperatorRole ;
     mit:authorisedAt "2026-05-17T10:15:40Z"^^xsd:dateTime ;
     mit:startedAt    "2026-05-17T10:15:42Z"^^xsd:dateTime ;
     mit:completedAt  "2026-05-17T10:15:58Z"^^xsd:dateTime ;
     mit:hasResiliencePosture mit:FAIL_OPERATIONAL ;
-    mit:hasOutcome "SUCCESSFUL: INS/AIS position estimate active; horizontal uncertainty 12 m; ROC operator informed." ;
+    mit:hasOutcome "SUCCESSFUL: dead-reckoning position estimate active from the last trusted fix; initial horizontal uncertainty about 15 m, growing while no fix is available; radar and AIS cooperative cross-check running; ROC operator informed." ;
     mit:hasOutcomeIndex ll4:RemoteNavigationDI_T2 ;
     mit:recordedOperatorInput ll4:ROCOperatorApproval_T1 ;
     mit:coordinatedBy ll4:MAI_W_IRDS ;
     mit:isRecordedIn ll4:MAI_W_LDC .
 
-ll4:RemoteOperatorRole mit:performsMitigation ll4:SwitchToINSAISFailover .
+ll4:RemoteOperatorRole mit:performsMitigation ll4:SwitchToDeadReckoningFailover .
 
 # Post-response index: ND recovers on the virtual-sensor estimate; the graph
 # and the claim, not the scalar, confirm that the cause is controlled.
@@ -1133,14 +1175,14 @@ ll4:EV_GNSSLossDetection a assr:Evidence ;
     warrant:validTo "2026-05-17T10:45:02Z"^^xsd:dateTime ;
     assr:hasEvidenceQuality "0.90"^^xsd:decimal .
 
-ll4:EV_INSPositionEstimate a assr:Evidence ;
-    warrant:hasName "Independent INS/AIS position estimate active" ;
-    assr:hasEvidenceSource ll4:INSPositionEstimate_T1 ;
+ll4:EV_IndependentPositionEstimate a assr:Evidence ;
+    warrant:hasName "Independent dead-reckoning position estimate active" ;
+    assr:hasEvidenceSource ll4:DeadReckoningPositionEstimate_T1 ;
     assr:supportsClaim ll4:CLM_NavigationIntegrity ;
     assr:evidenceCollectedAt "2026-05-17T10:15:58Z"^^xsd:dateTime ;
     warrant:validTo "2026-05-17T10:45:58Z"^^xsd:dateTime ;
     assr:hasEvidenceQuality "0.70"^^xsd:decimal ;
-    warrant:derivedFrom ll4:INSAISFailoverExecution_T1 .
+    warrant:derivedFrom ll4:DeadReckoningFailoverExecution_T1 .
 
 ll4:EV_ROCOperatorApproval a assr:Evidence ;
     warrant:hasName "ROC operator authorised failover within 60 s" ;
@@ -1210,7 +1252,7 @@ ll4:MAI_W_LDC a assr:LivingDependabilityCase ;
     assr:includesRequirement ll4:REQ_NAV_INT_001 ;
     assr:includesClaim ll4:CLM_NavigationIntegrity ;
     assr:includesAssumption ll4:ASM_GNSSAvailableOnRoute ;
-    assr:includesEvidence ll4:EV_GNSSLossDetection , ll4:EV_INSPositionEstimate , ll4:EV_ROCOperatorApproval ;
+    assr:includesEvidence ll4:EV_GNSSLossDetection , ll4:EV_IndependentPositionEstimate , ll4:EV_ROCOperatorApproval ;
     assr:includesNonconformity ll4:NC_GNSSIntegrityLog_001 ;
     assr:hasAssuranceLevel ll4:MAI_W_AL_T1 ;
     assr:hasCertificationReadiness ll4:MAI_W_CR_T1 .
@@ -1224,8 +1266,8 @@ ll4:MAI_W_DigitalTwin a dt:DigitalTwin ;
     warrant:hasName "MAI-W Digital Twin" .
 
 ll4:MAI_W_DigitalTwin dt:representsStateOf ll4:MAI_W .
-ll4:MAI_W_DigitalTwin dt:providesVirtualSensor ll4:INSDeadReckoningVirtualSensor .
-ll4:MAI_W_DigitalTwin dt:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_INSAIS ,
+ll4:MAI_W_DigitalTwin dt:providesVirtualSensor ll4:DeadReckoningVirtualSensor .
+ll4:MAI_W_DigitalTwin dt:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_DeadReckoning ,
                                            ll4:SystemDIForecast_SafeDegraded , ll4:SystemDIForecast_HoldPosition .
 ll4:MAI_W_DigitalTwin dt:executes ll4:GNSSLossDegradedTransitScenario .
 ll4:MAI_W_DigitalTwin dt:storesResult ll4:GNSSLossScenarioExecution_T1 .
@@ -1233,8 +1275,8 @@ ll4:MAI_W_DigitalTwin dt:monitors ll4:RemoteNavigationFunction , ll4:GNSSReceive
 ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationFunction , ll4:RemoteNavigationDI , ll4:MAI_W_SystemDI ,
                                      ll4:PositionUncertaintyHazard , ll4:CollisionRisk , ll4:GNSSSpoofingThreatScenario ,
                                      ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ,
-                                     ll4:Eval_INSAISFailover_T1 , ll4:INSAISFailoverExecution_T1 ,
-                                     ll4:INSPositioningFailover , ll4:SystemDIForecast_INSAIS ,
+                                     ll4:Eval_DeadReckoningFailover_T1 , ll4:DeadReckoningFailoverExecution_T1 ,
+                                     ll4:DeadReckoningPositioningFailover , ll4:SystemDIForecast_DeadReckoning ,
                                      ll4:CLM_NavigationIntegrity , ll4:MAI_W_AL_T1 , ll4:MAI_W_LDC .
 ll4:MAI_W_DigitalTwin dt:receivesUpdateFrom ll4:GNSSMonitoringService , ll4:GNSSReceiverNodeHealthMonitor ,
                                              ll4:RemoteNavigationNodeHealthMonitor , ll4:MAI_W_DependabilitySupervisor .
