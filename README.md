@@ -189,6 +189,12 @@ The ontology is aligned with the WARRaNT framework paper (*A Knowledge-Graph and
 
 ---
 
+## Open Issues
+
+Known gaps, decisions awaiting partners, and what each Living Lab example still needs are tracked in [OPEN-ISSUES.md](OPEN-ISSUES.md). Read it before starting work, and update it in the same commit that changes what it describes.
+
+---
+
 ## How to Contribute
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, PR process, how to propose classes and properties, and mandatory modelling principles.

@@ -22,10 +22,11 @@ Work on `develop`; merge to `main` only for tagged releases.
 1. Branch from `develop`.
 2. Run validation locally: `python scripts/validate_turtle.py --shacl` and `python scripts/run_queries.py` (after `python scripts/merge_ontology.py`).
 3. If you changed a module, regenerate its documentation: `python scripts/generate_module_docs.py` (CI checks with `--check`).
-4. Open a PR to `develop` with a clear description.
-5. Request review from the module CODEOWNER.
-6. Address all comments; at least one approval required.
-7. Squash-merge to `develop`.
+4. Update [OPEN-ISSUES.md](OPEN-ISSUES.md) in the same commit if your change closes an entry, opens one, or makes one inaccurate. Move closed entries to the Closed section with the commit hash rather than deleting them.
+5. Open a PR to `develop` with a clear description.
+6. Request review from the module CODEOWNER.
+7. Address all comments; at least one approval required.
+8. Squash-merge to `develop`.
 
 ---
 
