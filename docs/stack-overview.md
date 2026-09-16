@@ -1,7 +1,7 @@
 # WARRaNT KG Ontology — Stack & Structure Overview
 
 > Prepared for WARRaNT consortium partners · September 2026
-> Repository: https://gitlab.com/konnecta/projects/warrant-ontology
+> Repository: https://github.com/Inlecom/warrant-ontology
 > Version: 0.10-poc
 
 ---
@@ -16,7 +16,7 @@ In plain terms: it defines what words like *Deviation*, *Hazard*, *Dependability
 
 ## 2. Ontology at a glance
 
-The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,094 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 2,577 triples) demonstrate realistic scenarios; the LL4 GNSS failover example instantiates every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
+The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,110 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 4,182 triples) demonstrate realistic scenarios; the LL4 GNSS failover example and the LL1 ECDIS spoofing example each instantiate every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
 
 ---
 
@@ -46,7 +46,7 @@ warrant-kg-ontology/
 |   \-- example-ecdis-spoofing.ttl
 |
 +-- shapes/
-|   \-- warrant-core-shapes.ttl  <- SHACL validation shapes (13 shapes)
+|   \-- warrant-core-shapes.ttl  <- SHACL shapes (13 constraints + 1 warning)
 |
 +-- queries/
 |   \-- competency-queries.sparql <- 10 competency queries (regression tests)
@@ -77,12 +77,13 @@ warrant-kg-ontology/
 |   +-- warrant-all-merged.ttl   <- all 9 modules merged
 |   \-- warrant-widoco-input.ttl <- cleaned single-ontology file for WIDOCO
 |
-+-- .gitlab-ci.yml               <- GitLab CI pipeline
++-- .github/workflows/           <- GitHub Actions (authoritative CI)
++-- .gitlab-ci.yml               <- GitLab pipeline (mirror)
 +-- .github/workflows/           <- GitHub Actions (kept for potential mirroring)
 +-- README.md
 +-- CONTRIBUTING.md
 +-- CHANGELOG.md
-\-- CODEOWNERS                   <- routes MR reviews to module owners
+\-- CODEOWNERS                   <- routes PR reviews to module owners
 ```
 
 ---
@@ -104,7 +105,7 @@ python scripts/validate_turtle.py --shacl
 - With `--shacl`: validates every example against the shapes with pySHACL (modules merged into the data graph, inference off)
 - Exits 0 (all pass) or 1 (any failure or violation)
 
-**Current status:** 16 files · 6,020 triples · 0 failures · zero domain and range violations · all five examples conform to the 13 shapes · all 10 competency queries return rows
+**Current status:** 16 files · 7,641 triples · 0 failures · zero domain and range violations · all five examples conform to the shapes · all 10 competency queries return rows
 
 ### 4.2 Merge
 
@@ -173,33 +174,53 @@ Sections generated:
 
 ---
 
-## 5. CI/CD — GitLab Pipeline
+## 5. CI/CD
 
-Repository: `git@gitlab.com:konnecta/projects/warrant-ontology.git`
+Primary repository: `https://github.com/Inlecom/warrant-ontology`
 
-The `.gitlab-ci.yml` runs automatically on every push and merge request:
+`.github/workflows/validate-ontology.yml` runs automatically on every push and
+pull request:
 
 ```
-Push to any branch / Merge Request
+Push to any branch / Pull Request
              |
              v
-  +----------------------+
-  |  validate-turtle     |  python scripts/validate_turtle.py
-  |  (all branches/MRs)  |  Fails if any .ttl has a syntax error or
-  |                      |  an example uses a module namespace for instances
-  +----------+-----------+
-             | pass
-             v
-  +----------------------+
-  |   build-merged       |  merge_ontology.py + prepare_widoco.py
-  |  (main + develop)    |  dist/ saved as downloadable pipeline artefact
-  +----------------------+
+  +--------------------------------+
+  |  Turtle Syntax Validation      |  validate_turtle.py --shacl
+  |  (all branches / PRs)          |  Parses ontology/, examples/ and shapes/;
+  |                                |  checks the namespace policy; checks every
+  |                                |  example assertion against declared
+  |                                |  domains and ranges; validates every
+  |                                |  example against the SHACL shapes.
+  +---------------+----------------+
+                  | pass
+                  v
+  +--------------------------------+
+  |  Module documentation check    |  generate_module_docs.py --check
+  |                                |  Fails if docs/modules/*.md is stale
+  |                                |  relative to the Turtle it is generated
+  |                                |  from.
+  +---------------+----------------+
+                  | pass
+                  v
+  +--------------------------------+
+  |  Build merged ontology         |  merge_ontology.py
+  +--------------------------------+
 ```
 
-**What consortium partners see in GitLab:**
-- Green check / red cross next to every commit
-- Merge Request blocked until `validate-turtle` passes
-- `build-merged` job produces a **Download artefact** button — partners can download `dist/warrant-all-merged.ttl` directly from the CI run, without installing Python locally
+**What consortium partners see in GitHub:**
+- A green check or red cross next to every commit
+- A pull request blocked until validation passes
+- CODEOWNERS routes each module's changes to the team that owns it
+
+A GitLab pipeline (`.gitlab-ci.yml`) is retained for the GitLab mirror and runs
+the same two checks plus `prepare_widoco.py`, publishing `dist/` as a
+downloadable artefact. It is not the authoritative pipeline.
+
+**Not yet covered by either pipeline:** the competency queries in
+`queries/competency-queries.sparql` act as the regression suite but
+`scripts/run_queries.py` is run manually, so a query that stops returning rows
+does not fail a build.
 
 ---
 
@@ -209,19 +230,19 @@ Full details in `CONTRIBUTING.md`. Short version:
 
 | Action | How |
 |--------|-----|
-| Propose a new class | Open a GitLab issue using the *New class proposal* template |
-| Propose a new property | Open a GitLab issue using the *New property proposal* template |
+| Propose a new class | Open a GitHub issue using the *New class proposal* template |
+| Propose a new property | Open a GitHub issue using the *New property proposal* template |
 | Add a Living Lab example | Add `examples/example-<ll>-<scenario>.ttl` using the data namespace |
-| Fix a modelling issue | Branch from `develop` → MR → CODEOWNER review → merge |
+| Fix a modelling issue | Branch from `develop` → PR → CODEOWNER review → merge |
 
-Module ownership is defined in `CODEOWNERS`. Each of the 9 ontology modules is assigned to a team. MRs touching a module are automatically routed to that team for review.
+Module ownership is defined in `CODEOWNERS`. Each of the 9 ontology modules is assigned to a team. Pull requests touching a module are automatically routed to that team for review.
 
 ---
 
 ## 7. Accessing the repository
 
 ```bash
-git clone git@gitlab.com:konnecta/projects/warrant-ontology.git
+git clone https://github.com/Inlecom/warrant-ontology.git
 cd warrant-ontology
 
 # One-time setup
@@ -248,7 +269,7 @@ python scripts/merge_ontology.py
 | Version | Status | Notes |
 |---------|--------|-------|
 | 0.9-poc | Superseded | 9 modules · 5 LL examples · CI pipeline · interactive graph · WIDOCO docs |
-| **0.10-poc** | Current | Aligned with the framework paper (Sept 2026): health events and node health monitors, attribute-wise state, typed propagation, forecasts and triggers, REDS/IRDS records, Living Dependability Case; 13 shapes · 10 queries · generated module docs |
+| **0.10-poc** | Current | Aligned with the framework paper (Sept 2026): health events and node health monitors, attribute-wise state, typed propagation, forecasts and triggers, REDS/IRDS records, Living Dependability Case; 14 shapes · 10 queries · generated module docs |
 | **v0.1.0** | Planned | First consortium baseline release · removal of deprecated terms · LL3 example |
 | **v0.2.0** | Planned | Normative SOSA/SSN/SACM alignment · additional SPARQL queries |
 
@@ -262,4 +283,4 @@ python scripts/merge_ontology.py
 ---
 
 *WARRaNT KG Ontology repository · September 2026*
-*https://gitlab.com/konnecta/projects/warrant-ontology*
+*https://github.com/Inlecom/warrant-ontology*
