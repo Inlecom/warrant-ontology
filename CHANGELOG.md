@@ -4,6 +4,54 @@ All notable changes to this repository are documented here.
 
 ---
 
+## [Unreleased] — LL1 modernisation to the 0.10 vocabulary
+
+Rewrites `examples/example-ecdis-spoofing.ttl` (LL1, Danaos CATHERINE C) to use
+the 0.10 vocabulary. In 0.10-poc the file validated and its causal model was
+correct, but it exercised none of the new terms, so its indices carried states
+that were not attribute-derived and it appeared in none of the four new
+competency queries. Branch `feature/ll1-modernisation-2026-09-16`; 778 → 2,450
+triples. Two commits: the design-time layer, which is derived from the Danaos
+source documents, and the runtime layer, which is not.
+
+### Added — design-time layer (derived from the Danaos FMEA and equipment inventory)
+- Hazard classes and the safety, environmental and financial impact triple on every risk.
+- `CoastalApproachSegment`, `HighTrafficDensityCondition` and `GNSSInterferenceAreaCondition`, with `isCriticalUnder`, `modifiesLikelihoodOf` and `modifiesImpactOf`.
+- Asset roles and critical-node flags across the equipment inventory.
+- Four IEC 62443-3-2 security zones, with the satellite-to-LAN and BNWAS-to-AMS links as conduits.
+- Nine typed dependencies between functions and systems.
+- Twenty-one failure modes carrying their FMEA severity, occurrence, detection and RPN as typed values rather than free text, closing FLAG-04 in the file header.
+- Five vulnerabilities, six threat scenarios and eight controls with two residual risks, linked to the advisory and failover actions through `implementsControl`.
+- Strategy types and resilience postures on the ten pre-existing response actions.
+
+### Added — runtime layer (PROPOSED policy values, not Danaos policy)
+- Six node health monitors across the component, function and system levels, with peer exchange.
+- The full health-event record on the four principal detection events.
+- Sixteen attribute values with mode-scoped weights and per-node, per-attribute thresholds, and the operational state each yields.
+- Typed CYBER_THREAT propagation: a damping parameter, a propagation edge mirroring a function-level cyber dependency, and four propagated-risk individuals.
+- Reified hierarchical aggregation weights, a supervision configuration, a DI update audit record and two resilience triggers.
+- Three REDS response evaluations ranked by the paper's objective, and one authorised IRDS execution with its post-response index.
+- A Living Dependability Case: four requirements, three claims, two assumptions, six evidence items, four evidence obligations, three unresolved nonconformities, an Assurance Level and a Certification Readiness.
+- Digital Twin forecasts for the unmitigated case and for each evaluated response.
+
+Every index in the file is derivable by hand from the Section 6 formulas: node
+scores from the weighted attribute values, node indices from the node score and
+the propagated risk, the system index from the aggregation weights, the margin
+from the management floor, the Assurance Level from its weight set and the
+response ranking from the decision weights. The forty-eight artefacts that carry
+a policy value are marked `warrant:hasApprovalStatus "PROPOSED"` and are for
+Danaos to replace; the file header sets out which content is derived and which
+is proposed.
+
+### Changed
+- Consolidated the two overlapping node scores on the navigation function into one, so that each node index has exactly one node score behind it. `ll1:NavCyberAssuranceScore` is now `ll1:NavigationNodeScore`; `ll1:SensorAssuranceScore` is removed.
+- The five indices now carry attribute-derived states, aggregated and propagated risk values, a calculation method, the supervisor that produced them and the case that records them.
+
+### Fixed
+- `mit:hasStrategyType`, `mit:hasDefaultPosture` and `mit:requiresAuthorisationFrom` had `mit:ResponseAction` as their domain, which excluded `mit:FailoverProcedure`. A failover is a response strategy and needs all three.
+
+---
+
 ## [0.10-poc] — 2026-09-06 — Methodology Alignment (framework paper v0409)
 
 Aligns the ontology with the WARRaNT framework paper *A Knowledge-Graph and
