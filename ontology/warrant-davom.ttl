@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT DAVOM Ontology Module
 # Dependability-Aware Vessel Operational Model
-# Version: 1.0.0
+# Version: 0.10-poc
 # IRI: https://warrant-project.eu/ontology/davom
 # Imports: warrant-core.ttl
 ##############################################################################
@@ -18,11 +18,11 @@
     a owl:Ontology ;
     owl:imports <warrant-core.ttl> ;
     rdfs:label "WARRaNT DAVOM Module"@en ;
-    rdfs:comment "Dependability-Aware Vessel Operational Model: vessel, systems, functions, components, dependencies, data flows, communication links, and human operator roles."@en ;
+    rdfs:comment "Dependability-Aware Vessel Operational Model: vessel, systems, functions, components, typed dependencies, data flows, communication links, IEC 62443 security zones and conduits, primary/supporting asset roles, and human operator roles."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-06-08"^^xsd:date ;
-    owl:versionInfo "1.0.0" .
+    dcterms:modified "2026-09-06"^^xsd:date ;
+    owl:versionInfo "0.10-poc" .
 
 
 ##############################################################################
@@ -89,6 +89,15 @@ davom:CommunicationLink a owl:Class ;
     rdfs:label "Communication Link"@en ;
     rdfs:comment "A communication channel supporting data exchange, control, monitoring, or coordination between vessel, shore, or external entities. First-class operational entity; may have dependability metrics. Tag with davom:hasInterfaceType using a named davom:InterfaceType individual."@en .
 
+davom:Conduit a owl:Class ;
+    rdfs:subClassOf davom:CommunicationLink ;
+    rdfs:label "Conduit"@en ;
+    rdfs:comment "A communication link that crosses a security-zone boundary in the IEC 62443-3-2 sense (e.g. the ship-shore wireless conduit). Declare the zones it joins with davom:connectsZone. Cyber effects propagate over conduits and over cyber/data/control dependencies, never over physical dependencies."@en .
+
+davom:SecurityZone a owl:Class ;
+    rdfs:label "Security Zone"@en ;
+    rdfs:comment "A grouping of operational entities with common cybersecurity requirements, following the zone-and-conduit partitioning of IEC 62443-3-2 used by the WARRaNT cybersecurity risk assessment. Membership is asserted with davom:belongsToZone; zones are joined by davom:Conduit individuals. Not a vessel component and not a context entity."@en .
+
 davom:InterfaceType a owl:Class ;
     rdfs:label "Interface Type"@en ;
     rdfs:comment "Controlled vocabulary for the physical or logical interface technology of a CommunicationLink or DataFlow. Use davom:hasInterfaceType to tag a link individual."@en .
@@ -100,6 +109,18 @@ davom:SERIAL_CONTACT a davom:InterfaceType ; rdfs:label "SERIAL+CONTACT"@en ; rd
 davom:VIDEO        a davom:InterfaceType ; rdfs:label "VIDEO"@en ;           rdfs:comment "Analogue or digital video signal (e.g. RADAR image feed into VDR)."@en .
 davom:AUDIO        a davom:InterfaceType ; rdfs:label "AUDIO"@en ;           rdfs:comment "Analogue audio channel (e.g. VHF and bridge microphone feeds into VDR)."@en .
 davom:WIRELESS     a davom:InterfaceType ; rdfs:label "WIRELESS"@en ;        rdfs:comment "Radio-frequency wireless link (e.g. container gateway to vessel gateway, AIS VHF broadcast)."@en .
+
+
+##############################################################################
+# AssetRole Controlled Vocabulary (primary vs supporting assets)
+##############################################################################
+
+davom:AssetRole a owl:Class ;
+    rdfs:label "Asset Role"@en ;
+    rdfs:comment "Controlled vocabulary distinguishing primary assets (information and services of value: navigation data, positioning, route planning, propulsion control) from supporting assets (equipment, infrastructure, and human roles that store, process, or execute them), as used by the WARRaNT cybersecurity risk assessment methodology. Tag an operational entity with davom:hasAssetRole; every primary asset should be linked to at least one supporting asset through davom:supportsAsset, which serves as a graph-completeness check across the function and component layers."@en .
+
+davom:PRIMARY_ASSET    a davom:AssetRole ; rdfs:label "PRIMARY_ASSET"@en ;    rdfs:comment "Information or service of value to the operation. Typically a VesselFunction or DataFlow."@en .
+davom:SUPPORTING_ASSET a davom:AssetRole ; rdfs:label "SUPPORTING_ASSET"@en ; rdfs:comment "Equipment, infrastructure, software, or human role that stores, processes, transmits, or executes a primary asset. Typically a Component, System, CommunicationLink, or HumanOperatorRole."@en .
 
 
 ##############################################################################
@@ -138,19 +159,34 @@ davom:ControlAction a owl:Class ;
 
 davom:Dependency a owl:Class ;
     rdfs:label "Dependency"@en ;
-    rdfs:comment "A typed, reified dependency node. Use when weight, criticality, latency, or redundancy level must be recorded alongside the dependency relationship."@en .
+    rdfs:comment "A typed, reified dependency node. Direction convention: davom:dependencySource is the upstream entity (provider: the entity depended upon) and davom:dependencyTarget is the downstream entity (consumer: the entity that depends on it), so effects and propagated risk flow from source to target, matching di:propagationSource → di:propagationTarget on the mirrored RiskPropagationEdge. Use when weight, criticality, latency, redundancy level, or propagation semantics must be recorded alongside the relationship. Every Dependency should carry at least one davom:hasDependencyType from the five-value DependencyType vocabulary; the domain-specific subclasses below remain valid and refine, but do not replace, the canonical type."@en .
 
-davom:FunctionalDependency       a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Functional Dependency"@en .
-davom:DataDependency             a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Data Dependency"@en .
-davom:CommunicationDependency    a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Communication Dependency"@en .
-davom:ControlDependency          a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Control Dependency"@en .
-davom:PowerDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Power Dependency"@en .
-davom:CyberDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Cyber Dependency"@en .
-davom:OperationalDependency      a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Operational Dependency"@en .
+davom:FunctionalDependency       a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Functional Dependency"@en ;      rdfs:comment "Canonical type: davom:FUNCTIONAL."@en .
+davom:DataDependency             a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Data Dependency"@en ;            rdfs:comment "Canonical type: davom:DATA."@en .
+davom:CommunicationDependency    a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Communication Dependency"@en ;   rdfs:comment "Canonical type: davom:DATA (and davom:CYBER where the channel is a cyber path)."@en .
+davom:ControlDependency          a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Control Dependency"@en ;         rdfs:comment "Canonical type: davom:CONTROL."@en .
+davom:PowerDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Power Dependency"@en ;           rdfs:comment "Canonical type: davom:PHYSICAL."@en .
+davom:CyberDependency            a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Cyber Dependency"@en ;           rdfs:comment "Canonical type: davom:CYBER."@en .
+davom:OperationalDependency      a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Operational Dependency"@en ;     rdfs:comment "Canonical type: davom:FUNCTIONAL."@en .
 davom:HumanSupervisionDependency a owl:Class ; rdfs:subClassOf davom:Dependency ;
     rdfs:label "Human Supervision Dependency"@en ;
-    rdfs:comment "A dependency modelling the oversight relationship between a HumanOperatorRole and a system or function (e.g. ROC operator supervises remote navigation)."@en .
-davom:ProcedureDependency        a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Procedure Dependency"@en .
+    rdfs:comment "A dependency modelling the oversight relationship between a HumanOperatorRole and a system or function (e.g. ROC operator supervises remote navigation). Canonical type: davom:CONTROL."@en .
+davom:ProcedureDependency        a owl:Class ; rdfs:subClassOf davom:Dependency ; rdfs:label "Procedure Dependency"@en ;       rdfs:comment "Canonical type: davom:FUNCTIONAL."@en .
+
+
+##############################################################################
+# DependencyType Controlled Vocabulary (canonical propagation types)
+##############################################################################
+
+davom:DependencyType a owl:Class ;
+    rdfs:label "Dependency Type"@en ;
+    rdfs:comment "Closed controlled vocabulary of the five canonical dependency types over which risk propagates: functional, data, control, physical, cyber. Each hazard class is associated at design time with the admissible subset of these types (cdm:propagatesOverDependencyType), and typed risk propagation follows only dependencies of an admissible type. Adding a value requires ontology revision."@en .
+
+davom:FUNCTIONAL a davom:DependencyType ; rdfs:label "FUNCTIONAL"@en ; rdfs:comment "The source needs the target to deliver its function. Effects normally propagate from provider to consumer."@en .
+davom:DATA       a davom:DependencyType ; rdfs:label "DATA"@en ;       rdfs:comment "The source consumes a data product of the target. Effects normally propagate from provider to consumer."@en .
+davom:CONTROL    a davom:DependencyType ; rdfs:label "CONTROL"@en ;    rdfs:comment "The source is commanded, supervised, or authorised by the target."@en .
+davom:PHYSICAL   a davom:DependencyType ; rdfs:label "PHYSICAL"@en ;   rdfs:comment "Mechanical, thermal, electrical, or spatial coupling. May be directed or symmetric depending on the mechanism."@en .
+davom:CYBER      a davom:DependencyType ; rdfs:label "CYBER"@en ;      rdfs:comment "Access, trust, or network reachability. May be bidirectional where the conduit permits reverse access, control, or trust exploitation; not assumed bidirectional in every case (see davom:isBidirectional)."@en .
 
 
 ##############################################################################
@@ -177,9 +213,10 @@ davom:hasSubsystem a owl:ObjectProperty ;
     rdfs:label "has subsystem"@en .
 
 davom:hasComponent a owl:ObjectProperty ;
-    rdfs:domain davom:Subsystem ;
+    rdfs:domain [ owl:unionOf ( davom:System davom:Subsystem ) ] ;
     rdfs:range davom:Component ;
-    rdfs:label "has component"@en .
+    rdfs:label "has component"@en ;
+    rdfs:comment "Component membership. A System may hold components directly where no subsystem decomposition is modelled, or through a Subsystem where it is; both are valid and the Living Lab inventories use both."@en .
 
 davom:dependsOn a owl:ObjectProperty ;
     rdfs:domain warrant:OperationalEntity ;
@@ -265,13 +302,45 @@ davom:participatesIn a owl:ObjectProperty ;
 
 davom:dependencySource a owl:ObjectProperty ;
     rdfs:domain davom:Dependency ;
-    rdfs:range warrant:OperationalEntity ;
-    rdfs:label "dependency source"@en .
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
+    rdfs:label "dependency source"@en ;
+    rdfs:comment "The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target. Human operator roles are admissible at either end, which is what davom:HumanSupervisionDependency requires."@en .
 
 davom:dependencyTarget a owl:ObjectProperty ;
     rdfs:domain davom:Dependency ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
+    rdfs:label "dependency target"@en ;
+    rdfs:comment "The downstream entity (consumer) of the dependency: the entity that depends on the source. Human operator roles are admissible at either end."@en .
+
+davom:hasDependencyType a owl:ObjectProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range davom:DependencyType ;
+    rdfs:label "has dependency type"@en ;
+    rdfs:comment "Tags a Dependency with one or more canonical propagation types from the davom:DependencyType vocabulary (FUNCTIONAL, DATA, CONTROL, PHYSICAL, CYBER). Used by typed risk propagation to decide whether a given hazard class may act through this dependency."@en .
+
+davom:belongsToZone a owl:ObjectProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range davom:SecurityZone ;
+    rdfs:label "belongs to zone"@en ;
+    rdfs:comment "Assigns a component, system, link, or data flow to an IEC 62443 security zone."@en .
+
+davom:connectsZone a owl:ObjectProperty ;
+    rdfs:domain davom:Conduit ;
+    rdfs:range davom:SecurityZone ;
+    rdfs:label "connects zone"@en ;
+    rdfs:comment "A Conduit joins two or more security zones; assert one triple per zone."@en .
+
+davom:hasAssetRole a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
+    rdfs:range davom:AssetRole ;
+    rdfs:label "has asset role"@en ;
+    rdfs:comment "Tags an operational entity or human operator role as a PRIMARY_ASSET or SUPPORTING_ASSET in the cybersecurity asset inventory."@en .
+
+davom:supportsAsset a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( warrant:OperationalEntity warrant:AgentEntity ) ] ;
     rdfs:range warrant:OperationalEntity ;
-    rdfs:label "dependency target"@en .
+    rdfs:label "supports asset"@en ;
+    rdfs:comment "Links a supporting asset to the primary asset it stores, processes, transmits, or executes. A primary asset with no incoming supportsAsset link is an incomplete asset inventory."@en .
 
 
 ##############################################################################
@@ -303,6 +372,18 @@ davom:hasConfidence a owl:DatatypeProperty ;
     rdfs:domain davom:Dependency ;
     rdfs:range xsd:decimal ;
     rdfs:label "has confidence"@en .
+
+davom:isBidirectional a owl:DatatypeProperty ;
+    rdfs:domain davom:Dependency ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is bidirectional"@en ;
+    rdfs:comment "True when effects may propagate in both directions over this dependency (e.g. a cyber path whose conduit permits reverse access, or a symmetric physical coupling). Default when absent: directed from dependencySource (upstream provider) to dependencyTarget (downstream consumer)."@en .
+
+davom:isCriticalNode a owl:DatatypeProperty ;
+    rdfs:domain warrant:OperationalEntity ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "is critical node"@en ;
+    rdfs:comment "True when this node belongs to the critical node set whose attribute states determine the system operational state (the system state is the most severe attribute state across critical nodes). Node criticality also informs attribute and aggregation weights. Configured per vessel and mode (see warrant:appliesUnder on the weight and threshold artefacts)."@en .
 
 ##############################################################################
 # END warrant-davom.ttl

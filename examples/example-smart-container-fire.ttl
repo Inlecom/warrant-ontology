@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: Smart Container Fire Detection (LL2 — AELER)
 # Instance namespace: https://warrant-project.eu/data/ll2#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
 # Scenario: A smart container must reliably detect fire and communicate
 # bidirectionally with the vessel. The container operates in two modes:
@@ -291,9 +291,9 @@ ll2:ContextAwarenessAnalyticalService obs:consumes ll2:TimeSyncOffsetMetric .
 # DETECTION EVENTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-ll2:FireDetectionEvent a obs:DetectionEvent ;
+ll2:FireDetectionEvent a obs:HealthEvent ;
     warrant:hasName "Container Fire Detection Event" ;
-    warrant:hasDescription "Fire detected in smart container SC-ED-001 by thermal/smoke sensor." ;
+    warrant:hasDescription "Fire detected in smart container SC-ED-001 by thermal/smoke sensor. A health event reporting a hazardous condition (fire), not a Deviation from intended behaviour, hence obs:HealthEvent rather than obs:DetectionEvent." ;
     obs:hasTimestamp "2026-05-20T14:22:00Z"^^xsd:dateTime .
 
 ll2:UnavailableUpstreamCommEvent a obs:DetectionEvent ;
@@ -336,7 +336,7 @@ ll2:TimeSyncDriftEvent a obs:DetectionEvent ;
     warrant:hasDescription "Clock offset between container and vessel exceeds acceptable threshold, risking mis-timestamped alarm records." ;
     obs:hasTimestamp "2026-05-20T14:19:00Z"^^xsd:dateTime .
 
-ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:FireDetectionEvent .
+ll2:FireDetectionAnalyticalService obs:producesHealthEvent ll2:FireDetectionEvent .
 ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:UnavailableUpstreamCommEvent .
 ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:LateFireAlertEvent .
 ll2:FireDetectionAnalyticalService obs:producesDetectionEvent ll2:FalsePositiveFireAlarmEvent .
@@ -645,10 +645,10 @@ ll2:UpstreamCommAssuranceScore    di:contributesTo ll2:DI_UpstreamComm .
 ll2:CyberAssuranceScore           di:contributesTo ll2:DI_Cyber .
 ll2:ContextAwarenessAssuranceScore di:contributesTo ll2:DI_ContextAwareness .
 
-ll2:DI_SensorDetection  di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_UpstreamComm     di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_Cyber            di:contributesTo ll2:DI_LL2_FireSystem .
-ll2:DI_ContextAwareness di:contributesTo ll2:DI_LL2_FireSystem .
+ll2:DI_SensorDetection  di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_UpstreamComm     di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_Cyber            di:aggregatesInto ll2:DI_LL2_FireSystem .
+ll2:DI_ContextAwareness di:aggregatesInto ll2:DI_LL2_FireSystem .
 
 ll2:DI_SensorDetection  di:appliesTo ll2:FireDetectionFunction .
 ll2:DI_UpstreamComm     di:appliesTo ll2:FireDetectionFunction .

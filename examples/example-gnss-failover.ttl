@@ -1,17 +1,86 @@
 ##############################################################################
 # WARRaNT Example: GNSS Failover (LL4 — MAI-W)
 # Instance namespace: https://warrant-project.eu/data/ll4#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 #
-# Scenario: GNSS signal loss on the MAI-W inland tanker (LL4, Antwerp–Emden).
-# An analytical service detects GNSS signal loss via a DetectionEvent.
-# The Deviation is typed cdm:UNAVAILABLE via hasDeviationType (no subclass).
-# The deviation causes a position uncertainty hazard → collision risk.
-# Risk causes assurance degradation → reduced AssuranceScore → node DI.
-# DI includes propagated risk from the ROC-to-vessel communication link.
-# DI state becomes di:CriticalState (named individual).
-# Mitigation recommends INS/AIS failover (AdvisoryAction).
-# Digital Twin visualises affected function, DI, hazard, and failover.
+# Scenario: GNSS signal loss on the MAI-W inland tanker (LL4, Antwerp–Emden)
+# under remote operation. This is the proof-of-concept instantiation cited by
+# the WARRaNT framework paper and walks the full continuous-assurance loop:
+#
+#   design-time knowledge   hazard (DATA_LOSS class), failure mode with FMEA
+#                           ratings, cyber threat scenario, control with
+#                           residual risk, requirement, claim, assumption,
+#                           typed data dependencies, zones and conduit,
+#                           primary/supporting asset roles
+#   observation             sensor → metric → measurement; a component-level
+#                           Node Health Monitor and the GNSS monitoring service
+#                           produce a fully populated health event (detection
+#                           event, UNAVAILABLE); the Digital Twin produces a
+#                           predicted-condition event and provides a dead-
+#                           virtual sensor substituting the GNSS sensor
+#   attribute assessment    four attribute values on the navigation function
+#                           with per-source confidence and one fused value;
+#                           per-attribute thresholds; attribute-wise states
+#                           (safety Critical, availability Degraded, ...)
+#   supervision             node DI 0.34 (ND 0.38 − β·R), state Critical
+#                           (attribute-wise, not from the DI), typed propagated
+#                           risk from the ROC command link, hierarchical system
+#                           DI with trend and margin, supervision configuration,
+#                           DI update event, DI forecast from the Digital Twin,
+#                           all three resilience triggers (attribute breach,
+#                           sustained decline, predicted floor crossing)
+#   decision (REDS)         three ranked response evaluations with expected
+#                           effect, cost, penalty and explanation
+#   response (IRDS)         dead-reckoning failover executed, authorised by the
+#                           operator, fail-operational posture, outcome and
+#                           post-response index
+#   assurance (LDC)         evidence (detection event, virtual-sensor estimate,
+#                           operator approval) supporting/challenging the
+#                           navigation-integrity claim, evidence obligations
+#                           (one PRESENT, one MISSING), nonconformity,
+#                           Assurance Level reported with the system DI,
+#                           Certification Readiness, Living Dependability Case
+#   digital twin            visualises the above; receives updates; executes
+#                           the degraded-transit scenario whose result carries
+#                           the forecasts
+#
+# SCOPE. This is an inland and coastal remote-operation scenario, and the
+# numbers only make sense there. Three things would differ in deep-sea
+# shipping and the example must not be read as covering it:
+#   * Continuous remote operation does not exist deep sea. The ROC link here
+#     is terrestrial LTE/5G with a latency budget in the hundreds of
+#     milliseconds; an ocean link is geostationary satellite at roughly half a
+#     second round trip. LL1 is the deep-sea case and uses onboard roles.
+#   * The consequence timing is confined-water timing. In open ocean a
+#     45-second outage is close to a non-event: dead reckoning on gyro and
+#     speed log holds adequate accuracy for hours and there is sea room, so
+#     the same deviation would sit at Normal or Degraded rather than driving
+#     the safety attribute to Critical within seconds. The deep-sea concern is
+#     a prolonged or undetected degradation near landfall or in a traffic
+#     separation scheme, and spoofing or jamming in known affected regions.
+#   * The failure mechanism is inland. Blockage by bridges, locks and quay
+#     cranes is the dominant cause here; offshore, with a multi-constellation
+#     receiver, a total loss implies jamming, antenna or receiver failure.
+# What does carry over unchanged: AIS is never an independent position source
+# (own-ship AIS position is GNSS-derived), dead reckoning is not inertial
+# navigation, and carrier-to-noise density cannot detect spoofing.
+#
+# Numbers are illustrative but exact: every stated value follows from the
+# formulas documented in the modules, so the example can be checked by hand.
+#   fusion    d_safety = (0.90·0.15 + 0.45·0.30) / (0.90 + 0.45) = 0.20
+#   node      ND_nav   = 0.4·0.20 + 0.3·0.40 + 0.2·0.50 + 0.1·0.80 = 0.38
+#             ND_link  = 0.6·0.60 + 0.4·0.80                       = 0.68
+#   risk      R_link   = 0.20 (local; no admissible inbound edge)
+#             R_nav    = 0.12 + 0.50·0.40·0.20                     = 0.16
+#   index     DI_nav   = 0.38 − 0.25·0.16 = 0.34   DI_link = 0.68 − 0.20·0.20 = 0.64
+#             DI_sys   = 0.6·0.34 + 0.4·0.64                       = 0.46
+#   trend     slope    = (0.46 − 0.724) / 0.5 h                    = −0.53 / h
+#   margin    MR       = 0.46 − 0.50                               = −0.04
+#   REDS      u*       = 0.68 − 0.3·0.15 − 0.2·0.10                = 0.615
+#   assurance AL       = 0.3·0.50 + 0.2·0.90 + 0.2·0.85 + 0.15·0.80 + 0.15·1.00 = 0.77
+#   after     ND_T2    = 0.4·0.55 + 0.3·0.70 + 0.2·0.60 + 0.1·0.80 = 0.63
+#             DI_T2    = 0.63 − 0.25·0.12                          = 0.60
+# They are not Living Lab measurements.
 ##############################################################################
 
 @prefix ll4:     <https://warrant-project.eu/data/ll4#> .
@@ -21,12 +90,17 @@
 @prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
 @prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
 @prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
 @prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ══════════════════════════════════════════════════════════════════════════
+# STRUCTURE (DAVOM)
+# ══════════════════════════════════════════════════════════════════════════
 
 # ── Vessel ─────────────────────────────────────────────────────────────────
 
@@ -35,12 +109,14 @@ ll4:MAI_W a davom:Vessel ;
     warrant:hasName "MAI-W Inland Motor Tanker" ;
     warrant:hasDescription "Type C inland tanker, LL4, Antwerp Kanaaldok B1 → Emden, Remote Operation System (Seafar)." .
 
-# ── Vessel Function ────────────────────────────────────────────────────────
+# ── Vessel Function (primary asset, critical node) ─────────────────────────
 
 ll4:RemoteNavigationFunction a davom:VesselFunction ;
     warrant:hasIdentifier "VF-RN-001" ;
     warrant:hasName "Remote Navigation Function" ;
-    warrant:hasDescription "Vessel function for remote navigation and positioning during remote operation from the Antwerp ROC." .
+    warrant:hasDescription "Vessel function for remote navigation and positioning during remote operation from the Antwerp ROC." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true .
 
 ll4:MAI_W davom:hasFunction ll4:RemoteNavigationFunction .
 
@@ -57,7 +133,7 @@ ll4:LTE5GCommunicationSystem a davom:CommunicationSystem ;
 ll4:RemoteNavigationFunction davom:isSupportedBy ll4:GNSSNavigationSystem .
 ll4:RemoteNavigationFunction davom:isSupportedBy ll4:LTE5GCommunicationSystem .
 
-# ── Subsystem and Component ────────────────────────────────────────────────
+# ── Subsystem and Component (supporting asset, critical node) ──────────────
 
 ll4:GNSSReceiverSubsystem a davom:Subsystem ;
     warrant:hasName "GNSS Receiver Subsystem" .
@@ -66,85 +142,334 @@ ll4:GNSSNavigationSystem davom:hasSubsystem ll4:GNSSReceiverSubsystem .
 
 ll4:GNSSReceiverComponent a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-GNSS-RX-001" ;
-    warrant:hasName "GNSS Receiver" .
+    warrant:hasName "GNSS Receiver" ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset ll4:RemoteNavigationFunction ;
+    davom:isCriticalNode true ;
+    davom:belongsToZone ll4:BridgeNavigationZone .
 
 ll4:GNSSReceiverSubsystem davom:hasComponent ll4:GNSSReceiverComponent .
 
 ll4:PositioningSystem a davom:TechnicalSystem ;
     warrant:hasName "Positioning System" .
 
+# ── Security zones and the ship–shore conduit (IEC 62443-3-2) ──────────────
+
+ll4:BridgeNavigationZone a davom:SecurityZone ;
+    warrant:hasName "Bridge Navigation OT Zone" ;
+    warrant:hasDescription "On-board navigation OT: GNSS receiver, gyrocompass, speed log, VCS." .
+
+ll4:ShoreROCZone a davom:SecurityZone ;
+    warrant:hasName "Shore ROC Zone" ;
+    warrant:hasDescription "Antwerp Remote Operation Centre network segment." .
+
 # ── Human Operator Role ────────────────────────────────────────────────────
 
 ll4:RemoteOperatorRole a davom:HumanOperatorRole ;
     warrant:hasName "Remote Operator (ROC Antwerp)" ;
-    warrant:hasDescription "ROC operator supervising remote navigation from the Antwerp Remote Operation Centre." .
+    warrant:hasDescription "ROC operator supervising remote navigation from the Antwerp Remote Operation Centre." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset ll4:RemoteNavigationFunction .
 
 ll4:RemoteNavigationFunction davom:requiresOperatorRole ll4:RemoteOperatorRole .
 ll4:RemoteOperatorRole davom:supervises ll4:LTE5GCommunicationSystem .
 
-# ── Communication Link ─────────────────────────────────────────────────────
+# ── Communication Link = ship–shore conduit ────────────────────────────────
 
-ll4:ROCToVesselCommandLink a davom:CommunicationLink ;
+ll4:ROCToVesselCommandLink a davom:CommunicationLink , davom:Conduit ;
     warrant:hasIdentifier "LINK-ROC-VCS-001" ;
     warrant:hasName "ROC to Vessel Command Link" ;
-    warrant:hasDescription "LTE/5G channel between the Antwerp ROC and the MAI-W VCS." .
+    warrant:hasDescription "LTE/5G channel between the Antwerp ROC and the MAI-W VCS; the wireless ship–shore conduit between the ROC zone and the bridge navigation zone." ;
+    davom:hasInterfaceType davom:WIRELESS ;
+    davom:connectsZone ll4:ShoreROCZone , ll4:BridgeNavigationZone ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset ll4:RemoteNavigationFunction .
 
 ll4:RemoteNavigationFunction davom:usesCommunicationLink ll4:ROCToVesselCommandLink .
+
+# ── Typed dependencies (source = provider, target = consumer) ──────────────
+
+ll4:GNSSToRemoteNavDependency a davom:DataDependency ;
+    warrant:hasName "GNSS position → Remote Navigation" ;
+    davom:dependencySource ll4:GNSSReceiverComponent ;
+    davom:dependencyTarget ll4:RemoteNavigationFunction ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.5"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 1 .
+
+ll4:CommLinkToRemoteNavDependency a davom:DataDependency ;
+    warrant:hasName "ROC command link → Remote Navigation" ;
+    davom:dependencySource ll4:ROCToVesselCommandLink ;
+    davom:dependencyTarget ll4:RemoteNavigationFunction ;
+    davom:hasDependencyType davom:DATA , davom:CONTROL ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:isBidirectional false .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# DESIGN-TIME KNOWLEDGE (CDM)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Failure mode (FMEA) ────────────────────────────────────────────────────
+
+ll4:FM_GNSSSignalOutage a cdm:FailureMode ;
+    warrant:hasName "GNSS Signal Outage" ;
+    warrant:hasDescription "Loss of GNSS position fix due to signal blockage, interference, or receiver fault." ;
+    cdm:affectsComponent ll4:GNSSReceiverComponent ;
+    cdm:producesDeviation ll4:GNSSSignalLossDeviation ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 7 ;
+    cdm:hasOccurrenceScore 3 ;
+    cdm:hasDetectionScore 3 ;
+    cdm:hasRiskPriorityNumber 63 .
+
+# ── Cyber threat scenario and vulnerability ────────────────────────────────
+
+ll4:UnauthenticatedGNSSSignalVulnerability a cdm:Vulnerability ;
+    warrant:hasName "Unauthenticated civil GNSS signal" ;
+    warrant:hasDescription "Civil GNSS signals carry no authentication; the receiver cannot distinguish genuine from counterfeit signals without integrity monitoring." ;
+    cdm:affectsComponent ll4:GNSSReceiverComponent .
+
+ll4:GNSSSpoofingThreatScenario a cdm:ThreatScenario ;
+    warrant:hasName "GNSS Spoofing during Remote Transit" ;
+    warrant:hasDescription "Adversary broadcasts counterfeit GNSS signals; receiver reports a plausible but false position. Related to the outage scenario because both remove trusted positioning, but the detection path differs: a spoofed signal normally arrives at normal or elevated carrier-to-noise density, so signal-quality monitoring cannot see it. It is detected by the integrity and consistency checks instead, namely the RAIM protection level, the residual against the dead-reckoning estimate, radar ranges to charted features, disagreement between constellations, and a receiver clock jump. Likelihood is strongly region-dependent in practice and is elevated near areas of known interference rather than uniform along a route." ;
+    cdm:exploits ll4:UnauthenticatedGNSSSignalVulnerability ;
+    cdm:degrades ll4:GNSSReceiverComponent ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll4:GNSSSpoofingRisk .
+
+ll4:GNSSSpoofingRisk a cdm:Risk ;
+    warrant:hasName "GNSS Spoofing Risk" ;
+    cdm:hasLikelihood        "0.20"^^xsd:decimal ;
+    cdm:hasSafetyImpact      "0.90"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.50"^^xsd:decimal ;
+    cdm:hasFinancialImpact   "0.60"^^xsd:decimal ;
+    cdm:hasImpact            "0.90"^^xsd:decimal ;
+    cdm:hasRiskLevel         "High" ;
+    cdm:hasAcceptability     "ALARP" ;
+    cdm:hasHazardClass       cdm:CYBER_THREAT .
+
+# ── Design-time control with residual risk ─────────────────────────────────
+
+ll4:CTRL_RedundantPositioning a cdm:Control ;
+    warrant:hasIdentifier "CTRL-NAV-003" ;
+    warrant:hasName "Redundant dead-reckoning positioning source" ;
+    warrant:hasDescription "Dead reckoning from gyrocompass heading and speed-log speed, corrected for known set and drift and cross-checked against radar ranges to charted features and against AIS cooperative traffic context, is kept available as an independent position source so that loss or distrust of GNSS does not leave the vessel without positioning. AIS is not itself a position source: own-ship AIS position is taken from the electronic position fixing system and is therefore GNSS-derived, so it is lost when GNSS is lost and falsified when GNSS is spoofed. AIS contributes only a cooperative cross-check against the reported positions of surrounding traffic." ;
+    warrant:hasVersion "1.1" ;
+    warrant:approvedBy "Seafar ROS safety board" ;
+    warrant:hasApprovalStatus "APPROVED" ;
+    warrant:validFrom "2026-03-01T00:00:00Z"^^xsd:dateTime ;
+    cdm:mitigates ll4:PositionUncertaintyHazard , ll4:GNSSSpoofingThreatScenario ;
+    cdm:hasResidualRisk ll4:ResidualCollisionRisk .
+
+ll4:ResidualCollisionRisk a cdm:Risk ;
+    warrant:hasName "Residual Collision Risk with Redundant Positioning" ;
+    cdm:hasLikelihood        "0.10"^^xsd:decimal ;
+    cdm:hasSafetyImpact      "0.90"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.40"^^xsd:decimal ;
+    cdm:hasFinancialImpact   "0.60"^^xsd:decimal ;
+    cdm:hasImpact            "0.90"^^xsd:decimal ;
+    cdm:hasRiskLevel         "Medium" ;
+    cdm:hasAcceptability     "ALARP" ;
+    cdm:hasHazardClass       cdm:DATA_LOSS .
+
+# ── Requirement, claim, assumption (LDC design-time baseline) ──────────────
+
+ll4:ExtRef_IACS_UR_E26 a warrant:ExternalReference ;
+    warrant:hasName "IACS UR E26 Rev.1 — Cyber Resilience of Ships" ;
+    warrant:hasDescription "Cited as the governing cyber-resilience instrument for the vessel. UR E26 does not itself impose a positioning-redundancy time limit: the 60-second figure in the requirement below is the operator's own ROS operating policy, which is why that requirement is categorised STAKEHOLDER and declared by Seafar rather than categorised REGULATORY." .
+
+ll4:REQ_NAV_INT_001 a assr:Requirement ;
+    warrant:hasIdentifier "REQ-NAV-INT-001" ;
+    warrant:hasName "Position integrity during remote transit" ;
+    warrant:hasDescription "During remote operation the vessel shall at all times have a trusted position source; on loss or distrust of the primary source an independent source shall be active within 60 s and the ROC operator informed." ;
+    warrant:hasVersion "2.0" ;
+    warrant:approvedBy "Seafar ROS safety board" ;
+    warrant:appliesUnder warrant:RemoteOperationMode ;
+    assr:declaredBy "Seafar (operator) — ROS operating policy" ;
+    assr:hasRequirementCategory "STAKEHOLDER" ;
+    assr:hasRequirementSource ll4:ExtRef_IACS_UR_E26 ;
+    assr:expectsEvidence ll4:OBL_GNSSIntegrityLog .
+
+ll4:CLM_NavigationIntegrity a assr:AssuranceClaim ;
+    warrant:hasIdentifier "CLM-NAV-001" ;
+    warrant:hasName "Navigation integrity is maintained during remote transit" ;
+    warrant:hasVersion "1.2" ;
+    warrant:approvedBy "Seafar ROS safety board" ;
+    assr:addressesRequirement ll4:REQ_NAV_INT_001 ;
+    assr:claimAppliesTo ll4:RemoteNavigationFunction , ll4:CTRL_RedundantPositioning ;
+    assr:expectsEvidence ll4:OBL_IndependentPositionSource ;
+    assr:hasClaimStatus assr:CLAIM_CHALLENGED ;
+    assr:claimStatusUpdatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:ASM_GNSSAvailableOnRoute a assr:Assumption ;
+    warrant:hasName "GNSS coverage available along the Antwerp–Emden route" ;
+    warrant:hasDescription "Design-time assumption of the navigation hazard analysis: a multi-constellation receiver (GPS, Galileo, GLONASS, BeiDou) holds at least four satellites in view along the route and positioning outages are shorter than 10 s. The route is inland and coastal, where the dominant outage mechanism is blockage by bridges, locks, quay structures and cranes rather than the loss of an entire constellation." ;
+    assr:assumptionAppliesTo ll4:PositionUncertaintyHazard , ll4:CLM_NavigationIntegrity ;
+    assr:hasValidityStatus "UNDER_REVIEW" ;
+    assr:isChallengedBy ll4:GNSSSignalLossDetectionEvent ;
+    assr:challengesClaim ll4:CLM_NavigationIntegrity .
+
+# ── Evidence obligations (declared reference set for EC) ───────────────────
+
+ll4:OBL_IndependentPositionSource a assr:EvidenceObligation ;
+    warrant:hasName "Independent position source confirmed within 60 s of primary loss" ;
+    assr:declaredBy "Seafar (operator)" ;
+    assr:hasValidityPeriod "PT30M"^^xsd:duration ;
+    assr:hasObligationStatus assr:PRESENT ;
+    assr:isFulfilledBy ll4:EV_ROCOperatorApproval , ll4:EV_IndependentPositionEstimate .
+
+ll4:OBL_GNSSIntegrityLog a assr:EvidenceObligation ;
+    warrant:hasName "GNSS receiver integrity (RAIM) log for the transit" ;
+    assr:declaredBy "Seafar (operator)" ;
+    assr:hasValidityPeriod "P1D"^^xsd:duration ;
+    assr:hasObligationStatus assr:MISSING .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# OBSERVATION AND HEALTH EVENTS
+# ══════════════════════════════════════════════════════════════════════════
 
 # ── Metrics ────────────────────────────────────────────────────────────────
 
 ll4:GNSSSignalQualityMetric a obs:DependabilityMetric ;
-    warrant:hasName "GNSS Signal Quality" ;
+    warrant:hasName "GNSS Signal Quality (carrier-to-noise density)" ;
+    warrant:hasDescription "Mean C/N0 over the tracked constellation. Healthy tracking is roughly 35 to 50 dB-Hz and a receiver typically loses lock below about 25 to 30 dB-Hz, so the alarm threshold is set at 28 dB-Hz. This metric detects a weak or absent signal. It cannot detect spoofing, because a spoofed signal normally arrives at normal or elevated C/N0; that is what ll4:GNSSIntegrityMetric is for." ;
     obs:hasUnit "dBHz" ;
     obs:hasExternalTimeSeriesId "timeseries.gnss.signal_quality.MAI-W" .
+
+ll4:GNSSIntegrityMetric a obs:SafetyMetric ;
+    warrant:hasName "GNSS Position Integrity (RAIM horizontal protection level)" ;
+    warrant:hasDescription "Horizontal protection level computed by receiver autonomous integrity monitoring, compared with the horizontal alert limit for the phase of navigation (25 m on this inland and harbour route). Unlike carrier-to-noise density this indicates a position that cannot be trusted rather than a signal that is weak, so it covers the degradation, the total loss and the spoofing cases alike. A consistency residual against the dead-reckoning estimate and radar ranges is the second, independent check." ;
+    obs:hasUnit "m" ;
+    obs:hasExternalTimeSeriesId "timeseries.gnss.raim_hpl.MAI-W" .
 
 ll4:CommandLatencyMetric a obs:PerformanceMetric ;
     warrant:hasName "ROC Command Latency" ;
     obs:hasUnit "ms" ;
     obs:hasExternalTimeSeriesId "timeseries.network.command_latency.MAI-W" .
 
-ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSSignalQualityMetric .
-ll4:ROCToVesselCommandLink  obs:hasDependabilityMetric ll4:CommandLatencyMetric .
+ll4:VesselPositionMetric a obs:DependabilityMetric ;
+    warrant:hasName "Vessel Position Estimate" ;
+    obs:hasUnit "m (horizontal uncertainty)" ;
+    obs:hasExternalTimeSeriesId "timeseries.navigation.position.MAI-W" .
 
-# ── Observer and Analytical Service ───────────────────────────────────────
+ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSSignalQualityMetric .
+ll4:GNSSReceiverComponent   obs:hasDependabilityMetric ll4:GNSSIntegrityMetric .
+ll4:ROCToVesselCommandLink  obs:hasDependabilityMetric ll4:CommandLatencyMetric .
+ll4:RemoteNavigationFunction obs:hasDependabilityMetric ll4:VesselPositionMetric .
+
+# ── Observers, virtual sensor, analytical services, monitors ───────────────
 
 ll4:GNSSSignalSensor a obs:Sensor ;
     warrant:hasName "On-board GNSS Signal Sensor" .
+
+ll4:DeadReckoningVirtualSensor a obs:VirtualSensor ;
+    warrant:hasName "Dead-Reckoning Virtual Sensor" ;
+    warrant:hasDescription "Model-based position estimate hosted by the Digital Twin: dead reckoning propagated from the last trusted fix using gyrocompass heading and speed-log speed through water, with the twin's hydrodynamic model supplying set and drift, cross-checked against radar ranges and AIS cooperative traffic context. Substitutes the GNSS sensor when GNSS is lost or untrusted. This is dead reckoning, not inertial navigation: in IMO and IEC usage INS denotes an Integrated Navigation System (IEC 61924-2), and an inertial unit is not fitted to this vessel class. Accuracy degrades with time since the last fix, dominated by unmodelled current and leeway." ;
+    obs:substitutesFor ll4:GNSSSignalSensor ;
+    obs:estimates ll4:VesselPositionMetric .
 
 ll4:GNSSMonitoringService a obs:AnalyticalService ;
     warrant:hasName "GNSS Monitoring Analytical Service" ;
     warrant:hasDescription "Analyses GNSS signal quality and produces detection events when signal quality falls below threshold." .
 
+ll4:GNSSReceiverNodeHealthMonitor a obs:NodeHealthMonitor ;
+    warrant:hasName "GNSS Receiver Node Health Monitor" ;
+    warrant:hasDescription "Component-level monitor of the GNSS receiver: interprets signal-quality detections, weighs persistence, assesses the receiver's attributes and forwards the health assessment to the navigation-function monitor." ;
+    obs:monitorsNode ll4:GNSSReceiverComponent ;
+    obs:hasMonitoringLevel obs:COMPONENT_LEVEL ;
+    obs:exchangesHealthEventWith ll4:RemoteNavigationNodeHealthMonitor .
+
+ll4:RemoteNavigationNodeHealthMonitor a obs:NodeHealthMonitor ;
+    warrant:hasName "Remote Navigation Function Node Health Monitor" ;
+    warrant:hasDescription "Function-level monitor: fuses receiver, link and Digital Twin assessments into attribute values for the remote navigation function." ;
+    obs:monitorsNode ll4:RemoteNavigationFunction ;
+    obs:hasMonitoringLevel obs:FUNCTION_LEVEL .
+
 ll4:GNSSSignalSensor obs:measures ll4:GNSSSignalQualityMetric .
+ll4:GNSSSignalSensor obs:measures ll4:GNSSIntegrityMetric .
 ll4:GNSSMonitoringService obs:consumes ll4:GNSSSignalQualityMetric .
+ll4:GNSSMonitoringService obs:consumes ll4:GNSSIntegrityMetric .
 
 # ── Measurement (semantic event; raw stream external) ─────────────────────
 
 ll4:GNSSSignalMeasurement_T1 a obs:Measurement ;
-    obs:hasValue "5.2"^^xsd:decimal ;
+    warrant:hasDescription "Last C/N0 reported before the receiver dropped lock; 21.4 dB-Hz is below the 28 dB-Hz alarm threshold and at the edge of the tracking floor." ;
+    obs:hasValue "21.4"^^xsd:decimal ;
     obs:hasUnit "dBHz" ;
     obs:hasTimestamp "2026-05-17T10:15:00Z"^^xsd:dateTime ;
     obs:hasSource ll4:GNSSSignalSensor ;
     obs:hasExternalRecordReference "timeseries.gnss.signal_quality.MAI-W::1747476900" .
 
-ll4:GNSSSignalQualityMetric obs:hasMeasurement ll4:GNSSSignalMeasurement_T1 .
+ll4:GNSSIntegrityMeasurement_T1 a obs:Measurement ;
+    warrant:hasDescription "RAIM horizontal protection level of 48 m against a 25 m alert limit: the reported position cannot be trusted for this phase of navigation." ;
+    obs:hasValue "48.0"^^xsd:decimal ;
+    obs:hasUnit "m" ;
+    obs:hasTimestamp "2026-05-17T10:15:01Z"^^xsd:dateTime ;
+    obs:hasSource ll4:GNSSSignalSensor ;
+    obs:hasExternalRecordReference "timeseries.gnss.raim_hpl.MAI-W::1747476901" .
 
-# ── Detection Event pattern ────────────────────────────────────────────────
+ll4:GNSSSignalQualityMetric obs:hasMeasurement ll4:GNSSSignalMeasurement_T1 .
+ll4:GNSSIntegrityMetric obs:hasMeasurement ll4:GNSSIntegrityMeasurement_T1 .
+
+ll4:DeadReckoningPositionEstimate_T1 a obs:VirtualSensorOutput ;
+    warrant:hasName "Dead-reckoning position estimate after failover" ;
+    obs:hasSource ll4:DeadReckoningVirtualSensor ;
+    obs:hasConfidenceValue "0.70"^^xsd:decimal .
+
+# ── Detection Event = fully populated health event ─────────────────────────
 
 ll4:GNSSSignalLossDetectionEvent a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-MAIW-20260517-0001" ;
     warrant:hasName "GNSS Signal Loss Detection Event" ;
-    warrant:hasDescription "Produced by GNSSMonitoringService when signal quality falls below 10 dBHz threshold." ;
-    obs:hasTimestamp "2026-05-17T10:15:02Z"^^xsd:dateTime .
+    warrant:hasDescription "Produced by GNSSMonitoringService on two concurrent indications: mean C/N0 below the 28 dB-Hz alarm threshold, and a RAIM horizontal protection level above the 25 m alert limit. Enriched by the GNSS receiver Node Health Monitor with persistence, operational impact and root cause." ;
+    obs:hasTimestamp "2026-05-17T10:15:02Z"^^xsd:dateTime ;
+    obs:hasSource ll4:GNSSMonitoringService ;
+    obs:affectsAsset ll4:GNSSReceiverComponent , ll4:RemoteNavigationFunction ;
+    obs:indicatesCondition ll4:PositionUncertaintyHazard , ll4:FM_GNSSSignalOutage ;
+    obs:hasConfidenceValue "0.92"^^xsd:decimal ;
+    obs:hasSeverityLevel "HIGH" ;
+    obs:hasDuration "PT45S"^^xsd:duration ;
+    obs:isPersistent true ;
+    obs:hasOperationalImpact "Primary position source lost; remote navigation continues on last fix and dead reckoning with growing uncertainty." ;
+    obs:hasRootCause ll4:FM_GNSSSignalOutage ;
+    obs:hasMissionContext warrant:RemoteOperationMode ;
+    obs:hasControlStatus "MITIGATION_PENDING_AUTHORISATION" ;
+    obs:hasTrendIndicator "DECLINING" ;
+    assr:challengesClaim ll4:CLM_NavigationIntegrity .
 
 ll4:GNSSSignalMeasurement_T1 obs:supportsDetection ll4:GNSSSignalLossDetectionEvent .
+ll4:GNSSIntegrityMeasurement_T1 obs:supportsDetection ll4:GNSSSignalLossDetectionEvent .
 ll4:GNSSMonitoringService obs:producesDetectionEvent ll4:GNSSSignalLossDetectionEvent .
+ll4:GNSSReceiverNodeHealthMonitor obs:producesHealthEvent ll4:GNSSSignalLossDetectionEvent .
+
+# ── Predicted condition event from the Digital Twin ────────────────────────
+
+ll4:PositionDriftPredictedEvent a obs:PredictedConditionEvent ;
+    warrant:hasIdentifier "HE-MAIW-20260517-0002" ;
+    warrant:hasName "Predicted position drift beyond channel tolerance" ;
+    warrant:hasDescription "Digital Twin prediction: without an independent position source, dead-reckoning uncertainty exceeds the fairway tolerance within 12 minutes." ;
+    obs:hasTimestamp "2026-05-17T10:15:06Z"^^xsd:dateTime ;
+    obs:hasSource ll4:MAI_W_DigitalTwin ;
+    obs:affectsAsset ll4:RemoteNavigationFunction ;
+    obs:indicatesCondition ll4:PositionUncertaintyHazard ;
+    obs:hasConfidenceValue "0.80"^^xsd:decimal ;
+    obs:hasSeverityLevel "HIGH" ;
+    obs:hasMissionContext warrant:RemoteOperationMode ;
+    warrant:derivedFrom ll4:GNSSSignalLossDetectionEvent .
+
+ll4:MAI_W_DigitalTwin obs:producesHealthEvent ll4:PositionDriftPredictedEvent .
 
 # ── Deviation (typed via hasDeviationType; no subclass) ───────────────────
 
 ll4:GNSSSignalLossDeviation a cdm:Deviation ;
     warrant:hasName "GNSS Signal Loss" ;
     warrant:hasDescription "GNSS position signal unavailable due to outage." ;
-    cdm:hasDeviationType cdm:UNAVAILABLE .
+    cdm:hasDeviationType cdm:UNAVAILABLE ;
+    cdm:wasObservedUnder warrant:RemoteOperationMode .
 
 ll4:GNSSSignalLossDetectionEvent obs:detectionEventDetects ll4:GNSSSignalLossDeviation .
 
@@ -152,100 +477,809 @@ ll4:GNSSSignalLossDetectionEvent obs:detectionEventDetects ll4:GNSSSignalLossDev
 
 ll4:PositionUncertaintyHazard a cdm:Hazard ;
     warrant:hasName "Vessel Position Uncertainty" ;
-    warrant:hasDescription "Vessel position unreliable; collision and grounding risk." .
+    warrant:hasDescription "Vessel position unreliable; collision and grounding risk." ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:degrades ll4:RemoteNavigationFunction .
 
 ll4:GNSSSignalLossDeviation cdm:mayCause ll4:PositionUncertaintyHazard .
 
-# ── Risk ───────────────────────────────────────────────────────────────────
+# ── Risk (with impact triple) ──────────────────────────────────────────────
 
 ll4:CollisionRisk a cdm:Risk ;
     warrant:hasName "Collision Risk" ;
-    cdm:hasLikelihood    "0.45"^^xsd:decimal ;
-    cdm:hasImpact        "0.9"^^xsd:decimal ;
-    cdm:hasSeverity      "0.7"^^xsd:decimal ;
-    cdm:hasRiskLevel     "High" ;
-    cdm:hasAcceptability "Unacceptable" .
+    cdm:hasLikelihood        "0.45"^^xsd:decimal ;
+    cdm:hasSafetyImpact      "0.90"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.40"^^xsd:decimal ;
+    cdm:hasFinancialImpact   "0.60"^^xsd:decimal ;
+    cdm:hasImpact            "0.90"^^xsd:decimal ;
+    cdm:hasSeverity          "0.7"^^xsd:decimal ;
+    cdm:hasRiskLevel         "High" ;
+    cdm:hasAcceptability     "Unacceptable" ;
+    cdm:hasHazardClass       cdm:DATA_LOSS .
 
 ll4:PositionUncertaintyHazard cdm:isEvaluatedAs ll4:CollisionRisk .
 
-# ── Assurance Degradation ──────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════
+# ATTRIBUTE ASSESSMENT (remote navigation function, node i)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Attributes and mode-scoped weights α (four of six shown; the remaining
+#    two are omitted from this illustration, so these four sum to one) ──────
+
+ll4:RemoteNavSafetyAttribute        a assr:Safety        ; warrant:hasName "Remote navigation — safety"@en .
+ll4:RemoteNavAvailabilityAttribute  a assr:Availability  ; warrant:hasName "Remote navigation — availability"@en .
+ll4:RemoteNavReliabilityAttribute   a assr:Reliability   ; warrant:hasName "Remote navigation — reliability"@en .
+ll4:RemoteNavCybersecurityAttribute a assr:Cybersecurity ; warrant:hasName "Remote navigation — cybersecurity"@en .
+
+ll4:RemoteNavigationFunction assr:hasAssuranceAttribute
+    ll4:RemoteNavSafetyAttribute , ll4:RemoteNavAvailabilityAttribute ,
+    ll4:RemoteNavReliabilityAttribute , ll4:RemoteNavCybersecurityAttribute .
+
+ll4:RemoteNavSafetyWeight        a assr:AssuranceWeight ; assr:hasWeightValue "0.4"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+ll4:RemoteNavAvailabilityWeight  a assr:AssuranceWeight ; assr:hasWeightValue "0.3"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+ll4:RemoteNavReliabilityWeight   a assr:AssuranceWeight ; assr:hasWeightValue "0.2"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+ll4:RemoteNavCybersecurityWeight a assr:AssuranceWeight ; assr:hasWeightValue "0.1"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:RemoteNavSafetyAttribute        assr:hasWeight ll4:RemoteNavSafetyWeight .
+ll4:RemoteNavAvailabilityAttribute  assr:hasWeight ll4:RemoteNavAvailabilityWeight .
+ll4:RemoteNavReliabilityAttribute   assr:hasWeight ll4:RemoteNavReliabilityWeight .
+ll4:RemoteNavCybersecurityAttribute assr:hasWeight ll4:RemoteNavCybersecurityWeight .
+
+# ── Per-attribute state thresholds (τ^D > τ^C > τ^F > τ^U) ─────────────────
+
+ll4:RemoteNavSafetyThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:RemoteNavSafetyAttribute ;
+    di:thresholdAppliesToNode ll4:RemoteNavigationFunction ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.40"^^xsd:decimal ;
+    di:hasFailedThreshold "0.20"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:RemoteNavAvailabilityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:RemoteNavAvailabilityAttribute ;
+    di:thresholdAppliesToNode ll4:RemoteNavigationFunction ;
+    di:hasNormalMinimum "0.75"^^xsd:decimal ; di:hasCriticalThreshold "0.35"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:RemoteNavReliabilityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:RemoteNavReliabilityAttribute ;
+    di:thresholdAppliesToNode ll4:RemoteNavigationFunction ;
+    di:hasNormalMinimum "0.60"^^xsd:decimal ; di:hasCriticalThreshold "0.30"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:RemoteNavCybersecurityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:RemoteNavCybersecurityAttribute ;
+    di:thresholdAppliesToNode ll4:RemoteNavigationFunction ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.45"^^xsd:decimal ;
+    di:hasFailedThreshold "0.25"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+# ── Attribute values d_i,k with per-source confidence, one fused value ─────
+
+# Safety: two source estimates fused with confidence weights
+#   d = (0.90·0.15 + 0.45·0.30) / (0.90 + 0.45) = 0.20
+ll4:RemoteNavSafetyValue_NHM a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.15"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:04Z"^^xsd:dateTime .
+
+ll4:RemoteNavSafetyValue_DT a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.30"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.45"^^xsd:decimal ;
+    assr:hasValueSource ll4:MAI_W_DigitalTwin ;
+    assr:assessedAt "2026-05-17T10:15:04Z"^^xsd:dateTime .
+
+ll4:RemoteNavSafetyValue_Fused a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.20"^^xsd:decimal ;
+    warrant:derivedFrom ll4:RemoteNavSafetyValue_NHM , ll4:RemoteNavSafetyValue_DT ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    warrant:validTo "2026-05-17T10:20:05Z"^^xsd:dateTime ;
+    assr:usesCalculationMethod ll4:ConfidenceFusionMethod ;
+    di:hasAttributeState di:CriticalState .
+
+ll4:RemoteNavAvailabilityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.40"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.95"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavReliabilityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.50"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.85"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavCybersecurityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.80"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:RemoteNavSafetyAttribute        assr:hasAttributeValue ll4:RemoteNavSafetyValue_Fused .
+ll4:RemoteNavAvailabilityAttribute  assr:hasAttributeValue ll4:RemoteNavAvailabilityValue .
+ll4:RemoteNavReliabilityAttribute   assr:hasAttributeValue ll4:RemoteNavReliabilityValue .
+ll4:RemoteNavCybersecurityAttribute assr:hasAttributeValue ll4:RemoteNavCybersecurityValue .
+
+# ── Attribute values after the failover (T2 = 10:16:30) ───────────────────
+# The independent position source restores part of the safety and availability
+# condition; the node state falls back from Critical to Degraded because the
+# most severe relevant attribute is now Degraded, not because the DI rose.
+#   ND_T2 = 0.4·0.55 + 0.3·0.70 + 0.2·0.60 + 0.1·0.80 = 0.63
+
+ll4:RemoteNavSafetyValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.55"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.70"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavAvailabilityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.70"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavReliabilityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.60"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.85"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:RemoteNavCybersecurityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.80"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:RemoteNavSafetyAttribute        assr:hasAttributeValue ll4:RemoteNavSafetyValue_T2 .
+ll4:RemoteNavAvailabilityAttribute  assr:hasAttributeValue ll4:RemoteNavAvailabilityValue_T2 .
+ll4:RemoteNavReliabilityAttribute   assr:hasAttributeValue ll4:RemoteNavReliabilityValue_T2 .
+ll4:RemoteNavCybersecurityAttribute assr:hasAttributeValue ll4:RemoteNavCybersecurityValue_T2 .
+
+# ── Attributes of the upstream node (ROC command link) ────────────────────
+# A communication link is scored on the attributes relevant to it; the two
+# weights are normalised over that relevant set.
+#   ND_link = 0.6·0.60 + 0.4·0.80 = 0.68
+
+ll4:ROCLinkAvailabilityAttribute   a assr:Availability   ; warrant:hasName "ROC command link — availability"@en .
+ll4:ROCLinkCybersecurityAttribute  a assr:Cybersecurity  ; warrant:hasName "ROC command link — cybersecurity"@en .
+
+ll4:ROCToVesselCommandLink assr:hasAssuranceAttribute
+    ll4:ROCLinkAvailabilityAttribute , ll4:ROCLinkCybersecurityAttribute .
+
+ll4:ROCLinkAvailabilityWeight  a assr:AssuranceWeight ; assr:hasWeightValue "0.6"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+ll4:ROCLinkCybersecurityWeight a assr:AssuranceWeight ; assr:hasWeightValue "0.4"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkAvailabilityAttribute  assr:hasWeight ll4:ROCLinkAvailabilityWeight .
+ll4:ROCLinkCybersecurityAttribute assr:hasWeight ll4:ROCLinkCybersecurityWeight .
+
+ll4:ROCLinkAvailabilityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:ROCLinkAvailabilityAttribute ;
+    di:thresholdAppliesToNode ll4:ROCToVesselCommandLink ;
+    di:hasNormalMinimum "0.75"^^xsd:decimal ; di:hasCriticalThreshold "0.35"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkCybersecurityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:ROCLinkCybersecurityAttribute ;
+    di:thresholdAppliesToNode ll4:ROCToVesselCommandLink ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.45"^^xsd:decimal ;
+    di:hasFailedThreshold "0.25"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkAvailabilityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.60"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:ROCLinkCybersecurityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.80"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:ROCLinkAvailabilityAttribute  assr:hasAttributeValue ll4:ROCLinkAvailabilityValue .
+ll4:ROCLinkCybersecurityAttribute assr:hasAttributeValue ll4:ROCLinkCybersecurityValue .
+
+ll4:ROCCommandLinkScore a assr:AssuranceScore ;
+    warrant:hasName "ROC command link node dependability score ND_j(t)" ;
+    assr:hasScoreValue "0.68"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:NodeScoreMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:ROCToVesselCommandLink assr:hasAssuranceScore ll4:ROCCommandLinkScore .
+
+ll4:RemoteNavigationScore_T2 a assr:AssuranceScore ;
+    warrant:hasName "Remote navigation node dependability score after failover" ;
+    assr:hasScoreValue "0.63"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:NodeScoreMethod ;
+    di:calculatedAt "2026-05-17T10:16:30Z"^^xsd:dateTime .
+
+ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:RemoteNavigationScore_T2 .
+
+# ── Assurance Degradation and Node Dependability Score ND = 0.38 ───────────
 
 ll4:NavigationAssuranceDegradation a assr:AssuranceDegradation ;
-    warrant:hasName "Navigation Assurance Degradation due to GNSS Loss" .
+    warrant:hasName "Navigation Assurance Degradation due to GNSS Loss" ;
+    assr:wasTriggeredBy ll4:GNSSSignalLossDeviation .
 
 ll4:GNSSSignalLossDeviation assr:causesAssuranceDegradation ll4:NavigationAssuranceDegradation .
 
 ll4:NavigationAssuranceScore a assr:AssuranceScore ;
+    warrant:hasName "Remote navigation node dependability score ND_i(t)" ;
     assr:hasScoreValue "0.38"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:NodeScoreMethod ;
     di:calculatedAt    "2026-05-17T10:15:05Z"^^xsd:dateTime .
 
 ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:NavigationAssuranceScore .
 ll4:NavigationAssuranceDegradation assr:updatesAssuranceScore ll4:NavigationAssuranceScore .
 
-# ── DI Calculation Method ──────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════════════
+# DEPENDABILITY SUPERVISION (DI)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Methods and configuration ──────────────────────────────────────────────
+
+ll4:ConfidenceFusionMethod a warrant:CalculationMethod ;
+    warrant:hasName "Confidence-weighted attribute fusion" ;
+    warrant:hasVersion "1.0" .
+
+ll4:NodeScoreMethod a warrant:CalculationMethod ;
+    warrant:hasName "Mode-weighted node dependability score" ;
+    warrant:hasVersion "1.0" .
 
 ll4:RiskPropagationDIMethod a di:DICalculationMethod ;
-    warrant:hasName "Risk-Propagation Weighted Assurance Aggregation" ;
-    warrant:hasDescription "DI_i(t) = A_i(t) - β·R̃_i(t). A_i is the weighted assurance score; R̃_i is propagated risk from upstream dependency nodes. Computed externally; inputs, weights, and result stored in KG." .
+    warrant:hasName "Typed risk propagation and risk-adjusted DI" ;
+    warrant:hasDescription "DI_i = clip(ND_i − β_i·R_i); R_i = max_h R_i^h after damped fixed-point propagation over admissible dependency types; hierarchical aggregation DI_p = Σ γ_p,i·DI_i. Computed externally; inputs, weights and results stored in KG." ;
+    warrant:hasVersion "2.0" ;
+    di:hasAggregationOperator "MAX" .
 
-# ── Propagated Risk ────────────────────────────────────────────────────────
+ll4:DataLossPropagationParameter a di:RiskPropagationParameter ;
+    warrant:hasName "Propagation parameters — DATA_LOSS, remote operation" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasDampingFactor "0.50"^^xsd:decimal ;
+    di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
+    di:configurationAppliesTo ll4:MAI_W ;
+    warrant:appliesUnder warrant:RemoteOperationMode ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "Seafar ROS safety board" .
 
-ll4:CommLinkPropagatedRisk a di:PropagatedRisk ;
-    di:hasPropagatedRiskValue "0.15"^^xsd:decimal .
+ll4:MAI_W_SupervisionConfig a di:SupervisionConfiguration ;
+    warrant:hasName "MAI-W supervision configuration — remote operation" ;
+    di:hasTrendWindow "PT30M"^^xsd:duration ;
+    di:hasTrendSlopeThreshold "0.10"^^xsd:decimal ;
+    di:hasPredictionHorizon "PT15M"^^xsd:duration ;
+    di:hasManagementFloor "0.50"^^xsd:decimal ;
+    di:configurationAppliesTo ll4:MAI_W ;
+    warrant:appliesUnder warrant:RemoteOperationMode ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "Seafar ROS safety board" ;
+    warrant:hasApprovalStatus "APPROVED" ;
+    warrant:validFrom "2026-03-01T00:00:00Z"^^xsd:dateTime .
 
-# ── Risk Propagation Edge (CommLink DI → Navigation DI) ───────────────────
+ll4:MAI_W_DependabilitySupervisor a di:DependabilitySupervisor ;
+    warrant:hasName "MAI-W Dependability Supervisor" ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig .
 
-ll4:CommLinkToNavDIPropEdge a di:RiskPropagationEdge ;
-    di:hasRiskPropagationWeight "0.3"^^xsd:decimal .
+# ── Propagated risk (DATA_LOSS class) from the ROC command link ────────────
 
-# ── Dependability Index ────────────────────────────────────────────────────
+# Upstream node j (ROC command link): no admissible inbound edge, so the
+# propagated value equals the local/residual risk:
+#   R_link = clip(0.20 + rho*sum(nothing), 0, 1) = 0.20
+# Downstream node i (remote navigation function), over the one admissible edge:
+#   R_nav  = clip(0.12 + 0.50*0.40*0.20, 0, 1) = 0.12 + 0.04 = 0.16
+# Each node's aggregated risk is the max over hazard classes; only DATA_LOSS
+# reaches these nodes in this scenario, so R_i = R_i^DATA_LOSS.
+
+ll4:ROCCommandLinkDataLossRisk a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the ROC command link" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasLocalRiskValue "0.20"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.20"^^xsd:decimal ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:RemoteNavDataLossRisk_T1 a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the remote navigation function" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasLocalRiskValue "0.12"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.16"^^xsd:decimal ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:RemoteNavDataLossRisk_T2 a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the remote navigation function after failover" ;
+    warrant:hasDescription "Local risk falls from 0.12 to 0.08 once an independent position source is active and the approved control is in force; the propagated term over the command link is unchanged." ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasLocalRiskValue "0.08"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.12"^^xsd:decimal ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:calculatedAt "2026-05-17T10:16:30Z"^^xsd:dateTime .
+
+# ── Link DI (upstream node j): DI = 0.68 − 0.20·0.20 = 0.64 ───────────────
+
+ll4:ROCCommandLinkDI a di:DependabilityIndex ;
+    di:hasDIValue             "0.64"^^xsd:decimal ;
+    di:hasBetaWeight          "0.20"^^xsd:decimal ;
+    di:hasAggregatedRiskValue "0.20"^^xsd:decimal ;
+    di:calculatedAt           "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk       ll4:ROCCommandLinkDataLossRisk ;
+    di:hasDIState              di:DegradedState ;
+    di:appliesTo               ll4:ROCToVesselCommandLink ;
+    di:performedBy             ll4:MAI_W_DependabilitySupervisor .
+
+ll4:ROCCommandLinkScore di:contributesTo ll4:ROCCommandLinkDI .
+
+# ── Typed Risk Propagation Edge (link DI → navigation DI) ─────────────────
+
+ll4:CommLinkToRemoteNavDIPropEdge a di:RiskPropagationEdge ;
+    di:propagationSource        ll4:ROCCommandLinkDI ;
+    di:propagationTarget        ll4:RemoteNavigationDI ;
+    di:forHazardClass           cdm:DATA_LOSS ;
+    di:mirrorsDependency        ll4:CommLinkToRemoteNavDependency ;
+    di:hasRiskPropagationWeight "0.4"^^xsd:decimal .
+
+# ── Node DI (navigation function): DI = clip(0.38 − 0.25·0.16) = 0.34 ──────
 
 ll4:RemoteNavigationDI a di:DependabilityIndex ;
     di:hasDIValue             "0.34"^^xsd:decimal ;
     di:hasBetaWeight          "0.25"^^xsd:decimal ;
+    di:hasAggregatedRiskValue "0.16"^^xsd:decimal ;
     di:calculatedAt           "2026-05-17T10:15:05Z"^^xsd:dateTime ;
     di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
-    di:hasPropagatedRisk       ll4:CommLinkPropagatedRisk ;
-    di:hasDIState              di:CriticalState .
+    di:hasPropagatedRisk       ll4:RemoteNavDataLossRisk_T1 ;
+    di:hasDIState              di:CriticalState ;
+    di:appliesTo               ll4:RemoteNavigationFunction ;
+    di:performedBy             ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn            ll4:MAI_W_LDC .
 
 ll4:NavigationAssuranceScore di:contributesTo ll4:RemoteNavigationDI .
-ll4:RemoteNavigationDI di:appliesTo ll4:RemoteNavigationFunction .
 
-ll4:CommLinkToNavDIPropEdge di:propagationTarget ll4:RemoteNavigationDI .
+# ── DI update audit record ─────────────────────────────────────────────────
 
-# ── Mitigation ─────────────────────────────────────────────────────────────
+ll4:RemoteNavDIUpdate_T1 a di:DIUpdateEvent ;
+    di:updatesIndex ll4:RemoteNavigationDI ;
+    di:hasPreviousValue "0.78"^^xsd:decimal ;
+    di:hasNewValue "0.34"^^xsd:decimal ;
+    di:updateTriggeredBy ll4:GNSSSignalLossDetectionEvent ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:performedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:isRecordedIn ll4:MAI_W_LDC .
+
+# ── Hierarchical aggregation to the system DI ──────────────────────────────
+
+ll4:SysWeight_RemoteNav a di:DIWeight ;
+    di:weightParent ll4:MAI_W_SystemDI ; di:weightChild ll4:RemoteNavigationDI ;
+    di:hasAggregationWeightValue "0.6"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:SysWeight_CommLink a di:DIWeight ;
+    di:weightParent ll4:MAI_W_SystemDI ; di:weightChild ll4:ROCCommandLinkDI ;
+    di:hasAggregationWeightValue "0.4"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:RemoteNavigationDI di:contributesToSystem ll4:MAI_W_SystemDI .
+ll4:ROCCommandLinkDI   di:contributesToSystem ll4:MAI_W_SystemDI .
+
+# DI_sys = 0.6*0.34 + 0.4*0.64 = 0.46. State = most severe attribute state
+# across the critical nodes = Critical (the command link is not a critical
+# node). Before the event DI_sys was 0.6*0.78 + 0.4*0.64 = 0.724, so the slope
+# over the 30-minute trend window is (0.46 - 0.724)/0.5 h = -0.53 per hour,
+# which breaches the configured -0.10 per hour and raises the sustained-decline
+# trigger below. Margin = 0.46 - 0.50 = -0.04 against the management floor.
+
+# DI_sys = 0.6·0.34 + 0.4·0.62 = 0.45; state = max over critical nodes = Critical;
+# margin = 0.45 − 0.50 = −0.05; slope over the last 30 min = −0.62 per hour.
+ll4:MAI_W_SystemDI a di:SystemDependabilityIndex ;
+    warrant:hasName "MAI-W system dependability index" ;
+    di:hasSystemDIValue "0.46"^^xsd:decimal ;
+    di:hasDIState di:CriticalState ;
+    di:hasTrendSlope "-0.53"^^xsd:decimal ;
+    di:hasResilienceMargin "-0.04"^^xsd:decimal ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
+    di:appliesTo ll4:MAI_W ;
+    di:performedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:isReportedWith ll4:MAI_W_AL_T1 ;
+    di:isRecordedIn ll4:MAI_W_LDC .
+
+# ── DI forecasts from the Digital Twin (unmitigated and per response) ──────
+
+ll4:SystemDIForecast_Unmitigated a di:DIForecast ;
+    warrant:hasName "Forecast DI_sys — no response" ;
+    di:forecastsIndex ll4:MAI_W_SystemDI ;
+    di:hasForecastValue "0.41"^^xsd:decimal ;
+    di:hasForecastHorizon "PT15M"^^xsd:duration ;
+    di:forecastIssuedAt "2026-05-17T10:15:06Z"^^xsd:dateTime ;
+    di:forecastValidAt  "2026-05-17T10:30:00Z"^^xsd:dateTime ;
+    di:hasForecastConfidence "0.75"^^xsd:decimal ;
+    di:forecastProducedBy ll4:MAI_W_DigitalTwin .
+
+ll4:SystemDIForecast_DeadReckoning a di:DIForecast ;
+    warrant:hasName "Forecast DI_sys — dead-reckoning failover" ;
+    di:forecastsIndex ll4:MAI_W_SystemDI ;
+    di:hasForecastValue "0.68"^^xsd:decimal ;
+    di:hasForecastHorizon "PT15M"^^xsd:duration ;
+    di:forecastIssuedAt "2026-05-17T10:15:07Z"^^xsd:dateTime ;
+    di:forecastValidAt  "2026-05-17T10:30:00Z"^^xsd:dateTime ;
+    di:hasForecastConfidence "0.70"^^xsd:decimal ;
+    di:forecastProducedBy ll4:MAI_W_DigitalTwin .
+
+ll4:SystemDIForecast_SafeDegraded a di:DIForecast ;
+    warrant:hasName "Forecast DI_sys — safe-degraded transit" ;
+    di:forecastsIndex ll4:MAI_W_SystemDI ;
+    di:hasForecastValue "0.60"^^xsd:decimal ;
+    di:hasForecastHorizon "PT15M"^^xsd:duration ;
+    di:forecastIssuedAt "2026-05-17T10:15:07Z"^^xsd:dateTime ;
+    di:forecastValidAt  "2026-05-17T10:30:00Z"^^xsd:dateTime ;
+    di:hasForecastConfidence "0.72"^^xsd:decimal ;
+    di:forecastProducedBy ll4:MAI_W_DigitalTwin .
+
+ll4:SystemDIForecast_HoldPosition a di:DIForecast ;
+    warrant:hasName "Forecast DI_sys — controlled stop / hold position" ;
+    di:forecastsIndex ll4:MAI_W_SystemDI ;
+    di:hasForecastValue "0.55"^^xsd:decimal ;
+    di:hasForecastHorizon "PT15M"^^xsd:duration ;
+    di:forecastIssuedAt "2026-05-17T10:15:07Z"^^xsd:dateTime ;
+    di:forecastValidAt  "2026-05-17T10:30:00Z"^^xsd:dateTime ;
+    di:hasForecastConfidence "0.80"^^xsd:decimal ;
+    di:forecastProducedBy ll4:MAI_W_DigitalTwin .
+
+# ── Resilience triggers (T_attr and T_pred both fire) ──────────────────────
+
+ll4:Trigger_AttributeBreach_T1 a di:ResilienceTrigger ;
+    warrant:hasName "Safety attribute below Normal minimum" ;
+    di:hasTriggerType di:ATTRIBUTE_BREACH ;
+    di:triggeredAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:triggeredByAttributeValue ll4:RemoteNavSafetyValue_Fused ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
+    di:raisedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn ll4:MAI_W_LDC ;
+    mit:matchesRule ll4:GNSSFailoverRule .
+
+ll4:Trigger_SustainedDecline_T1 a di:ResilienceTrigger ;
+    warrant:hasName "System DI declining faster than the configured slope over the trend window" ;
+    di:hasTriggerType di:SUSTAINED_DECLINE ;
+    di:triggeredAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:triggeredByIndex ll4:MAI_W_SystemDI ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
+    di:raisedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn ll4:MAI_W_LDC ;
+    mit:matchesRule ll4:GNSSFailoverRule .
+
+ll4:Trigger_PredictedFloorCrossing_T1 a di:ResilienceTrigger ;
+    warrant:hasName "Forecast DI_sys below management floor within horizon" ;
+    di:hasTriggerType di:PREDICTED_FLOOR_CROSSING ;
+    di:triggeredAt "2026-05-17T10:15:06Z"^^xsd:dateTime ;
+    di:triggeredByForecast ll4:SystemDIForecast_Unmitigated ;
+    di:triggeredByIndex ll4:MAI_W_SystemDI ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
+    di:raisedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn ll4:MAI_W_LDC ;
+    mit:matchesRule ll4:GNSSFailoverRule .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# SCENARIO (Digital Twin what-if execution producing the forecasts)
+# ══════════════════════════════════════════════════════════════════════════
+
+ll4:GNSSLossDegradedTransitScenario a scen:DegradedOperationScenario ;
+    warrant:hasName "GNSS loss during remote transit — response comparison" ;
+    scen:hasTrigger ll4:GNSSSignalLossDeviation ;
+    scen:affects ll4:RemoteNavigationFunction ;
+    scen:causes ll4:PositionUncertaintyHazard ;
+    scen:hasScenarioExecution ll4:GNSSLossScenarioExecution_T1 .
+
+ll4:GNSSLossScenarioExecution_T1 a scen:ScenarioExecution ;
+    scen:hasExecutionState scen:COMPLETED ;
+    scen:hasExecutionTimestamp "2026-05-17T10:15:07Z"^^xsd:dateTime ;
+    scen:hasScenarioResult ll4:GNSSLossScenarioResult_T1 .
+
+ll4:GNSSLossScenarioResult_T1 a scen:ScenarioResult ;
+    scen:hasResultSummary "Unmitigated: DI_sys falls to 0.41 within 15 min and the navigation function reaches Failed. Dead-reckoning failover restores DI_sys to 0.68; safe-degraded transit 0.60; controlled stop 0.55." ;
+    scen:hasProjectedState di:FailedState ;
+    scen:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_DeadReckoning ,
+                          ll4:SystemDIForecast_SafeDegraded , ll4:SystemDIForecast_HoldPosition .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# RESPONSE LIBRARY, REDS EVALUATION, IRDS EXECUTION
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Rule and candidate actions ─────────────────────────────────────────────
 
 ll4:GNSSFailoverRule a mit:MitigationRule ;
     warrant:hasName "GNSS Loss Mitigation Rule" ;
-    warrant:hasDescription "Trigger INS/AIS-based positioning and alert ROC operator when GNSS unavailable." .
+    warrant:hasDescription "On GNSS unavailability or a positioning attribute breach: evaluate dead-reckoning failover, safe-degraded transit, and controlled stop; alert ROC operator." ;
+    mit:recommends ll4:SwitchToDeadReckoningFailover , ll4:SafeDegradedTransitAction , ll4:ControlledStopAction .
 
 ll4:GNSSSignalLossDeviation mit:matchesRule ll4:GNSSFailoverRule .
 
-ll4:SwitchToINSAISFailover a mit:AdvisoryAction ;
-    warrant:hasName "Switch to INS/AIS Positioning" ;
-    warrant:hasDescription "Advisory: activate inertial navigation and AIS-based position estimation. Notify ROC operator." .
+ll4:SwitchToDeadReckoningFailover a mit:AdvisoryAction ;
+    warrant:hasName "Switch to Dead-Reckoning Positioning" ;
+    warrant:hasDescription "Advisory: activate dead-reckoning positioning via the Digital Twin virtual sensor and start the radar and AIS cooperative cross-check. Notify ROC operator." ;
+    mit:hasStrategyType mit:VIRTUAL_SENSOR_SUBSTITUTION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:implementsControl ll4:CTRL_RedundantPositioning ;
+    mit:requiresAuthorisationFrom ll4:RemoteOperatorRole ;
+    mit:isTriggeredBy ll4:Trigger_AttributeBreach_T1 ;
+    mit:addresses ll4:RemoteNavigationFunction ;
+    mit:hasExpectedEffect ll4:DeadReckoningRecoveryEffect .
 
-ll4:GNSSFailoverRule mit:recommends ll4:SwitchToINSAISFailover .
+ll4:DeadReckoningRecoveryEffect a mit:RecoveryEffect ;
+    mit:hasProjectedIndexGain "0.30"^^xsd:decimal ;
+    mit:hasProjectedRiskReduction "0.10"^^xsd:decimal ;
+    mit:hasRecoveryTime "PT30S"^^xsd:duration ;
+    mit:hasEffectConfidence "0.70"^^xsd:decimal .
 
-ll4:INSPositioningFailover a mit:FailoverProcedure ;
-    warrant:hasName "INS-based Positioning Failover Procedure" ;
-    warrant:hasDescription "Visualised procedure: enable INS/AIS positioning and notify the ROC operator." .
+ll4:SafeDegradedTransitAction a mit:AdvisoryAction ;
+    warrant:hasName "Continue transit in safe-degraded mode" ;
+    warrant:hasDescription "Advisory: reduce speed to 4 kn, increase lateral clearance, continue on dead reckoning with ROC visual confirmation." ;
+    mit:hasStrategyType mit:SAFE_DEGRADED_MODE ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:requiresAuthorisationFrom ll4:RemoteOperatorRole ;
+    mit:addresses ll4:RemoteNavigationFunction .
 
-ll4:SwitchToINSAISFailover mit:activates ll4:INSPositioningFailover .
-ll4:INSPositioningFailover mit:addresses ll4:RemoteNavigationFunction .
+ll4:ControlledStopAction a mit:AdvisoryAction ;
+    warrant:hasName "Controlled stop and hold position" ;
+    warrant:hasDescription "Advisory: execute the fail-safe trajectory to a controlled stop or holding position within the navigable waterway and await ROC instruction." ;
+    mit:hasStrategyType mit:OPERATOR_ESCALATION ;
+    mit:hasDefaultPosture mit:FAIL_SAFE ;
+    mit:requiresAuthorisationFrom ll4:RemoteOperatorRole ;
+    mit:addresses ll4:RemoteNavigationFunction .
 
-# ── Digital Twin ───────────────────────────────────────────────────────────
+ll4:DeadReckoningPositioningFailover a mit:FailoverProcedure ;
+    warrant:hasName "Dead-Reckoning Positioning Failover Procedure" ;
+    warrant:hasDescription "Visualised procedure: mark the last trusted fix, enable dead-reckoning positioning from the Digital Twin virtual sensor, start the radar and AIS cooperative cross-check, and notify the ROC operator." ;
+    mit:implementsControl ll4:CTRL_RedundantPositioning .
+
+ll4:SwitchToDeadReckoningFailover mit:activates ll4:DeadReckoningPositioningFailover .
+ll4:DeadReckoningPositioningFailover mit:addresses ll4:RemoteNavigationFunction .
+
+# ── REDS: ranked evaluations, objective = E[DI|u] − 0.3·C − 0.2·V ──────────
+
+ll4:MAI_W_REDS a mit:DecisionSupportService ;
+    warrant:hasName "MAI-W Risk Evaluation and Decision Support" .
+
+ll4:MAI_W_DecisionConfig a mit:DecisionConfiguration ;
+    warrant:hasName "MAI-W REDS weights — remote operation" ;
+    mit:hasCostWeight "0.3"^^xsd:decimal ;
+    mit:hasPenaltyWeight "0.2"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:Eval_DeadReckoningFailover_T1 a mit:ResponseEvaluation ;
+    mit:evaluatesAction ll4:SwitchToDeadReckoningFailover ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:hasExpectedIndex ll4:SystemDIForecast_DeadReckoning ;
+    mit:hasImplementationCost "0.15"^^xsd:decimal ;
+    mit:hasResidualExposurePenalty "0.10"^^xsd:decimal ;
+    mit:hasObjectiveValue "0.615"^^xsd:decimal ;
+    mit:isAdmissible true ;
+    mit:hasRank 1 ;
+    mit:isRecommended true ;
+    mit:hasExplanation "Highest expected DI_sys (0.68) at low disruption; restores an independent position source within 60 s as required by REQ-NAV-INT-001; fail-operational posture preserves the mission. Virtual sensor confidence 0.70 is above the configured minimum." ;
+    mit:evaluatedWithScenario ll4:GNSSLossDegradedTransitScenario ;
+    mit:usesDecisionConfiguration ll4:MAI_W_DecisionConfig ;
+    mit:evaluatedBy ll4:MAI_W_REDS ;
+    mit:evaluatedAt "2026-05-17T10:15:08Z"^^xsd:dateTime ;
+    mit:isRecordedIn ll4:MAI_W_LDC .
+
+ll4:Eval_SafeDegradedTransit_T1 a mit:ResponseEvaluation ;
+    mit:evaluatesAction ll4:SafeDegradedTransitAction ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:hasExpectedIndex ll4:SystemDIForecast_SafeDegraded ;
+    mit:hasImplementationCost "0.35"^^xsd:decimal ;
+    mit:hasResidualExposurePenalty "0.15"^^xsd:decimal ;
+    mit:hasObjectiveValue "0.465"^^xsd:decimal ;
+    mit:isAdmissible true ;
+    mit:hasRank 2 ;
+    mit:isRecommended false ;
+    mit:hasExplanation "Feasible but leaves position uncertainty growing; schedule delay and higher operator workload." ;
+    mit:evaluatedWithScenario ll4:GNSSLossDegradedTransitScenario ;
+    mit:usesDecisionConfiguration ll4:MAI_W_DecisionConfig ;
+    mit:evaluatedBy ll4:MAI_W_REDS ;
+    mit:evaluatedAt "2026-05-17T10:15:08Z"^^xsd:dateTime ;
+    mit:isRecordedIn ll4:MAI_W_LDC .
+
+ll4:Eval_ControlledStop_T1 a mit:ResponseEvaluation ;
+    mit:evaluatesAction ll4:ControlledStopAction ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:hasExpectedIndex ll4:SystemDIForecast_HoldPosition ;
+    mit:hasImplementationCost "0.60"^^xsd:decimal ;
+    mit:hasResidualExposurePenalty "0.05"^^xsd:decimal ;
+    mit:hasObjectiveValue "0.36"^^xsd:decimal ;
+    mit:isAdmissible true ;
+    mit:hasRank 3 ;
+    mit:isRecommended false ;
+    mit:hasExplanation "Fail-safe branch: lowest residual exposure but abandons the mission; retained as the fallback if failover does not restore an independent position source." ;
+    mit:evaluatedWithScenario ll4:GNSSLossDegradedTransitScenario ;
+    mit:usesDecisionConfiguration ll4:MAI_W_DecisionConfig ;
+    mit:evaluatedBy ll4:MAI_W_REDS ;
+    mit:evaluatedAt "2026-05-17T10:15:08Z"^^xsd:dateTime ;
+    mit:isRecordedIn ll4:MAI_W_LDC .
+
+# ── IRDS: authorised execution, fail-operational posture, outcome ──────────
+
+ll4:MAI_W_IRDS a mit:ResilienceSupervisor ;
+    warrant:hasName "MAI-W Intelligent Resilience and Dependability Supervisor" .
+
+ll4:ROCOperatorApproval_T1 a obs:OperatorInput ;
+    warrant:hasName "ROC operator approval of dead-reckoning failover" ;
+    obs:hasTimestamp "2026-05-17T10:15:40Z"^^xsd:dateTime ;
+    obs:hasSource ll4:RemoteOperatorRole .
+
+ll4:DeadReckoningFailoverExecution_T1 a mit:ResponseExecution ;
+    warrant:hasName "Dead-reckoning failover execution" ;
+    mit:executesAction ll4:SwitchToDeadReckoningFailover ;
+    mit:selectedFrom ll4:Eval_DeadReckoningFailover_T1 ;
+    mit:hasAuthorisationStatus mit:AUTHORISED ;
+    mit:authorisedBy ll4:RemoteOperatorRole ;
+    mit:authorisedAt "2026-05-17T10:15:40Z"^^xsd:dateTime ;
+    mit:startedAt    "2026-05-17T10:15:42Z"^^xsd:dateTime ;
+    mit:completedAt  "2026-05-17T10:15:58Z"^^xsd:dateTime ;
+    mit:hasResiliencePosture mit:FAIL_OPERATIONAL ;
+    mit:hasOutcome "SUCCESSFUL: dead-reckoning position estimate active from the last trusted fix; initial horizontal uncertainty about 15 m, growing while no fix is available; radar and AIS cooperative cross-check running; ROC operator informed." ;
+    mit:hasOutcomeIndex ll4:RemoteNavigationDI_T2 ;
+    mit:recordedOperatorInput ll4:ROCOperatorApproval_T1 ;
+    mit:coordinatedBy ll4:MAI_W_IRDS ;
+    mit:isRecordedIn ll4:MAI_W_LDC .
+
+ll4:RemoteOperatorRole mit:performsMitigation ll4:SwitchToDeadReckoningFailover .
+
+# Post-response index: ND recovers on the virtual-sensor estimate; the graph
+# and the claim, not the scalar, confirm that the cause is controlled.
+ll4:RemoteNavigationDI_T2 a di:DependabilityIndex ;
+    di:hasDIValue             "0.60"^^xsd:decimal ;
+    di:hasBetaWeight          "0.25"^^xsd:decimal ;
+    di:hasAggregatedRiskValue "0.12"^^xsd:decimal ;
+    di:calculatedAt           "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk       ll4:RemoteNavDataLossRisk_T2 ;
+    di:hasDIState              di:DegradedState ;
+    di:appliesTo               ll4:RemoteNavigationFunction ;
+    di:performedBy             ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn            ll4:MAI_W_LDC .
+
+ll4:RemoteNavigationScore_T2 di:contributesTo ll4:RemoteNavigationDI_T2 .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# LIVING DEPENDABILITY CASE: evidence, assurance level, readiness
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Evidence items ─────────────────────────────────────────────────────────
+
+ll4:EV_GNSSLossDetection a assr:Evidence ;
+    warrant:hasName "GNSS signal loss detected (health event HE-0001)" ;
+    assr:hasEvidenceSource ll4:GNSSSignalLossDetectionEvent ;
+    assr:challengesClaim ll4:CLM_NavigationIntegrity ;
+    assr:evidenceCollectedAt "2026-05-17T10:15:02Z"^^xsd:dateTime ;
+    warrant:validTo "2026-05-17T10:45:02Z"^^xsd:dateTime ;
+    assr:hasEvidenceQuality "0.90"^^xsd:decimal .
+
+ll4:EV_IndependentPositionEstimate a assr:Evidence ;
+    warrant:hasName "Independent dead-reckoning position estimate active" ;
+    assr:hasEvidenceSource ll4:DeadReckoningPositionEstimate_T1 ;
+    assr:supportsClaim ll4:CLM_NavigationIntegrity ;
+    assr:evidenceCollectedAt "2026-05-17T10:15:58Z"^^xsd:dateTime ;
+    warrant:validTo "2026-05-17T10:45:58Z"^^xsd:dateTime ;
+    assr:hasEvidenceQuality "0.70"^^xsd:decimal ;
+    warrant:derivedFrom ll4:DeadReckoningFailoverExecution_T1 .
+
+ll4:EV_ROCOperatorApproval a assr:Evidence ;
+    warrant:hasName "ROC operator authorised failover within 60 s" ;
+    assr:hasEvidenceSource ll4:ROCOperatorApproval_T1 ;
+    assr:supportsClaim ll4:CLM_NavigationIntegrity ;
+    assr:evidenceCollectedAt "2026-05-17T10:15:40Z"^^xsd:dateTime ;
+    warrant:validTo "2026-05-17T10:45:40Z"^^xsd:dateTime ;
+    assr:hasEvidenceQuality "0.95"^^xsd:decimal .
+
+# ── Nonconformity ──────────────────────────────────────────────────────────
+
+ll4:NC_GNSSIntegrityLog_001 a assr:Nonconformity ;
+    warrant:hasName "GNSS RAIM log not available for the transit" ;
+    assr:relatesToRequirement ll4:REQ_NAV_INT_001 ;
+    assr:hasNonconformitySeverity "MINOR" ;
+    assr:isResolved false .
+
+# ── Assurance Level: AL = 0.3·0.50 + 0.2·0.90 + 0.2·0.85 + 0.15·0.80 + 0.15·1.0 = 0.77
+
+ll4:MAI_W_ALWeights a assr:AssuranceLevelWeightSet ;
+    warrant:hasName "MAI-W Assurance Level weights" ;
+    assr:hasCompletenessWeight "0.30"^^xsd:decimal ;
+    assr:hasFreshnessWeight    "0.20"^^xsd:decimal ;
+    assr:hasQualityWeight      "0.20"^^xsd:decimal ;
+    assr:hasMonitoringWeight   "0.15"^^xsd:decimal ;
+    assr:hasTraceabilityWeight "0.15"^^xsd:decimal ;
+    assr:declaredBy "Seafar (operator) with class society review" ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:AssuranceLevelMethod a warrant:CalculationMethod ;
+    warrant:hasName "Weighted evidence-confidence index (EC, EF, EQ, MC, TC)" ;
+    warrant:hasVersion "1.0" .
+
+ll4:CertificationReadinessMethod a warrant:CalculationMethod ;
+    warrant:hasName "Readiness mapping g(AL, RC, NC) agreed with the assuring stakeholder" ;
+    warrant:hasVersion "0.9-draft" .
+
+ll4:MAI_W_AL_T1 a assr:AssuranceLevel ;
+    warrant:hasName "MAI-W Assurance Level at 10:15:05" ;
+    assr:hasEvidenceCompleteness "0.50"^^xsd:decimal ;
+    assr:hasEvidenceFreshness    "0.90"^^xsd:decimal ;
+    assr:hasEvidenceQualityValue "0.85"^^xsd:decimal ;
+    assr:hasMonitoringCoverage   "0.80"^^xsd:decimal ;
+    assr:hasTraceabilityCoverage "1.00"^^xsd:decimal ;
+    assr:hasAssuranceLevelValue  "0.77"^^xsd:decimal ;
+    assr:usesAssuranceLevelWeights ll4:MAI_W_ALWeights ;
+    assr:usesCalculationMethod ll4:AssuranceLevelMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:MAI_W_CR_T1 a assr:CertificationReadiness ;
+    warrant:hasName "MAI-W certification readiness at 10:15:05" ;
+    assr:derivesFromAssuranceLevel ll4:MAI_W_AL_T1 ;
+    assr:hasRequirementCoverage "0.90"^^xsd:decimal ;
+    assr:hasUnresolvedNonconformityCount 1 ;
+    assr:hasNonconformitySeverityIndex "0.10"^^xsd:decimal ;
+    assr:hasReadinessValue "0.72"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:CertificationReadinessMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+# ── The Living Dependability Case ──────────────────────────────────────────
+
+ll4:MAI_W_LDC a assr:LivingDependabilityCase ;
+    warrant:hasName "MAI-W Living Dependability Case" ;
+    assr:caseAppliesTo ll4:MAI_W ;
+    assr:hasBaselineVersion "DC-MAIW-2026.1" ;
+    assr:includesRequirement ll4:REQ_NAV_INT_001 ;
+    assr:includesClaim ll4:CLM_NavigationIntegrity ;
+    assr:includesAssumption ll4:ASM_GNSSAvailableOnRoute ;
+    assr:includesEvidence ll4:EV_GNSSLossDetection , ll4:EV_IndependentPositionEstimate , ll4:EV_ROCOperatorApproval ;
+    assr:includesNonconformity ll4:NC_GNSSIntegrityLog_001 ;
+    assr:hasAssuranceLevel ll4:MAI_W_AL_T1 ;
+    assr:hasCertificationReadiness ll4:MAI_W_CR_T1 .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# DIGITAL TWIN
+# ══════════════════════════════════════════════════════════════════════════
 
 ll4:MAI_W_DigitalTwin a dt:DigitalTwin ;
     warrant:hasName "MAI-W Digital Twin" .
 
 ll4:MAI_W_DigitalTwin dt:representsStateOf ll4:MAI_W .
-ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationFunction .
-ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationDI .
-ll4:MAI_W_DigitalTwin dt:visualises ll4:PositionUncertaintyHazard .
-ll4:MAI_W_DigitalTwin dt:visualises ll4:CollisionRisk .
-ll4:MAI_W_DigitalTwin dt:visualises ll4:INSPositioningFailover .
-ll4:MAI_W_DigitalTwin dt:receivesUpdateFrom ll4:GNSSMonitoringService .
+ll4:MAI_W_DigitalTwin dt:providesVirtualSensor ll4:DeadReckoningVirtualSensor .
+ll4:MAI_W_DigitalTwin dt:producesForecast ll4:SystemDIForecast_Unmitigated , ll4:SystemDIForecast_DeadReckoning ,
+                                           ll4:SystemDIForecast_SafeDegraded , ll4:SystemDIForecast_HoldPosition .
+ll4:MAI_W_DigitalTwin dt:executes ll4:GNSSLossDegradedTransitScenario .
+ll4:MAI_W_DigitalTwin dt:storesResult ll4:GNSSLossScenarioExecution_T1 .
+ll4:MAI_W_DigitalTwin dt:monitors ll4:RemoteNavigationFunction , ll4:GNSSReceiverComponent , ll4:ROCToVesselCommandLink .
+ll4:MAI_W_DigitalTwin dt:visualises ll4:RemoteNavigationFunction , ll4:RemoteNavigationDI , ll4:MAI_W_SystemDI ,
+                                     ll4:PositionUncertaintyHazard , ll4:CollisionRisk , ll4:GNSSSpoofingThreatScenario ,
+                                     ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ,
+                                     ll4:Eval_DeadReckoningFailover_T1 , ll4:DeadReckoningFailoverExecution_T1 ,
+                                     ll4:DeadReckoningPositioningFailover , ll4:SystemDIForecast_DeadReckoning ,
+                                     ll4:CLM_NavigationIntegrity , ll4:MAI_W_AL_T1 , ll4:MAI_W_LDC .
+ll4:MAI_W_DigitalTwin dt:receivesUpdateFrom ll4:GNSSMonitoringService , ll4:GNSSReceiverNodeHealthMonitor ,
+                                             ll4:RemoteNavigationNodeHealthMonitor , ll4:MAI_W_DependabilitySupervisor .
 
 ##############################################################################
 # END example-gnss-failover.ttl

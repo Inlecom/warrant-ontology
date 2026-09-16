@@ -1,7 +1,7 @@
 ##############################################################################
 # WARRaNT Example: LL1 Containership Navigation/Comms OT Dependability
 # Instance namespace: https://warrant-project.eu/data/ll1#
-# Ontology version: 1.0.0
+# Ontology version: 0.10-poc
 # Source documents:
 #   - Block diagram of bridge navigation equipment (H/N 4009/4010/4011/4012)
 #   - Bridge navigation equipment interconnection interface details
@@ -258,7 +258,7 @@ ll1:BNWAS a davom:SoftwareComponent ;
     warrant:hasSoftwareVersion "2450054-01.06" ;
     warrant:hasDescription "Storage: ROM. SERIAL (AMS). Access: service engineer only. FMEA: settings modified — bridge watch alarm not activated Sev=6 Prob=6 Det=3 RPN=108. Backup: additional watch." .
 
-ll1:VDR a davom:TechnicalSystem ;
+ll1:VDR a davom:PhysicalComponent ;
     warrant:hasIdentifier "COMP-VDR-001" ;
     warrant:hasName "Simplified VDR" ;
     warrant:hasMaker "FURUNO" ;
@@ -596,7 +596,7 @@ ll1:VDRHealthService obs:consumes ll1:VDRDataIntegrityMetric .
 
 ll1:AISSpoofingDetectionEvent a obs:DetectionEvent ;
     warrant:hasName "AIS Spoofing Detection Event" ;
-    warrant:hasDescription "IDS detected significant divergence between AIS-reported position and RADAR/GPS cross-check. Position delta exceeds 0.5 NM threshold." ;
+    warrant:hasDescription "IDS detected significant divergence between AIS-reported target positions and the correlated radar returns for the same contacts; delta exceeds the 0.5 NM threshold, and one reported contact has no radar return at all. This correlation is the detection that AIS spoofing admits; own-ship position is cross-checked separately by the navigation integrity service." ;
     obs:hasTimestamp "2026-06-01T09:45:00Z"^^xsd:dateTime .
 
 ll1:GPSJammingDetectionEvent a obs:DetectionEvent ;
@@ -631,6 +631,60 @@ ll1:IDSAnalyticalService     obs:producesDetectionEvent ll1:AMSDataCorruptionEve
 ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GPSJammingDetectionEvent .
 ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GyroHeadingDivergenceEvent .
 
+# Every Deviation must be grounded in a DetectionEvent (Critical Design
+# Constraint 1). The eight deviations below were asserted directly in the 0.9
+# version of this file; each now carries the detection that would actually
+# raise it, attributed to the service that performs that check.
+
+ll1:GPSSpoofingDetectionEvent a obs:DetectionEvent ;
+    warrant:hasName "GPS Position Spoofing Detection Event" ;
+    warrant:hasDescription "Navigation integrity service detected a position jump inconsistent with vessel dynamics and a growing offset between the GPS fix and the radar-derived position from charted features, while carrier-to-noise density remained normal. Signal strength cannot distinguish a spoofed fix; the consistency residual can." ;
+    obs:hasTimestamp "2026-06-01T09:44:30Z"^^xsd:dateTime .
+
+ll1:ECDISSensorFeedLossEvent a obs:DetectionEvent ;
+    warrant:hasName "ECDIS Sensor Feed Loss Detection Event" ;
+    warrant:hasDescription "ECDIS No1 reported loss of one or more IEC 61162 sensor inputs (GPS, gyro, speed log, echo sounder, anemometer); the integrated display fell back to manual entry for the affected values." ;
+    obs:hasTimestamp "2026-06-01T08:35:00Z"^^xsd:dateTime .
+
+ll1:SpeedlogInconsistencyEvent a obs:DetectionEvent ;
+    warrant:hasName "Speedlog Inconsistency Detection Event" ;
+    warrant:hasDescription "Speed through water from the speed log diverged from GPS speed over ground beyond the value explicable by set and drift on this leg, indicating invalid speed-log output rather than current." ;
+    obs:hasTimestamp "2026-06-01T10:05:00Z"^^xsd:dateTime .
+
+ll1:GyroFeedLossEvent a obs:DetectionEvent ;
+    warrant:hasName "Gyrocompass Feed Loss Detection Event" ;
+    warrant:hasDescription "Loss of the gyrocompass heading telegram on the serial distribution bus; radars, ECDIS, autopilot and AIS lost their heading reference simultaneously, which distinguishes a bus or interface failure from a single-consumer fault." ;
+    obs:hasTimestamp "2026-06-01T10:20:00Z"^^xsd:dateTime .
+
+ll1:RadarConfigurationChangeEvent a obs:DetectionEvent ;
+    warrant:hasName "Radar Configuration Change Detection Event" ;
+    warrant:hasDescription "IDS log analysis detected a change to X-band radar display and target-tracking settings outside an authorised service-engineer session." ;
+    obs:hasTimestamp "2026-06-01T08:50:00Z"^^xsd:dateTime .
+
+ll1:VDRRecordingStoppedEvent a obs:DetectionEvent ;
+    warrant:hasName "VDR Recording Stopped Detection Event" ;
+    warrant:hasDescription "VDR health service detected that no new voyage data blocks had been written for longer than the configured interval: recording has stopped rather than been altered." ;
+    obs:hasTimestamp "2026-06-01T12:40:00Z"^^xsd:dateTime .
+
+ll1:VHFConfigurationChangeEvent a obs:DetectionEvent ;
+    warrant:hasName "VHF Configuration Change Detection Event" ;
+    warrant:hasDescription "IDS detected a change to VHF No1 channel and DSC configuration; distress alerting capability could no longer be assumed available on that set." ;
+    obs:hasTimestamp "2026-06-01T11:30:00Z"^^xsd:dateTime .
+
+ll1:SatCommLinkLossEvent a obs:DetectionEvent ;
+    warrant:hasName "Satellite Communication Link Loss Detection Event" ;
+    warrant:hasDescription "Loss of both Inmarsat GX and FBB-500 connectivity at the Communications PC LAN boundary, beyond the duration explicable by ordinary beam handover or rain fade." ;
+    obs:hasTimestamp "2026-06-01T11:45:00Z"^^xsd:dateTime .
+
+ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GPSSpoofingDetectionEvent .
+ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:SpeedlogInconsistencyEvent .
+ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GyroFeedLossEvent .
+ll1:IDSAnalyticalService       obs:producesDetectionEvent ll1:ECDISSensorFeedLossEvent .
+ll1:IDSAnalyticalService       obs:producesDetectionEvent ll1:RadarConfigurationChangeEvent .
+ll1:IDSAnalyticalService       obs:producesDetectionEvent ll1:VHFConfigurationChangeEvent .
+ll1:IDSAnalyticalService       obs:producesDetectionEvent ll1:SatCommLinkLossEvent .
+ll1:VDRHealthService           obs:producesDetectionEvent ll1:VDRRecordingStoppedEvent .
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DEVIATIONS
@@ -639,8 +693,8 @@ ll1:NavigationIntegrityService obs:producesDetectionEvent ll1:GyroHeadingDiverge
 
 # — AIS/ECDIS cyber attack
 ll1:DevSpoofedAIS a cdm:Deviation ;
-    warrant:hasName "Spoofed AIS Position Data" ;
-    warrant:hasDescription "AIS position data injected by adversary; ECDIS displays false vessel position. FMEA: AIS transponder, interfaces modified/SW infected. VHF open protocol — no authentication." ;
+    warrant:hasName "Spoofed AIS Target Data" ;
+    warrant:hasDescription "Counterfeit AIS messages injected by an adversary over the open VHF AIS channels (87B/88B), which carry no authentication. The effect is on the TARGET picture: phantom, displaced or suppressed contacts appear in the ECDIS AIS overlay and in the radar-AIS correlation. It is NOT an own-ship position error: ECDIS takes own-ship position from the GNSS receiver over the IEC 61162 bus (ll1:Link_GPS_NavBus), not from AIS. The attacks that move own ship on the chart are GNSS spoofing (ll1:DevGPSSpoofed) and ECDIS compromise (ll1:DevECDISSettingsModified). FMEA: AIS transponder, interfaces modified / SW infected." ;
     cdm:hasDeviationType cdm:SPOOFED .
 
 ll1:DevECDISSettingsModified a cdm:Deviation ;
@@ -722,6 +776,14 @@ ll1:ECDISSettingsModifiedEvent  obs:detectionEventDetects ll1:DevECDISSettingsMo
 ll1:VDRDataTamperEvent          obs:detectionEventDetects ll1:DevVDRDataModified .
 ll1:AMSDataCorruptionEvent      obs:detectionEventDetects ll1:DevAMSDataCorrupted .
 ll1:GyroHeadingDivergenceEvent  obs:detectionEventDetects ll1:DevGyroSettingsModified .
+ll1:GPSSpoofingDetectionEvent     obs:detectionEventDetects ll1:DevGPSSpoofed .
+ll1:ECDISSensorFeedLossEvent      obs:detectionEventDetects ll1:DevECDISInterfaceModified .
+ll1:SpeedlogInconsistencyEvent    obs:detectionEventDetects ll1:DevSpeedlogModified .
+ll1:GyroFeedLossEvent             obs:detectionEventDetects ll1:DevGyroInterfaceDisconnected .
+ll1:RadarConfigurationChangeEvent obs:detectionEventDetects ll1:DevRADARSettingsModified .
+ll1:VDRRecordingStoppedEvent      obs:detectionEventDetects ll1:DevVDRDataNotStored .
+ll1:VHFConfigurationChangeEvent   obs:detectionEventDetects ll1:DevVHFSettingsModified .
+ll1:SatCommLinkLossEvent          obs:detectionEventDetects ll1:DevSatCommUnavailable .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -743,22 +805,53 @@ ll1:ECDISFeedback a cdm:Feedback ;
     warrant:hasName "ECDIS Position and Chart Feedback" ;
     warrant:hasDescription "Navigation officer receives vessel position from ECDIS, which integrates GPS, AIS traffic, and RADAR overlay." .
 
-ll1:NavigationOfficerController cdm:actsOn       ll1:VesselCourseControlledProcess .
+ll1:CourseAlterationControlAction a davom:ControlAction ;
+    warrant:hasName "Course Alteration Command" ;
+    warrant:hasDescription "Course or speed order issued by the navigation officer to the autopilot or the helm on the basis of the ECDIS and radar picture." .
+
+ll1:NavigationOfficerRole davom:authorizes ll1:CourseAlterationControlAction .
+ll1:NavigationOfficerController cdm:issues ll1:CourseAlterationControlAction .
+ll1:CourseAlterationControlAction cdm:actsOn ll1:VesselCourseControlledProcess .
 ll1:VesselCourseControlledProcess cdm:providesFeedback ll1:ECDISFeedback .
+ll1:ECDISFeedback cdm:updates ll1:NavigationOfficerProcessModel .
+
+ll1:NavigationOfficerProcessModel a cdm:ProcessModel ;
+    warrant:hasName "Navigation Officer Process Model" ;
+    warrant:hasDescription "The officer's working picture of where the vessel is and what the surrounding traffic is doing, built from ECDIS own-ship position, the radar picture and the AIS target overlay." .
 
 ll1:WrongPositionProcessModelFlaw a cdm:ProcessModelFlaw ;
-    warrant:hasName "Wrong Chart Position in Officer Process Model" ;
-    warrant:hasDescription "Navigation officer's ECDIS shows incorrect vessel position due to spoofed AIS data; situational picture is fatally compromised. Officer believes vessel is on safe track while actual position is near hazard." ;
+    warrant:hasName "Wrong Own-Ship Position in Officer Process Model" ;
+    warrant:hasDescription "The officer's ECDIS shows an incorrect own-ship position, so the officer believes the vessel is on a safe track while it is standing into danger. Reached by GNSS spoofing, by an ECDIS compromise that alters the display parameters or chart datum, or by loss of the sensor feeds that ECDIS integrates. Not reachable from AIS spoofing." ;
     cdm:hasDeviationType cdm:WRONG .
+
+ll1:WrongTrafficPictureProcessModelFlaw a cdm:ProcessModelFlaw ;
+    warrant:hasName "Wrong Traffic Picture in Officer Process Model" ;
+    warrant:hasDescription "The officer's AIS overlay shows contacts that do not exist, are displaced from their true position, or are missing. Own-ship position remains correct. The divergence between an AIS contact and the radar return for the same target is what makes this detectable, and is what the IDS cross-check monitors." ;
+    cdm:hasDeviationType cdm:WRONG .
+
+ll1:WrongCollisionAvoidanceUCA a cdm:UnsafeControlAction ;
+    warrant:hasName "Wrong or Unnecessary Collision-Avoidance Manoeuvre" ;
+    warrant:hasDescription "The officer alters course or speed to give way to a phantom or displaced AIS contact, or fails to give way to a real contact that the spoofed overlay has suppressed. STPA: control action provided when not required, or not provided when required, because the process model of the traffic situation is wrong. In confined or heavily trafficked water the avoiding action can itself set the vessel toward a hazard or into conflict with a genuine target." .
 
 ll1:WrongCourseAlterationUCA a cdm:UnsafeControlAction ;
     warrant:hasName "Wrong Course Alteration (Based on Spoofed Position)" ;
     warrant:hasDescription "Navigation officer issues course alteration command based on false ECDIS position, manoeuvring vessel toward shallow water, reef, or TSS zone. STPA: control action wrong — wrong direction/amount given spoofed process model." .
 
-ll1:DevSpoofedAIS             cdm:mayCause ll1:WrongPositionProcessModelFlaw .
+# Two distinct attack paths that the 0.9 version of this file conflated.
+# Own-ship position error (GNSS spoofing, ECDIS compromise, loss of the
+# integrated sensor feeds) leads to a wrong course alteration. Target picture
+# error (AIS spoofing) leads to a wrong collision-avoidance manoeuvre. Both
+# can put the vessel into a hazardous area, by different mechanisms and with
+# different detections.
 ll1:DevGPSSpoofed             cdm:mayCause ll1:WrongPositionProcessModelFlaw .
 ll1:DevECDISSettingsModified  cdm:mayCause ll1:WrongPositionProcessModelFlaw .
+ll1:DevECDISInterfaceModified cdm:mayCause ll1:WrongPositionProcessModelFlaw .
 ll1:WrongPositionProcessModelFlaw cdm:mayCause ll1:WrongCourseAlterationUCA .
+
+ll1:DevSpoofedAIS cdm:mayCause ll1:WrongTrafficPictureProcessModelFlaw .
+ll1:WrongTrafficPictureProcessModelFlaw cdm:mayCause ll1:WrongCollisionAvoidanceUCA .
+ll1:WrongCollisionAvoidanceUCA cdm:mayCause ll1:HazHazardousAreaApproach .
+ll1:WrongCollisionAvoidanceUCA assr:causesAssuranceDegradation ll1:NavigationCyberDegradation .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -767,7 +860,7 @@ ll1:WrongPositionProcessModelFlaw cdm:mayCause ll1:WrongCourseAlterationUCA .
 
 ll1:AISECDISSpoofingScenario a scen:CyberattackScenario ;
     warrant:hasName "AIS-ECDIS Spoofing Cyber-Attack Scenario (LL1)" ;
-    warrant:hasDescription "Adversary injects false AIS position data over VHF CH87/88 (no authentication). ECDIS No1 displays false vessel position. Navigation officer issues wrong course alteration. Vessel approaches hazardous area. Concurrent VDR data erasure conceals the attack timeline." .
+    warrant:hasDescription "Adversary injects counterfeit AIS messages over the unauthenticated VHF AIS channels (87B/88B). Phantom and displaced contacts appear in the ECDIS AIS overlay; own-ship position, which ECDIS takes from the GNSS receiver, is unaffected. The officer manoeuvres to avoid a contact that is not there and stands the vessel into a hazardous area. Where the adversary also spoofs GNSS, the own-ship position is falsified as well and the officer instead makes a wrong course alteration against a correct-looking chart. Concurrent VDR data erasure conceals the attack timeline in either variant." .
 
 ll1:AISECDISSpoofingScenario scen:hasTrigger ll1:DevSpoofedAIS .
 ll1:AISECDISSpoofingScenario scen:hasTrigger ll1:DevVDRDataModified .
@@ -974,9 +1067,13 @@ ll1:DI_ElectricalAlarm a di:DependabilityIndex ;
     di:usesCalculationMethod ll1:DI_Method_LL1 ;
     di:hasDIState            di:UnsafeState .
 
-ll1:DI_LL1_Composite a di:DependabilityIndex ;
-    di:hasDIValue            "0.25"^^xsd:decimal ;
-    di:hasBetaWeight         "1.00"^^xsd:decimal ;
+# The vessel-level index is the system DI, not another node index: it is the
+# recursive aggregation of the four function indices that contribute to it.
+# The aggregation weights (di:DIWeight) are not yet modelled for LL1, so the
+# stated value is the analyst's figure rather than a derived one; modelling
+# them is part of the outstanding LL1 alignment work.
+ll1:DI_LL1_Composite a di:SystemDependabilityIndex ;
+    di:hasSystemDIValue      "0.25"^^xsd:decimal ;
     di:calculatedAt          "2026-06-01T09:45:05Z"^^xsd:dateTime ;
     di:usesCalculationMethod ll1:DI_Method_LL1 ;
     di:hasDIState            di:UnsafeState .
@@ -987,10 +1084,10 @@ ll1:VDRAssuranceScore      di:contributesTo ll1:DI_VDR .
 ll1:CommAssuranceScore     di:contributesTo ll1:DI_Communication .
 ll1:AMSAssuranceScore      di:contributesTo ll1:DI_ElectricalAlarm .
 
-ll1:DI_Navigation      di:contributesTo ll1:DI_LL1_Composite .
-ll1:DI_VDR             di:contributesTo ll1:DI_LL1_Composite .
-ll1:DI_Communication   di:contributesTo ll1:DI_LL1_Composite .
-ll1:DI_ElectricalAlarm di:contributesTo ll1:DI_LL1_Composite .
+ll1:DI_Navigation      di:contributesToSystem ll1:DI_LL1_Composite .
+ll1:DI_VDR             di:contributesToSystem ll1:DI_LL1_Composite .
+ll1:DI_Communication   di:contributesToSystem ll1:DI_LL1_Composite .
+ll1:DI_ElectricalAlarm di:contributesToSystem ll1:DI_LL1_Composite .
 
 ll1:DI_Navigation      di:appliesTo ll1:NavigationFunction .
 ll1:DI_VDR             di:appliesTo ll1:VoyageRecordingFunction .

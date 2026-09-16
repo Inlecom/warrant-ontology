@@ -1,9 +1,16 @@
 ##############################################################################
-# WARRaNT Competency Queries — Starter Set (v0.1.0)
+# WARRaNT Competency Queries
 # File: queries/competency-queries.sparql
 #
 # These queries define the minimum semantic capability the ontology must support.
-# Use them as regression tests against the example files.
+# Use them as regression tests against the example files:
+#   python scripts/merge_ontology.py && python scripts/run_queries.py
+#
+# Queries 1–6 are the original starter set (Q2 and Q3 repaired: Q2 now
+# reaches metrics held by supporting components and links; Q3 now keys on
+# resilience triggers as well as operational states). Queries 7–10 cover the
+# methodology layers added for continuous assurance: evidence traceability,
+# trigger-to-outcome, attribute-wise state, and forecasts.
 #
 # Prefixes used throughout:
 ##############################################################################
@@ -22,10 +29,10 @@ PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX xsd:     <http://www.w3.org/2001/XMLSchema#>
 
 ##############################################################################
-# QUERY 1: Trace from Deviation to DI State
+# QUERY 1: Trace from Deviation to operational state
 #
 # Competency question: Given a Deviation, what is the full causal chain from
-# detection to DI state?
+# detection to node DI and operational state?
 #
 # Expected result columns: deviation, detectionEvent, hazard, risk, degradation,
 #   assuranceScore, dependabilityIndex, diState
@@ -49,17 +56,21 @@ ORDER BY ?deviation
 ##############################################################################
 # QUERY 2: List all Hazards for a VesselFunction
 #
-# Competency question: What hazards affect systems or components supporting
-# a given vessel function, ordered by risk likelihood descending?
+# Competency question: What hazards arise from deviations detected on the
+# entities that support a given vessel function (its systems, subsystems,
+# components, and communication links), ordered by risk likelihood?
 #
-# Expected result columns: function, system, deviation, hazard, risk, likelihood
+# Expected result columns: function, monitoredEntity, deviation, hazard, risk, likelihood
 ##############################################################################
 
-SELECT ?function ?system ?deviation ?hazard ?risk ?likelihood
+SELECT ?function ?monitoredEntity ?deviation ?hazard ?risk ?likelihood
 WHERE {
   ?function a davom:VesselFunction .
-  ?function davom:isSupportedBy ?system .
-  ?system obs:hasDependabilityMetric ?metric .
+  ?function ( davom:isSupportedBy
+            | davom:isSupportedBy/davom:hasComponent
+            | davom:isSupportedBy/davom:hasSubsystem/davom:hasComponent
+            | davom:usesCommunicationLink ) ?monitoredEntity .
+  ?monitoredEntity obs:hasDependabilityMetric ?metric .
   ?metric obs:hasMeasurement ?measurement .
   ?measurement obs:supportsDetection ?detectionEvent .
   ?detectionEvent obs:detectionEventDetects ?deviation .
@@ -73,30 +84,45 @@ ORDER BY DESC(?likelihood)
 
 
 ##############################################################################
-# QUERY 3: Find MitigationRules triggered by a given DI state
+# QUERY 3: Find MitigationRules and evaluated responses for a resilience
+#          trigger or operational state
 #
-# Competency question: Which mitigation rules and actions apply for a given
-# DependabilityIndexState (e.g. di:CriticalState)?
+# Competency question: Which rules of the response library and which REDS
+# evaluations (ranked) apply for a given resilience trigger type, or for a
+# given operational state reported on a DI node?
 #
-# Expected result columns: diState, diNode, mitigationRule, mitigationAction
+# Expected result columns: source, triggerType, mitigationRule, mitigationAction, rank
 #
-# Usage: replace di:CriticalState with the target state IRI
+# Usage: filter ?triggerType (e.g. di:ATTRIBUTE_BREACH) or ?source
 ##############################################################################
 
-SELECT ?diState ?diNode ?mitigationRule ?mitigationAction
+SELECT ?source ?triggerType ?mitigationRule ?mitigationAction ?rank
 WHERE {
-  ?diNode di:hasDIState ?diState .
-  ?diState mit:matchesRule ?mitigationRule .
-  OPTIONAL { ?mitigationRule mit:recommends ?mitigationAction . }
+  {
+    ?source a di:ResilienceTrigger ;
+            di:hasTriggerType ?triggerType .
+    OPTIONAL { ?source mit:matchesRule ?mitigationRule .
+               OPTIONAL { ?mitigationRule mit:recommends ?mitigationAction . } }
+    OPTIONAL { ?evaluation mit:respondsToTrigger ?source ;
+                           mit:evaluatesAction ?mitigationAction .
+               OPTIONAL { ?evaluation mit:hasRank ?rank . } }
+  }
+  UNION
+  {
+    ?diNode di:hasDIState ?source .
+    ?source mit:matchesRule ?mitigationRule .
+    OPTIONAL { ?mitigationRule mit:recommends ?mitigationAction . }
+  }
 }
-ORDER BY ?mitigationRule
+ORDER BY ?source ?rank ?mitigationRule
 
 
 ##############################################################################
-# QUERY 4: List AssuranceScores below a threshold
+# QUERY 4: List Node Dependability Scores below a threshold
 #
-# Competency question: Which vessel functions have an assurance score below
-# a given threshold, and what is their current DI state?
+# Competency question: Which vessel functions have a node dependability
+# score (assr:AssuranceScore) below a given threshold, and what is their
+# current DI and operational state?
 #
 # Expected result columns: function, assuranceScore, scoreValue, dependabilityIndex, diState
 #
@@ -118,21 +144,24 @@ ORDER BY ?scoreValue
 
 
 ##############################################################################
-# QUERY 5: Show the risk propagation graph for a node DI
+# QUERY 5: Show the typed risk propagation graph for a node DI
 #
 # Competency question: What upstream dependency nodes propagate risk into a
-# given DI node, with what weights and upstream DI values?
+# given DI node, over which hazard class and mirrored dependency, with what
+# weights and upstream DI values?
 #
-# Expected result columns: targetDI, propagationEdge, sourceDI, propWeight,
-#   sourceDIValue, sourceDIState
+# Expected result columns: targetDI, propagationEdge, sourceDI, hazardClass,
+#   dependency, propWeight, sourceDIValue, sourceDIState
 ##############################################################################
 
-SELECT ?targetDI ?propagationEdge ?sourceDI ?propWeight
+SELECT ?targetDI ?propagationEdge ?sourceDI ?hazardClass ?dependency ?propWeight
        ?sourceDIValue ?sourceDIState
 WHERE {
   ?propagationEdge a di:RiskPropagationEdge .
   ?propagationEdge di:propagationTarget ?targetDI .
   ?propagationEdge di:propagationSource ?sourceDI .
+  OPTIONAL { ?propagationEdge di:forHazardClass ?hazardClass . }
+  OPTIONAL { ?propagationEdge di:mirrorsDependency ?dependency . }
   OPTIONAL { ?propagationEdge di:hasRiskPropagationWeight ?propWeight . }
   OPTIONAL { ?sourceDI di:hasDIValue ?sourceDIValue . }
   OPTIONAL { ?sourceDI di:hasDIState ?sourceDIState . }
@@ -156,6 +185,128 @@ WHERE {
   OPTIONAL { ?role davom:authorizes ?controlAction . }
 }
 ORDER BY ?role
+
+
+##############################################################################
+# QUERY 7: Evidence-to-claim-to-requirement traceability
+#
+# Competency question: For each assurance claim, which requirement does it
+# address, what is its current status, which evidence supports or challenges
+# it, and where does that evidence come from?
+#
+# Expected result columns: claim, claimStatus, requirement, relation, evidence,
+#   evidenceSource, collectedAt
+##############################################################################
+
+SELECT ?claim ?claimStatus ?requirement ?relation ?evidence ?evidenceSource ?collectedAt
+WHERE {
+  ?claim a assr:AssuranceClaim .
+  OPTIONAL { ?claim assr:hasClaimStatus ?claimStatus . }
+  OPTIONAL { ?claim assr:addressesRequirement ?requirement . }
+  OPTIONAL {
+    { ?evidence assr:supportsClaim ?claim .   BIND("supports" AS ?relation) }
+    UNION
+    { ?evidence assr:challengesClaim ?claim . BIND("challenges" AS ?relation) }
+    OPTIONAL { ?evidence assr:hasEvidenceSource ?evidenceSource . }
+    OPTIONAL { ?evidence assr:evidenceCollectedAt ?collectedAt . }
+  }
+}
+ORDER BY ?claim ?relation ?evidence
+
+
+##############################################################################
+# QUERY 8: From resilience trigger to executed response and outcome
+#
+# Competency question: For each resilience trigger, which alternatives did
+# REDS evaluate and rank, which was executed by IRDS, under what
+# authorisation and posture, and with what outcome?
+#
+# Expected result columns: trigger, triggerType, evaluation, action, rank,
+#   admissible, execution, authorisationStatus, authorisedBy, posture, outcome
+##############################################################################
+
+SELECT ?trigger ?triggerType ?evaluation ?action ?rank ?admissible
+       ?execution ?authorisationStatus ?authorisedBy ?posture ?outcome
+WHERE {
+  ?trigger a di:ResilienceTrigger .
+  OPTIONAL { ?trigger di:hasTriggerType ?triggerType . }
+  OPTIONAL {
+    ?evaluation mit:respondsToTrigger ?trigger ;
+                mit:evaluatesAction ?action .
+    OPTIONAL { ?evaluation mit:hasRank ?rank . }
+    OPTIONAL { ?evaluation mit:isAdmissible ?admissible . }
+    OPTIONAL {
+      ?execution mit:selectedFrom ?evaluation .
+      OPTIONAL { ?execution mit:hasAuthorisationStatus ?authorisationStatus . }
+      OPTIONAL { ?execution mit:authorisedBy ?authorisedBy . }
+      OPTIONAL { ?execution mit:hasResiliencePosture ?posture . }
+      OPTIONAL { ?execution mit:hasOutcome ?outcome . }
+    }
+  }
+}
+ORDER BY ?trigger ?rank
+
+
+##############################################################################
+# QUERY 9: Attribute-wise state versus the DI composite
+#
+# Competency question: Which nodes have an attribute whose operational state
+# is not Normal, what is that attribute's value and threshold, and what DI
+# value is reported for the node? (Shows that the state is attribute-wise and
+# that the same DI may accompany different states.)
+#
+# Expected result columns: node, attribute, attributeValue, attributeState,
+#   normalMinimum, nodeDI, nodeDIValue, nodeState
+##############################################################################
+
+SELECT ?node ?attribute ?attributeValue ?attributeState ?normalMinimum
+       ?nodeDI ?nodeDIValue ?nodeState
+WHERE {
+  ?node assr:hasAssuranceAttribute ?attribute .
+  ?attribute assr:hasAttributeValue ?value .
+  ?value di:hasAttributeState ?attributeState .
+  FILTER (?attributeState != di:NormalState)
+  OPTIONAL { ?value assr:hasAttributeValueNumber ?attributeValue . }
+  OPTIONAL {
+    ?threshold di:thresholdAppliesToNode ?node ;
+               di:thresholdAppliesToAttribute ?attribute ;
+               di:hasNormalMinimum ?normalMinimum .
+  }
+  OPTIONAL {
+    ?nodeDI di:appliesTo ?node .
+    OPTIONAL { ?nodeDI di:hasDIValue ?nodeDIValue . }
+    OPTIONAL { ?nodeDI di:hasDIState ?nodeState . }
+  }
+}
+ORDER BY ?node ?attribute
+
+
+##############################################################################
+# QUERY 10: DI forecasts against the configured management floor
+#
+# Competency question: Which DI forecasts (from the Digital Twin or scenario
+# executions) predict a value below the configured management floor within
+# the prediction horizon, who produced them, and did they raise a trigger?
+#
+# Expected result columns: forecast, index, forecastValue, floor, validAt,
+#   producedBy, trigger
+##############################################################################
+
+SELECT ?forecast ?index ?forecastValue ?floor ?validAt ?producedBy ?trigger
+WHERE {
+  ?forecast a di:DIForecast ;
+            di:forecastsIndex ?index ;
+            di:hasForecastValue ?forecastValue .
+  OPTIONAL { ?forecast di:forecastValidAt ?validAt . }
+  OPTIONAL { ?forecast di:forecastProducedBy ?producedBy . }
+  OPTIONAL { ?trigger di:triggeredByForecast ?forecast . }
+  OPTIONAL {
+    ?index di:usesConfiguration ?config .
+    ?config di:hasManagementFloor ?floor .
+  }
+  FILTER ( !BOUND(?floor) || ?forecastValue < ?floor )
+}
+ORDER BY ?forecastValue
 
 ##############################################################################
 # END queries/competency-queries.sparql

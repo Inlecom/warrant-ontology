@@ -21,11 +21,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install rdflib
-        run: pip install rdflib
+      - name: Install rdflib and pySHACL
+        run: pip install rdflib pyshacl
 
-      - name: Validate Turtle syntax and namespace usage
-        run: python scripts/validate_turtle.py
+      - name: Validate Turtle syntax, namespace usage and SHACL shapes
+        run: python scripts/validate_turtle.py --shacl
+
+      - name: Check module documentation is up to date
+        run: python scripts/generate_module_docs.py --check
 
       - name: Build merged ontology (CI artefact check)
         run: python scripts/merge_ontology.py

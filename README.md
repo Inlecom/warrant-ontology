@@ -8,32 +8,35 @@ https://warrant-project.eu/
 
 ## Purpose
 
-The WARRaNT ontology provides a shared semantic vocabulary for:
+The WARRaNT ontology is the semantic specification of the WARRaNT continuous-assurance framework. It provides a shared vocabulary for the whole loop — design-time hazard knowledge → health events → node health monitoring → attribute-wise supervision and the Dependability Index → resilience decision and response → the Living Dependability Case — with the Digital Twin as both consumer and producer:
 
-- **Vessel operational structure** (DAVOM): vessels, functions, systems, components, data flows, communication links, human operator roles.
-- **Causal dependability modelling** (CDM / STPA / HAZOP): deviations, hazards, risks, unsafe control actions, causal chains.
-- **Assurance and dependability metrics**: assurance attributes, scores, degradation, weights.
-- **Dependability Index** with risk propagation: node DI, propagated risk, system DI.
-- **Scenarios**: what-if cases including cyberattack, failure, degraded operation, handover.
-- **Mitigation and failover**: rules, advisory actions, failover procedures.
-- **Digital Twin interface**: views, visualisation layers, decision-support, live update channels.
+- **Vessel operational structure** (DAVOM): vessels, functions, systems, components, data flows, communication links, IEC 62443 zones and conduits, asset roles, human operator roles, typed dependencies.
+- **Design-time knowledge** (CDM / HAZOP / FMEA / STPA / cyber assessment): deviations, hazards, risks with the impact triple, failure modes with FMEA ratings, threat scenarios, vulnerabilities, controls with residual risk, hazard classes with admissible propagation types.
+- **Observation and health events**: metrics, observers, virtual sensors, the structured health-event record (detected and predicted), node health monitors, operator inputs.
+- **Attribute assessment and the Living Dependability Case** (Assurance): attribute values with confidence and fusion, node dependability scores; requirements, claims, assumptions, evidence and obligations, nonconformities, Assurance Level, Certification Readiness.
+- **Dependability Index and supervision** (DI): typed per-hazard-class risk propagation, hierarchical aggregation, attribute-wise operational state, resilience triggers and their configuration, DI forecasts.
+- **Scenarios**: what-if cases, executions and results that produce forecasts.
+- **Decision and response** (Mitigation): the response library, REDS response evaluations, IRDS response executions with authorisation and posture.
+- **Digital Twin interface**: views, decision support, live updates, virtual sensing and forecast production.
 
 ---
 
 ## What is Inside the KG
 
-- Semantic class and property definitions.
-- Controlled vocabularies: HAZOP deviation types (`cdm:DeviationType`), DI states (`di:DependabilityIndexState`), operational modes (`warrant:OperationalMode`).
-- Latest states, detection events, assurance scores, DI values.
+- Semantic class and property definitions (200 classes, 194 object properties, 128 datatype properties, 70 named individuals across nine modules).
+- Controlled vocabularies: deviation types, operational states, operational modes, dependency types, asset roles, hazard classes, monitoring levels, trigger types, strategy types, postures, authorisation, claim and obligation statuses, execution lifecycle states.
+- Latest health events, attribute values, node scores, indices and states, triggers, evaluations, executions, claims and evidence.
+- Governed configuration (weights, thresholds, floors, damping, decision weights) with version and approval.
 - Scenario semantics and execution results.
-- Traceability links from detection to DI state.
+- Traceability links from evidence through health events, indices, triggers and responses to claims and requirements.
 - References to external time-series stores.
 
 ## What is Outside the KG
 
 - Raw high-frequency sensor telemetry (use `obs:hasExternalTimeSeriesId`).
-- DI numerical computation (external service stores results in KG).
+- All numerical computation: fusion, node score, propagation, aggregation, state assignment, triggers, response ranking, Assurance Level, Certification Readiness (external services store results in the KG with method identity and timestamp).
 - Scenario engine execution (external engine stores `scen:ScenarioResult` in KG).
+- Decisions about what evidence an authority must accept.
 - Digital Twin rendering and UI.
 - Work Packages, Tasks, Deliverables, and Partner data.
 
@@ -67,17 +70,21 @@ warrant-kg-ontology/
 │   ├── example-roc-handover.ttl            ← LL4 Use Case 2 handover
 │   └── example-ecdis-spoofing.ttl          ← LL1 AIS spoofing
 ├── shapes/
-│   └── warrant-core-shapes.ttl ← SHACL validation shapes (starter set)
+│   └── warrant-core-shapes.ttl ← SHACL validation shapes (13 shapes)
 ├── queries/
-│   └── competency-queries.sparql ← 6 competency queries
+│   └── competency-queries.sparql ← 10 competency queries
 ├── docs/
 │   ├── modelling-conventions.md
 │   ├── namespace-policy.md
 │   ├── kg-boundary.md
-│   └── external-ontology-alignment.md
+│   ├── external-ontology-alignment.md
+│   ├── stack-overview.md
+│   └── modules/                ← per-module pages (generated) + warrant-integration.md
 ├── scripts/
-│   ├── validate_turtle.py      ← Turtle syntax + namespace policy checker
-│   └── merge_ontology.py       ← module merge → dist/
+│   ├── validate_turtle.py      ← Turtle syntax + namespace policy + SHACL (--shacl)
+│   ├── merge_ontology.py       ← module merge → dist/
+│   ├── run_queries.py          ← competency queries against merged ontology + examples
+│   └── generate_module_docs.py ← regenerate docs/modules/*.md from the .ttl
 ├── tests/
 ├── dist/                       ← BUILD ARTEFACT; gitignored; never commit
 └── .github/workflows/
@@ -169,11 +176,16 @@ g.parse("examples/example-gnss-failover.ttl", format="turtle")
 ## Validation
 
 ```bash
-pip install rdflib
-python scripts/validate_turtle.py
+pip install rdflib pyshacl
+python scripts/validate_turtle.py --shacl     # syntax, namespace policy, SHACL over all examples
+python scripts/merge_ontology.py && python scripts/run_queries.py   # competency queries
 ```
 
-CI runs this automatically on every PR and push to `main`/`develop`.
+CI runs the syntax check automatically on every PR and push to `main`/`develop`.
+
+## Methodology alignment
+
+The ontology is aligned with the WARRaNT framework paper (*A Knowledge-Graph and Digital-Twin Framework for Continuous Dependability Assurance of Waterborne Cyber-Physical Systems*, draft v0409, September 2026). The mapping of the paper's mechanisms to modules, the module dependency graph, the cross-module property table and the design constraints are in [docs/modules/warrant-integration.md](docs/modules/warrant-integration.md). `examples/example-gnss-failover.ttl` is the reference instantiation cited by the paper.
 
 ---
 
@@ -187,7 +199,7 @@ See [docs/modelling-conventions.md](docs/modelling-conventions.md) for all namin
 
 ## Version
 
-`0.9-poc` — Pre-consortium-baseline proof of concept.
+`0.10-poc` — Pre-consortium-baseline proof of concept, aligned with the framework paper (September 2026). See [CHANGELOG.md](CHANGELOG.md).
 Target consortium baseline release: `v0.1.0` (planned).
 
 <img src="https://warrant-project.eu/wp-content/uploads/2025/07/europeanlogo.png" alt="Co-funded by the European Union" width="366" height="83">
