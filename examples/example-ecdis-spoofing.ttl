@@ -966,6 +966,616 @@ ll1:HazUnmonitoredEngineRoom   cdm:isEvaluatedAs ll1:RiskEngineRoomUnmonitored .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# HAZARD CLASSES AND THE IMPACT TRIPLE
+#
+# A hazard class governs which dependency types a class of risk can propagate
+# over. Impact is assessed separately against safety, environmental and
+# financial consequence; the governing value already recorded in cdm:hasImpact
+# is the most severe of the three.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:HazHazardousAreaApproach   cdm:hasHazardClass cdm:CYBER_THREAT , cdm:DATA_LOSS .
+ll1:HazLossOfNavigationPicture cdm:hasHazardClass cdm:DATA_LOSS .
+ll1:HazLossOfVDREvidence       cdm:hasHazardClass cdm:CYBER_THREAT .
+ll1:HazLossOfDistressComms     cdm:hasHazardClass cdm:CYBER_THREAT , cdm:DATA_LOSS .
+ll1:HazUnmonitoredEngineRoom   cdm:hasHazardClass cdm:CYBER_THREAT .
+
+ll1:RiskCollisionGrounding
+    cdm:hasHazardClass         cdm:CYBER_THREAT ;
+    cdm:hasSafetyImpact        "0.95"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.70"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.85"^^xsd:decimal .
+
+ll1:RiskNavigationPictureLoss
+    cdm:hasHazardClass         cdm:DATA_LOSS ;
+    cdm:hasSafetyImpact        "0.85"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.55"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.60"^^xsd:decimal .
+
+ll1:RiskVDREvidenceLoss
+    cdm:hasHazardClass         cdm:CYBER_THREAT ;
+    cdm:hasSafetyImpact        "0.20"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.10"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.70"^^xsd:decimal .
+
+ll1:RiskDistressCommsLoss
+    cdm:hasHazardClass         cdm:CYBER_THREAT , cdm:DATA_LOSS ;
+    cdm:hasSafetyImpact        "0.90"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.40"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.50"^^xsd:decimal .
+
+ll1:RiskEngineRoomUnmonitored
+    cdm:hasHazardClass         cdm:CYBER_THREAT ;
+    cdm:hasSafetyImpact        "0.85"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.75"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.70"^^xsd:decimal .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OPERATIONAL CONTEXT
+#
+# The 0.9 version of this file carried no context at all, so its hazards and
+# risks were stated as if they applied uniformly. For an ocean-going
+# containership the navigation hazards below are landfall, coastal and traffic
+# separation hazards rather than mid-ocean ones, and GNSS interference is
+# concentrated in known areas rather than spread along a route.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:CoastalApproachSegment a warrant:VoyageSegment ;
+    warrant:hasName "Coastal approach and traffic separation scheme transit" ;
+    warrant:hasDescription "The phase in which the navigation hazards modelled here are live: charted dangers within manoeuvring distance, dense traffic, and a requirement to keep to a scheme. In the open-ocean phase the same deviations are far less consequential because sea room and time to act are measured in hours." .
+
+ll1:HighTrafficDensityCondition a warrant:TrafficCondition ;
+    warrant:hasName "High traffic density" ;
+    warrant:hasDescription "Traffic density at which an avoidance manoeuvre must be taken on the AIS and radar picture rather than on visual assessment alone, which is what makes a falsified target picture consequential." .
+
+ll1:GNSSInterferenceAreaCondition a warrant:EnvironmentalCondition ;
+    warrant:hasName "Known GNSS interference area" ;
+    warrant:hasDescription "A sea area with reported jamming or spoofing activity. Interference is regionally concentrated in practice, so the likelihood attached to the GNSS threat scenarios is a function of where the vessel is, not a constant of the equipment." .
+
+ll1:HazHazardousAreaApproach   cdm:hasOperationalContext ll1:CoastalApproachSegment .
+ll1:HazLossOfNavigationPicture cdm:hasOperationalContext ll1:CoastalApproachSegment .
+ll1:HazLossOfDistressComms     cdm:hasOperationalContext ll1:CoastalApproachSegment .
+
+ll1:HazHazardousAreaApproach cdm:isCriticalUnder ll1:HighTrafficDensityCondition , ll1:GNSSInterferenceAreaCondition .
+ll1:HazLossOfNavigationPicture cdm:isCriticalUnder ll1:GNSSInterferenceAreaCondition .
+
+ll1:GNSSInterferenceAreaCondition cdm:modifiesLikelihoodOf ll1:RiskCollisionGrounding , ll1:RiskNavigationPictureLoss .
+ll1:HighTrafficDensityCondition   cdm:modifiesImpactOf     ll1:RiskCollisionGrounding .
+
+ll1:RiskCollisionGrounding    cdm:hasEnvironmentalCondition ll1:HighTrafficDensityCondition , ll1:GNSSInterferenceAreaCondition .
+ll1:RiskNavigationPictureLoss cdm:hasEnvironmentalCondition ll1:GNSSInterferenceAreaCondition .
+
+# The bridge team conns the vessel directly; there is no remote operation on a
+# deep-sea containership, and the operator-authority model reflects that.
+ll1:CourseAlterationControlAction cdm:isPerformedUnder warrant:ManualOperationMode .
+ll1:DevSpoofedAIS   cdm:wasObservedUnder warrant:ManualOperationMode .
+ll1:DevGPSSpoofed   cdm:wasObservedUnder warrant:ManualOperationMode .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ASSET ROLES AND CRITICAL NODES
+#
+# Primary assets are the information and services of value; supporting assets
+# are the equipment and roles that store, process, transmit or execute them.
+# Every primary asset should be reachable from at least one supporting asset,
+# which is the graph-completeness check of the cybersecurity methodology.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:NavigationFunction      davom:hasAssetRole davom:PRIMARY_ASSET ; davom:isCriticalNode true .
+ll1:CommunicationFunction   davom:hasAssetRole davom:PRIMARY_ASSET ; davom:isCriticalNode true .
+ll1:VoyageRecordingFunction davom:hasAssetRole davom:PRIMARY_ASSET ; davom:isCriticalNode false .
+ll1:ElectricalAlarmFunction davom:hasAssetRole davom:PRIMARY_ASSET ; davom:isCriticalNode true .
+
+ll1:GPS_1           davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction ; davom:isCriticalNode true .
+ll1:GPS_2           davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:Gyrocompass     davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction ; davom:isCriticalNode true .
+ll1:ECDIS_1         davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction ; davom:isCriticalNode true .
+ll1:ECDIS_2         davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:RadarXBand      davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction ; davom:isCriticalNode true .
+ll1:RadarSBand      davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:AIS_Transponder davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:Autopilot       davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:Speedlog        davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:VDR             davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:VoyageRecordingFunction ; davom:isCriticalNode true .
+ll1:VHF_1           davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:CommunicationFunction ; davom:isCriticalNode true .
+ll1:InmarsatC_1     davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:CommunicationFunction .
+ll1:InmarsatGX      davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:CommunicationFunction .
+ll1:CommunicationsPC davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:CommunicationFunction .
+ll1:BNWAS           davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:ElectricalAlarmFunction .
+
+ll1:NavigationOfficerRole davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:NavigationFunction .
+ll1:ChiefEngineerRole     davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:ElectricalAlarmFunction .
+ll1:ElectricalDeptRole    davom:hasAssetRole davom:SUPPORTING_ASSET ; davom:supportsAsset ll1:ElectricalAlarmFunction .
+
+ll1:AlarmMonitoringSystem davom:isCriticalNode true .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SECURITY ZONES AND CONDUITS (IEC 62443-3-2)
+#
+# The 0.9 version described the IT/OT boundary in prose. Partitioning it makes
+# the reach of a compromise a typed graph query: a cyber effect crosses a
+# conduit and travels over data, control and cyber dependencies, and does not
+# travel over physical ones.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:Zone_BridgeNavigationOT a davom:SecurityZone ;
+    warrant:hasName "Bridge Navigation OT Zone" ;
+    warrant:hasDescription "Radars, ECDIS, GPS, gyrocompass, satellite compass, autopilot, speed log, echo sounder, anemometer, AIS, BNWAS and the VDR, connected by the IEC 61162 serial buses and the radar-ECDIS LAN. Access restricted to service engineers with authorisation codes." .
+
+ll1:Zone_ElectricalAutomationOT a davom:SecurityZone ;
+    warrant:hasName "Electrical and Automation OT Zone" ;
+    warrant:hasDescription "Alarm monitoring system, fire detection, general alarm and public address, navigation light panel. Carries the highest-RPN entry in the FMEA." .
+
+ll1:Zone_ShipBusinessIT a davom:SecurityZone ;
+    warrant:hasName "Ship Business IT Zone" ;
+    warrant:hasDescription "The Communications PC and the satellite terminals it is connected to over the LAN. The principal ingress path: shore internet traffic reaches this zone, and both satellite terminals run without endpoint protection per the equipment inventory." .
+
+ll1:Zone_ShoreExternal a davom:SecurityZone ;
+    warrant:hasName "Shore and External Zone" ;
+    warrant:hasDescription "Everything outside the vessel: shore offices, service providers, and the open radio environment in which AIS and GNSS signals are received without authentication." .
+
+ll1:RadarXBand davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:RadarSBand davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:ECDIS_1 davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:ECDIS_2 davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:GPS_1 davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:GPS_2 davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:Gyrocompass davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:SatelliteCompass davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:Autopilot davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:Speedlog davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:Echosounder davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:Anemometer davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:AIS_Transponder davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:BNWAS davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:VDR davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+ll1:CourseRecorder davom:belongsToZone ll1:Zone_BridgeNavigationOT .
+
+ll1:AlarmMonitoringSystem davom:belongsToZone ll1:Zone_ElectricalAutomationOT .
+ll1:FireDetectionSystem davom:belongsToZone ll1:Zone_ElectricalAutomationOT .
+ll1:GeneralAlarmPA davom:belongsToZone ll1:Zone_ElectricalAutomationOT .
+ll1:NavLightPanel davom:belongsToZone ll1:Zone_ElectricalAutomationOT .
+
+ll1:CommunicationsPC davom:belongsToZone ll1:Zone_ShipBusinessIT .
+ll1:InmarsatGX davom:belongsToZone ll1:Zone_ShipBusinessIT .
+ll1:InmarsatFBB davom:belongsToZone ll1:Zone_ShipBusinessIT .
+
+# The satellite LAN is the conduit between ship IT and the shore; the BNWAS to
+# AMS serial line is the conduit between the two OT zones.
+ll1:Link_SatComm_LAN a davom:Conduit ;
+    davom:connectsZone ll1:Zone_ShipBusinessIT , ll1:Zone_ShoreExternal .
+
+ll1:Link_BNWAS_AMS a davom:Conduit ;
+    davom:connectsZone ll1:Zone_BridgeNavigationOT , ll1:Zone_ElectricalAutomationOT .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TYPED DEPENDENCIES
+#
+# The bridge network was described in the link descriptions but never modelled
+# as dependencies, so nothing could propagate. Direction convention: source is
+# the upstream provider, target the downstream consumer.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:Dep_GPS_to_ECDIS a davom:DataDependency ;
+    warrant:hasName "GPS position → ECDIS own-ship position" ;
+    davom:dependencySource ll1:GPS_1 ; davom:dependencyTarget ll1:ECDIS_1 ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.6"^^xsd:decimal ;
+    davom:hasCriticality "Critical" ; davom:hasRedundancyLevel 1 ;
+    warrant:hasDescription "The path that makes GNSS spoofing an own-ship position error. AIS has no equivalent path into own-ship position." .
+
+ll1:Dep_GPS_to_Radar a davom:DataDependency ;
+    warrant:hasName "GPS position → radar" ;
+    davom:dependencySource ll1:GPS_1 ; davom:dependencyTarget ll1:RadarXBand ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ; davom:hasCriticality "High" .
+
+ll1:Dep_Gyro_to_ECDIS a davom:DataDependency ;
+    warrant:hasName "Gyrocompass heading → ECDIS" ;
+    davom:dependencySource ll1:Gyrocompass ; davom:dependencyTarget ll1:ECDIS_1 ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.5"^^xsd:decimal ; davom:hasCriticality "Critical" .
+
+ll1:Dep_Gyro_to_Autopilot a davom:ControlDependency ;
+    warrant:hasName "Gyrocompass heading → autopilot" ;
+    davom:dependencySource ll1:Gyrocompass ; davom:dependencyTarget ll1:Autopilot ;
+    davom:hasDependencyType davom:CONTROL , davom:DATA ;
+    davom:hasDependencyWeight "0.7"^^xsd:decimal ; davom:hasCriticality "Critical" ;
+    warrant:hasDescription "Loss or falsification of heading removes automatic steering; fallback is local or manual steering." .
+
+ll1:Dep_AIS_to_ECDIS a davom:DataDependency ;
+    warrant:hasName "AIS target data → ECDIS overlay" ;
+    davom:dependencySource ll1:AIS_Transponder ; davom:dependencyTarget ll1:ECDIS_1 ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.3"^^xsd:decimal ; davom:hasCriticality "High" ;
+    warrant:hasDescription "Carries the traffic picture, not own-ship position. This is the dependency that AIS spoofing acts over." .
+
+ll1:Dep_Radar_to_ECDIS a davom:DataDependency ;
+    warrant:hasName "Radar targets → ECDIS overlay (LAN)" ;
+    davom:dependencySource ll1:RadarXBand ; davom:dependencyTarget ll1:ECDIS_1 ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ; davom:hasCriticality "High" ;
+    warrant:hasDescription "The independent leg of the target cross-check: a contact reported by AIS with no radar return is the spoofing signature." .
+
+ll1:Dep_Sensors_to_VDR a davom:DataDependency ;
+    warrant:hasName "Bridge sensor feeds → VDR" ;
+    davom:dependencySource ll1:GPS_1 ; davom:dependencyTarget ll1:VDR ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.3"^^xsd:decimal ; davom:hasCriticality "Medium" .
+
+ll1:Dep_CommsPC_to_SatTerminals a davom:CyberDependency ;
+    warrant:hasName "Communications PC ↔ satellite terminals (IT/OT ingress)" ;
+    davom:dependencySource ll1:CommunicationsPC ; davom:dependencyTarget ll1:InmarsatGX ;
+    davom:hasDependencyType davom:CYBER , davom:DATA ;
+    davom:hasDependencyWeight "0.6"^^xsd:decimal ; davom:hasCriticality "High" ;
+    davom:isBidirectional true ;
+    warrant:hasDescription "Bidirectional because the conduit permits reverse access: shore traffic reaches the terminals and the terminals reach the PC. Neither terminal runs endpoint protection per the equipment inventory." .
+
+ll1:Dep_BNWAS_to_AMS a davom:DataDependency ;
+    warrant:hasName "BNWAS watch alarm status → AMS" ;
+    davom:dependencySource ll1:BNWAS ; davom:dependencyTarget ll1:AlarmMonitoringSystem ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ; davom:hasCriticality "High" .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FMEA FAILURE MODES WITH TYPED RATINGS
+#
+# Closes FLAG-04. Every rating below was already in this file as free text in a
+# component or deviation description; it is now queryable. Ratings are Danaos
+# FMEA worksheet values for vessel V145 (severity, occurrence, detection, and
+# the risk priority number as recorded), not values computed by the graph.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:FM_AMSDataChange a cdm:FailureMode ;
+    warrant:hasName "AMS monitoring data changed or falsified" ;
+    cdm:affectsComponent ll1:AlarmMonitoringSystem ;
+    cdm:producesDeviation ll1:DevAMSDataCorrupted ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 9 ; cdm:hasDetectionScore 5 ; cdm:hasRiskPriorityNumber 315 .
+
+ll1:FM_VDRDataModified a cdm:FailureMode ;
+    warrant:hasName "VDR data modified or erased" ;
+    cdm:affectsComponent ll1:VDR ;
+    cdm:producesDeviation ll1:DevVDRDataModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 6 ; cdm:hasDetectionScore 5 ; cdm:hasRiskPriorityNumber 180 .
+
+ll1:FM_VDRDataNotStored a cdm:FailureMode ;
+    warrant:hasName "VDR data not stored" ;
+    cdm:affectsComponent ll1:VDR ;
+    cdm:producesDeviation ll1:DevVDRDataNotStored ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 5 ; cdm:hasRiskPriorityNumber 175 .
+
+ll1:FM_ECDISSettingsModified a cdm:FailureMode ;
+    warrant:hasName "ECDIS settings or chart datum modified" ;
+    cdm:affectsComponent ll1:ECDIS_1 ;
+    cdm:producesDeviation ll1:DevECDISSettingsModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 6 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 108 .
+
+ll1:FM_ECDISInterfaceModified a cdm:FailureMode ;
+    warrant:hasName "ECDIS sensor interface disconnected or modified" ;
+    cdm:affectsComponent ll1:ECDIS_1 ;
+    cdm:producesDeviation ll1:DevECDISInterfaceModified ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 90 .
+
+ll1:FM_RadarSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Radar settings modified" ;
+    cdm:affectsComponent ll1:RadarXBand , ll1:RadarSBand ;
+    cdm:producesDeviation ll1:DevRADARSettingsModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 6 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 108 .
+
+ll1:FM_BNWASSettingsModified a cdm:FailureMode ;
+    warrant:hasName "BNWAS settings modified: bridge watch alarm not activated" ;
+    cdm:affectsComponent ll1:BNWAS ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 6 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 108 .
+
+ll1:FM_SpeedlogSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Speed log settings modified" ;
+    cdm:affectsComponent ll1:Speedlog ;
+    cdm:producesDeviation ll1:DevSpeedlogModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 105 .
+
+ll1:FM_EchosounderSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Echo sounder settings modified" ;
+    cdm:affectsComponent ll1:Echosounder ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 105 .
+
+ll1:FM_NavtexSettingsModified a cdm:FailureMode ;
+    warrant:hasName "NAVTEX settings modified: loss of navigational and meteorological warnings" ;
+    cdm:affectsComponent ll1:Navtex ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 105 .
+
+ll1:FM_AutopilotSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Autopilot settings modified: loss of automatic steering" ;
+    cdm:affectsComponent ll1:Autopilot ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 4 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 84 .
+
+ll1:FM_GPSSignalJammed a cdm:FailureMode ;
+    warrant:hasName "GPS signal jammed" ;
+    cdm:affectsComponent ll1:GPS_1 , ll1:GPS_2 ;
+    cdm:producesDeviation ll1:DevGPSJammed ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 3 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 63 ;
+    warrant:hasDescription "Both receivers are the same model on the same platform, so jamming removes both together: the second unit is redundancy against unit failure, not against interference." .
+
+ll1:FM_GyroSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Gyrocompass settings modified" ;
+    cdm:affectsComponent ll1:Gyrocompass ;
+    cdm:producesDeviation ll1:DevGyroSettingsModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 3 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 63 .
+
+ll1:FM_GyroInterfaceDisconnected a cdm:FailureMode ;
+    warrant:hasName "Gyrocompass interface disconnected" ;
+    cdm:affectsComponent ll1:Gyrocompass ;
+    cdm:producesDeviation ll1:DevGyroInterfaceDisconnected ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 7 ; cdm:hasOccurrenceScore 3 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 63 .
+
+ll1:FM_VHFSettingsModified a cdm:FailureMode ;
+    warrant:hasName "VHF settings modified: distress alerting disrupted" ;
+    cdm:affectsComponent ll1:VHF_1 ;
+    cdm:producesDeviation ll1:DevVHFSettingsModified ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 5 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 90 .
+
+ll1:FM_SatCommSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Satellite terminal settings modified or system compromised" ;
+    cdm:affectsComponent ll1:InmarsatGX , ll1:InmarsatFBB ;
+    cdm:producesDeviation ll1:DevSatCommUnavailable ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 4 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 72 .
+
+ll1:FM_AnemometerInterfaceDisconnected a cdm:FailureMode ;
+    warrant:hasName "Anemometer interface disconnected" ;
+    cdm:affectsComponent ll1:Anemometer ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 6 ; cdm:hasOccurrenceScore 3 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 54 .
+
+ll1:FM_FireDetectionSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Fire detection settings modified: no fire detection" ;
+    cdm:affectsComponent ll1:FireDetectionSystem ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 3 ; cdm:hasOccurrenceScore 4 ; cdm:hasDetectionScore 4 ; cdm:hasRiskPriorityNumber 48 .
+
+ll1:FM_GeneralAlarmSettingsModified a cdm:FailureMode ;
+    warrant:hasName "General alarm and public address settings modified" ;
+    cdm:affectsComponent ll1:GeneralAlarmPA ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 3 ; cdm:hasOccurrenceScore 4 ; cdm:hasDetectionScore 4 ; cdm:hasRiskPriorityNumber 48 .
+
+ll1:FM_NavLightsSettingsModified a cdm:FailureMode ;
+    warrant:hasName "Navigation light panel settings modified" ;
+    cdm:affectsComponent ll1:NavLightPanel ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:hasSeverityScore 3 ; cdm:hasOccurrenceScore 4 ; cdm:hasDetectionScore 4 ; cdm:hasRiskPriorityNumber 48 .
+
+ll1:FM_CourseRecorderDataNotRecorded a cdm:FailureMode ;
+    warrant:hasName "Course recorder data not recorded" ;
+    cdm:affectsComponent ll1:CourseRecorder ;
+    cdm:hasHazardClass cdm:DATA_LOSS ;
+    cdm:hasSeverityScore 3 ; cdm:hasOccurrenceScore 3 ; cdm:hasDetectionScore 3 ; cdm:hasRiskPriorityNumber 27 .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VULNERABILITIES AND THREAT SCENARIOS
+#
+# The cyber content of the 0.9 file existed only as deviations and free text.
+# Representing the threat scenarios explicitly is what lets a compromise be
+# traced from the weakness it exploits to the assets it degrades and the risk
+# it is evaluated as.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:Vul_UnauthenticatedAISBroadcast a cdm:Vulnerability ;
+    warrant:hasName "AIS messages are broadcast without authentication" ;
+    warrant:hasDescription "AIS operates as an open broadcast on the VHF AIS channels (87B/88B). A receiver cannot distinguish a genuine transmission from a counterfeit one, so any transmitter within VHF range can insert, displace or suppress contacts in the traffic picture." ;
+    cdm:affectsComponent ll1:AIS_Transponder .
+
+ll1:Vul_UnauthenticatedGNSSSignal a cdm:Vulnerability ;
+    warrant:hasName "Civil GNSS signals carry no authentication" ;
+    warrant:hasDescription "The receiver cannot distinguish a genuine satellite signal from a counterfeit one without integrity monitoring. Signal-strength monitoring does not help: a spoofed signal normally arrives at normal or elevated carrier-to-noise density." ;
+    cdm:affectsComponent ll1:GPS_1 , ll1:GPS_2 .
+
+ll1:Vul_RemovableMediaUpdatePath a cdm:Vulnerability ;
+    warrant:hasName "Removable-media update and storage paths on bridge OT" ;
+    warrant:hasDescription "ECDIS carries CF and SD storage with a DVD update interface, the VDR a CF card, and Inmarsat-C a legacy floppy update path, per the equipment inventory. Each is an unmediated route for code or configuration onto a bridge OT device." ;
+    cdm:affectsComponent ll1:ECDIS_1 , ll1:VDR , ll1:InmarsatC_1 .
+
+ll1:Vul_SatTerminalNoEndpointProtection a cdm:Vulnerability ;
+    warrant:hasName "Satellite terminals without endpoint protection" ;
+    warrant:hasDescription "Both Inmarsat GX and FBB-500 run Linux with no antivirus or firewall configured, per the equipment inventory, on the LAN that also carries shore internet traffic to the Communications PC." ;
+    cdm:affectsComponent ll1:InmarsatGX , ll1:InmarsatFBB .
+
+ll1:Vul_FlatBridgeLANSegment a cdm:Vulnerability ;
+    warrant:hasName "Shared bridge LAN segment" ;
+    warrant:hasDescription "The radar to ECDIS LAN is shared with other bridge systems, so a foothold on one device has a path to the others without crossing a conduit." ;
+    cdm:affectsComponent ll1:ECDIS_1 .
+
+ll1:Threat_AISSpoofing a cdm:ThreatScenario ;
+    warrant:hasName "AIS target spoofing" ;
+    warrant:hasDescription "An adversary within VHF range transmits counterfeit AIS messages, inserting phantom contacts, displacing real ones or suppressing them. Detected by correlation against radar returns, not by signal quality. Own-ship position is unaffected." ;
+    cdm:exploits ll1:Vul_UnauthenticatedAISBroadcast ;
+    cdm:degrades ll1:AIS_Transponder , ll1:Link_AIS_NavBus , ll1:NavigationFunction ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskCollisionGrounding .
+
+ll1:Threat_GNSSSpoofing a cdm:ThreatScenario ;
+    warrant:hasName "GNSS spoofing" ;
+    warrant:hasDescription "Counterfeit GNSS signals cause the receiver to output a plausible but false position, which propagates over the serial navigation bus to every consumer, including the ECDIS own-ship position and the AIS position the vessel broadcasts about itself. Detected by RAIM integrity, by consistency against radar ranges to charted features and dead reckoning, and by disagreement between constellations." ;
+    cdm:exploits ll1:Vul_UnauthenticatedGNSSSignal ;
+    cdm:degrades ll1:GPS_1 , ll1:GPS_2 , ll1:NavigationFunction ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskCollisionGrounding .
+
+ll1:Threat_ECDISCompromise a cdm:ThreatScenario ;
+    warrant:hasName "ECDIS compromise through removable media or the shared LAN" ;
+    warrant:hasDescription "Unauthorised change to ECDIS display parameters, chart datum or software, introduced through the storage and update paths or laterally across the bridge LAN." ;
+    cdm:exploits ll1:Vul_RemovableMediaUpdatePath , ll1:Vul_FlatBridgeLANSegment ;
+    cdm:degrades ll1:ECDIS_1 , ll1:NavigationFunction ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskCollisionGrounding .
+
+ll1:Threat_VDRTampering a cdm:ThreatScenario ;
+    warrant:hasName "VDR tampering to conceal an incident timeline" ;
+    warrant:hasDescription "Erasure or overwriting of stored voyage data, typically alongside another attack so that the record of it is unavailable to the investigation. The highest-RPN entry in the navigation OT worksheet." ;
+    cdm:exploits ll1:Vul_RemovableMediaUpdatePath ;
+    cdm:degrades ll1:VDR , ll1:VoyageRecordingFunction ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskVDREvidenceLoss .
+
+ll1:Threat_AMSCompromise a cdm:ThreatScenario ;
+    warrant:hasName "Alarm monitoring system data compromise" ;
+    warrant:hasDescription "Falsification of engine room and vessel-wide alarm data so that the crew cannot detect fire, flooding or machinery failure. Highest RPN in the whole worksheet at 315." ;
+    cdm:degrades ll1:AlarmMonitoringSystem , ll1:ElectricalAlarmFunction ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskEngineRoomUnmonitored .
+
+ll1:Threat_SatCommCompromise a cdm:ThreatScenario ;
+    warrant:hasName "Satellite terminal compromise at the IT/OT boundary" ;
+    warrant:hasDescription "Compromise of an unprotected satellite terminal from the shore side, removing long-range communications and providing a foothold on the LAN shared with the Communications PC." ;
+    cdm:exploits ll1:Vul_SatTerminalNoEndpointProtection ;
+    cdm:degrades ll1:InmarsatGX , ll1:InmarsatFBB , ll1:CommunicationFunction , ll1:Zone_ShipBusinessIT ;
+    cdm:hasHazardClass cdm:CYBER_THREAT ;
+    cdm:isEvaluatedAs ll1:RiskDistressCommsLoss .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DESIGN-TIME CONTROLS AND RESIDUAL RISK
+#
+# These are the controls recorded in the FMEA "current" and "recommended"
+# columns, which the 0.9 file carried only inside the mitigation-rule
+# descriptions. Modelling them explicitly is what lets a runtime action point
+# back at the approved control it relies on, and lets a claim be made about
+# the control rather than about the action.
+#
+# Residual risk is quantified for the two controls whose worksheet records a
+# before-and-after judgement; the others are approved but not yet quantified.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+ll1:CTRL_RadarGPSCrossCheck a cdm:Control ;
+    warrant:hasIdentifier "CTRL-NAV-001" ;
+    warrant:hasName "Cross-check of AIS and GNSS position against radar" ;
+    warrant:hasDescription "Standing bridge practice and an automated IDS check: AIS contacts are correlated against radar returns, and the GNSS fix against radar ranges and bearings to charted features. The independent leg is the radar; comparing the two GPS receivers with each other is not independent." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_AISSpoofing , ll1:Threat_GNSSSpoofing , ll1:HazHazardousAreaApproach ;
+    cdm:hasResidualRisk ll1:ResidualRisk_SpoofingWithCrossCheck .
+
+ll1:ResidualRisk_SpoofingWithCrossCheck a cdm:Risk ;
+    warrant:hasName "Residual collision or grounding risk with the radar cross-check in force" ;
+    warrant:hasDescription "The cross-check does not eliminate the exposure: it depends on the officer performing it, on charted features being in radar range, and on the radar itself not being compromised." ;
+    cdm:hasLikelihood          "0.15"^^xsd:decimal ;
+    cdm:hasSafetyImpact        "0.95"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.70"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.85"^^xsd:decimal ;
+    cdm:hasImpact              "0.95"^^xsd:decimal ;
+    cdm:hasRiskLevel           "Medium" ;
+    cdm:hasAcceptability       "ALARP" ;
+    cdm:hasHazardClass         cdm:CYBER_THREAT .
+
+ll1:CTRL_USBPortLocking a cdm:Control ;
+    warrant:hasIdentifier "CTRL-CYB-002" ;
+    warrant:hasName "USB port locking on navigation and automation OT" ;
+    warrant:hasDescription "Physical port blockers on radar, ECDIS, GPS, AIS, VDR and BNWAS, recorded as a recommended control across the worksheet. Addresses the removable-media path but not the LAN path." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_ECDISCompromise , ll1:Threat_VDRTampering , ll1:Threat_AMSCompromise .
+
+ll1:CTRL_BridgeRestrictedArea a cdm:Control ;
+    warrant:hasIdentifier "CTRL-CYB-003" ;
+    warrant:hasName "Bridge restricted area and visitor logging" ;
+    warrant:hasDescription "The bridge is a restricted area with log entry for all non-crew personnel, monitored during audits and superintendence inspections. A detective control across all navigation OT." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_ECDISCompromise , ll1:Threat_VDRTampering .
+
+ll1:CTRL_ServiceEngineerAccessControl a cdm:Control ;
+    warrant:hasIdentifier "CTRL-CYB-004" ;
+    warrant:hasName "Service-engineer-only access with authorisation codes" ;
+    warrant:hasDescription "Configuration access to radar, ECDIS, gyrocompass, autopilot, speed log, AIS, BNWAS and VDR is restricted to the maker's service engineer and gated by authorisation codes, per the equipment inventory." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_ECDISCompromise .
+
+ll1:CTRL_VDRIntegrityMonitoring a cdm:Control ;
+    warrant:hasIdentifier "CTRL-VDR-005" ;
+    warrant:hasName "Hash-based VDR record integrity monitoring" ;
+    warrant:hasDescription "Periodic cryptographic verification of stored voyage data, so that erasure or modification is detected while the evidence may still be recoverable rather than at the point of investigation." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_VDRTampering ;
+    cdm:hasResidualRisk ll1:ResidualRisk_VDRWithHashMonitoring .
+
+ll1:ResidualRisk_VDRWithHashMonitoring a cdm:Risk ;
+    warrant:hasName "Residual voyage-record evidence loss with integrity monitoring in force" ;
+    cdm:hasLikelihood          "0.15"^^xsd:decimal ;
+    cdm:hasSafetyImpact        "0.20"^^xsd:decimal ;
+    cdm:hasEnvironmentalImpact "0.10"^^xsd:decimal ;
+    cdm:hasFinancialImpact     "0.70"^^xsd:decimal ;
+    cdm:hasImpact              "0.70"^^xsd:decimal ;
+    cdm:hasRiskLevel           "Medium" ;
+    cdm:hasAcceptability       "ALARP" ;
+    cdm:hasHazardClass         cdm:CYBER_THREAT .
+
+ll1:CTRL_PaperChartBackup a cdm:Control ;
+    warrant:hasIdentifier "CTRL-NAV-006" ;
+    warrant:hasName "Paper chart and celestial navigation backup" ;
+    warrant:hasDescription "The SOLAS backup arrangement: a second ECDIS and paper charts, with celestial navigation and dead reckoning available when GNSS is lost. Adequate in open ocean for extended periods; the constraint is the coastal phase." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:HazLossOfNavigationPicture .
+
+ll1:CTRL_RedundantCommunications a cdm:Control ;
+    warrant:hasIdentifier "CTRL-COM-007" ;
+    warrant:hasName "Redundant distress communication paths" ;
+    warrant:hasDescription "Three VHF DSC sets, MF/HF, two Inmarsat-C terminals and FBB, so that no single compromised or misconfigured set removes distress alerting." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos marine superintendence" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_SatCommCompromise , ll1:HazLossOfDistressComms .
+
+ll1:CTRL_AMSBackupAndLogMonitoring a cdm:Control ;
+    warrant:hasIdentifier "CTRL-ELE-008" ;
+    warrant:hasName "AMS data backup and log monitoring" ;
+    warrant:hasDescription "Backup of alarm monitoring data to removable media with log monitoring, the existing control against the highest-RPN entry in the worksheet. The Chief Engineer is the responsible authority." ;
+    warrant:hasVersion "1.0" ; warrant:approvedBy "Danaos technical department" ; warrant:hasApprovalStatus "APPROVED" ;
+    cdm:mitigates ll1:Threat_AMSCompromise .
+
+# The runtime advisories and procedures already in this file implement these
+# approved controls; this is the link that lets a claim about a control be
+# supported by evidence that the corresponding action was actually taken.
+ll1:ActionCrossCheckRADARGPS    mit:implementsControl ll1:CTRL_RadarGPSCrossCheck .
+ll1:ActionDualGPSCrossCheck     mit:implementsControl ll1:CTRL_RadarGPSCrossCheck .
+ll1:ActionUSBLocker             mit:implementsControl ll1:CTRL_USBPortLocking .
+ll1:ActionBridgeAccessRestriction mit:implementsControl ll1:CTRL_BridgeRestrictedArea .
+ll1:ActionVDRHashMonitoring     mit:implementsControl ll1:CTRL_VDRIntegrityMonitoring .
+ll1:ActionPaperChartsBackup     mit:implementsControl ll1:CTRL_PaperChartBackup .
+ll1:ActionDeadReckoningFallback mit:implementsControl ll1:CTRL_PaperChartBackup .
+ll1:ActionRedundantVHF          mit:implementsControl ll1:CTRL_RedundantCommunications .
+ll1:ActionAMSBackupRestore      mit:implementsControl ll1:CTRL_AMSBackupAndLogMonitoring .
+
+# Response strategy typing and default posture for the existing actions.
+ll1:ActionCrossCheckRADARGPS      mit:hasStrategyType mit:ENHANCED_MONITORING ; mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionDualGPSCrossCheck       mit:hasStrategyType mit:ENHANCED_MONITORING ; mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionAlertMasterVSOC         mit:hasStrategyType mit:OPERATOR_ESCALATION ; mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionDeadReckoningFallback   mit:hasStrategyType mit:SAFE_DEGRADED_MODE ;  mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionPaperChartsBackup       mit:hasStrategyType mit:RECONFIGURATION ;     mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionVDRHashMonitoring       mit:hasStrategyType mit:ENHANCED_MONITORING ; mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionUSBLocker               mit:hasStrategyType mit:LOGICAL_ISOLATION ;   mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionBridgeAccessRestriction mit:hasStrategyType mit:LOGICAL_ISOLATION ;   mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionAMSBackupRestore        mit:hasStrategyType mit:RECOVERY ;            mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+ll1:ActionRedundantVHF            mit:hasStrategyType mit:REDUNDANCY_ACTIVATION ; mit:hasDefaultPosture mit:FAIL_OPERATIONAL .
+
+ll1:ActionAlertMasterVSOC   mit:requiresAuthorisationFrom ll1:NavigationOfficerRole .
+ll1:ActionAMSBackupRestore  mit:requiresAuthorisationFrom ll1:ChiefEngineerRole .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # ASSURANCE DEGRADATION & SCORES
 # ═══════════════════════════════════════════════════════════════════════════════
 
