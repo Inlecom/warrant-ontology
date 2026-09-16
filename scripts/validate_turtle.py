@@ -10,6 +10,10 @@ Checks:
 - All .ttl files under ontology/, examples/ and shapes/ parse successfully with rdflib.
 - Reports triple count per file.
 - Warns if example individuals use ontology module namespaces as their IRI base.
+- Checks every example assertion against the rdfs:domain and rdfs:range declared
+  for its property, following rdfs:subClassOf and owl:unionOf. SHACL shapes do
+  not do this: they constrain the shapes they target, not every property use,
+  so domain and range errors pass validation silently.
 - With --shacl: validates every example against shapes/*.ttl using pySHACL, with
   the ontology modules merged into the data graph and inference OFF
   (RDFS inference over rdfs:range/rdfs:domain would silently re-type individuals
@@ -62,6 +66,113 @@ def find_ttl_files():
         if p.exists():
             files.extend(sorted(p.rglob("*.ttl")))
     return files
+
+
+MODULE_BASE = "https://warrant-project.eu/ontology/"
+
+PREFIXES = {
+    "core#": "warrant", "davom#": "davom", "observation#": "obs", "cdm#": "cdm",
+    "assurance#": "assr", "dependability-index#": "di", "scenario#": "scen",
+    "mitigation#": "mit", "digital-twin#": "dt",
+}
+
+
+def load_modules() -> "rdflib.Graph":
+    g = rdflib.Graph()
+    for name in MODULE_ORDER:
+        g.parse(str(ROOT / "ontology" / name), format="turtle")
+    return g
+
+
+def _qname(term) -> str:
+    s = str(term)
+    for suffix, prefix in PREFIXES.items():
+        if s.startswith(MODULE_BASE + suffix):
+            return f"{prefix}:{s.split('#')[-1]}"
+    if s.startswith("https://warrant-project.eu/data/"):
+        ctx = s.split("/data/")[1].split("#")[0]
+        return f"{ctx}:{s.split('#')[-1]}"
+    return s
+
+
+def run_domain_range() -> bool:
+    """Check example assertions against declared domains and ranges."""
+    from rdflib import RDF, RDFS, OWL
+    import collections
+
+    ont = load_modules()
+    thing = rdflib.URIRef("http://www.w3.org/2002/07/owl#Thing")
+
+    def class_expression(node):
+        """An IRI, or the members of an owl:unionOf, or None if unconstrained."""
+        if node is None:
+            return None
+        if isinstance(node, rdflib.BNode):
+            lst = ont.value(node, OWL.unionOf)
+            if lst is None:
+                return None
+            return set(rdflib.collection.Collection(ont, lst))
+        return {node}
+
+    ancestors_cache = {}
+
+    def ancestors(cls):
+        if cls in ancestors_cache:
+            return ancestors_cache[cls]
+        out, stack = set(), [cls]
+        while stack:
+            c = stack.pop()
+            if c in out:
+                continue
+            out.add(c)
+            stack.extend(x for x in ont.objects(c, RDFS.subClassOf)
+                        if isinstance(x, rdflib.URIRef))
+        ancestors_cache[cls] = out
+        return out
+
+    print()
+    print("Domain and range check (declared rdfs:domain / rdfs:range, subclasses followed):")
+    ok = True
+    for ex in sorted((ROOT / "examples").glob("*.ttl")):
+        data = rdflib.Graph().parse(str(ex), format="turtle")
+        types = collections.defaultdict(set)
+        for s, o in data.subject_objects(RDF.type):
+            types[s].add(o)
+        for s, o in ont.subject_objects(RDF.type):
+            types[s].add(o)
+
+        def kinds(node):
+            out = set()
+            for t in types.get(node, ()):
+                out |= ancestors(t)
+            return out
+
+        problems = []
+        for p in sorted(set(data.predicates()), key=str):
+            if not str(p).startswith(MODULE_BASE):
+                continue
+            dom = class_expression(ont.value(p, RDFS.domain))
+            rng = class_expression(ont.value(p, RDFS.range))
+            for s, o in data.subject_objects(p):
+                if dom and thing not in dom and types.get(s) and not (kinds(s) & dom):
+                    problems.append(
+                        f"domain  {_qname(p)}: subject {_qname(s)} is "
+                        f"{'/'.join(sorted(_qname(t) for t in types[s]))}, "
+                        f"declared domain {'/'.join(sorted(_qname(x) for x in dom))}")
+                if (rng and thing not in rng and isinstance(o, rdflib.URIRef)
+                        and types.get(o) and not (kinds(o) & rng)):
+                    problems.append(
+                        f"range   {_qname(p)}: object {_qname(o)} is "
+                        f"{'/'.join(sorted(_qname(t) for t in types[o]))}, "
+                        f"declared range {'/'.join(sorted(_qname(x) for x in rng))}")
+        problems = sorted(set(problems))
+        status = "OK   " if not problems else "FAIL "
+        print(f"  {status} {ex.relative_to(ROOT)}  ({len(problems)} violation(s))")
+        for msg in problems:
+            print(f"        {msg}")
+        if problems:
+            ok = False
+    return ok
 
 
 def run_shacl() -> bool:
@@ -169,6 +280,10 @@ def main():
 
     if failed > 0:
         print("VALIDATION FAILED", file=sys.stderr)
+        sys.exit(1)
+
+    if not run_domain_range():
+        print("DOMAIN/RANGE VALIDATION FAILED", file=sys.stderr)
         sys.exit(1)
 
     if "--shacl" in sys.argv[1:]:
