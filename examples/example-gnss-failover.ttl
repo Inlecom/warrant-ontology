@@ -27,8 +27,8 @@
 #                           risk from the ROC command link, hierarchical system
 #                           DI with trend and margin, supervision configuration,
 #                           DI update event, DI forecast from the Digital Twin,
-#                           two resilience triggers (attribute breach, predicted
-#                           floor crossing)
+#                           all three resilience triggers (attribute breach,
+#                           sustained decline, predicted floor crossing)
 #   decision (REDS)         three ranked response evaluations with expected
 #                           effect, cost, penalty and explanation
 #   response (IRDS)         INS/AIS failover executed, authorised by the ROC
@@ -44,10 +44,22 @@
 #                           the degraded-transit scenario whose result carries
 #                           the forecasts
 #
-# Numbers are illustrative and internally consistent with the formulas
-# documented in the modules (ND = 0.4·0.20 + 0.3·0.40 + 0.2·0.50 + 0.1·0.80
-# = 0.38; DI = 0.38 − 0.25·0.15 = 0.34; AL = 0.77). They are not Living Lab
-# measurements.
+# Numbers are illustrative but exact: every stated value follows from the
+# formulas documented in the modules, so the example can be checked by hand.
+#   fusion    d_safety = (0.90·0.15 + 0.45·0.30) / (0.90 + 0.45) = 0.20
+#   node      ND_nav   = 0.4·0.20 + 0.3·0.40 + 0.2·0.50 + 0.1·0.80 = 0.38
+#             ND_link  = 0.6·0.60 + 0.4·0.80                       = 0.68
+#   risk      R_link   = 0.20 (local; no admissible inbound edge)
+#             R_nav    = 0.12 + 0.50·0.40·0.20                     = 0.16
+#   index     DI_nav   = 0.38 − 0.25·0.16 = 0.34   DI_link = 0.68 − 0.20·0.20 = 0.64
+#             DI_sys   = 0.6·0.34 + 0.4·0.64                       = 0.46
+#   trend     slope    = (0.46 − 0.724) / 0.5 h                    = −0.53 / h
+#   margin    MR       = 0.46 − 0.50                               = −0.04
+#   REDS      u*       = 0.68 − 0.3·0.15 − 0.2·0.10                = 0.615
+#   assurance AL       = 0.3·0.50 + 0.2·0.90 + 0.2·0.85 + 0.15·0.80 + 0.15·1.00 = 0.77
+#   after     ND_T2    = 0.4·0.55 + 0.3·0.70 + 0.2·0.60 + 0.1·0.80 = 0.63
+#             DI_T2    = 0.63 − 0.25·0.12                          = 0.60
+# They are not Living Lab measurements.
 ##############################################################################
 
 @prefix ll4:     <https://warrant-project.eu/data/ll4#> .
@@ -170,7 +182,7 @@ ll4:CommLinkToRemoteNavDependency a davom:DataDependency ;
     davom:dependencySource ll4:ROCToVesselCommandLink ;
     davom:dependencyTarget ll4:RemoteNavigationFunction ;
     davom:hasDependencyType davom:DATA , davom:CONTROL ;
-    davom:hasDependencyWeight "0.3"^^xsd:decimal ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
     davom:hasCriticality "High" ;
     davom:isBidirectional false .
 
@@ -552,6 +564,109 @@ ll4:RemoteNavAvailabilityAttribute  assr:hasAttributeValue ll4:RemoteNavAvailabi
 ll4:RemoteNavReliabilityAttribute   assr:hasAttributeValue ll4:RemoteNavReliabilityValue .
 ll4:RemoteNavCybersecurityAttribute assr:hasAttributeValue ll4:RemoteNavCybersecurityValue .
 
+# ── Attribute values after the failover (T2 = 10:16:30) ───────────────────
+# The independent position source restores part of the safety and availability
+# condition; the node state falls back from Critical to Degraded because the
+# most severe relevant attribute is now Degraded, not because the DI rose.
+#   ND_T2 = 0.4·0.55 + 0.3·0.70 + 0.2·0.60 + 0.1·0.80 = 0.63
+
+ll4:RemoteNavSafetyValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.55"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.70"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavAvailabilityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.70"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:RemoteNavReliabilityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.60"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.85"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:RemoteNavCybersecurityValue_T2 a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.80"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:16:30Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:RemoteNavSafetyAttribute        assr:hasAttributeValue ll4:RemoteNavSafetyValue_T2 .
+ll4:RemoteNavAvailabilityAttribute  assr:hasAttributeValue ll4:RemoteNavAvailabilityValue_T2 .
+ll4:RemoteNavReliabilityAttribute   assr:hasAttributeValue ll4:RemoteNavReliabilityValue_T2 .
+ll4:RemoteNavCybersecurityAttribute assr:hasAttributeValue ll4:RemoteNavCybersecurityValue_T2 .
+
+# ── Attributes of the upstream node (ROC command link) ────────────────────
+# A communication link is scored on the attributes relevant to it; the two
+# weights are normalised over that relevant set.
+#   ND_link = 0.6·0.60 + 0.4·0.80 = 0.68
+
+ll4:ROCLinkAvailabilityAttribute   a assr:Availability   ; warrant:hasName "ROC command link — availability"@en .
+ll4:ROCLinkCybersecurityAttribute  a assr:Cybersecurity  ; warrant:hasName "ROC command link — cybersecurity"@en .
+
+ll4:ROCToVesselCommandLink assr:hasAssuranceAttribute
+    ll4:ROCLinkAvailabilityAttribute , ll4:ROCLinkCybersecurityAttribute .
+
+ll4:ROCLinkAvailabilityWeight  a assr:AssuranceWeight ; assr:hasWeightValue "0.6"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+ll4:ROCLinkCybersecurityWeight a assr:AssuranceWeight ; assr:hasWeightValue "0.4"^^xsd:decimal ; warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkAvailabilityAttribute  assr:hasWeight ll4:ROCLinkAvailabilityWeight .
+ll4:ROCLinkCybersecurityAttribute assr:hasWeight ll4:ROCLinkCybersecurityWeight .
+
+ll4:ROCLinkAvailabilityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:ROCLinkAvailabilityAttribute ;
+    di:thresholdAppliesToNode ll4:ROCToVesselCommandLink ;
+    di:hasNormalMinimum "0.75"^^xsd:decimal ; di:hasCriticalThreshold "0.35"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkCybersecurityThreshold a di:DIThreshold ;
+    di:thresholdAppliesToAttribute ll4:ROCLinkCybersecurityAttribute ;
+    di:thresholdAppliesToNode ll4:ROCToVesselCommandLink ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.45"^^xsd:decimal ;
+    di:hasFailedThreshold "0.25"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder warrant:RemoteOperationMode ; warrant:hasVersion "1.0" ; warrant:approvedBy "Seafar ROS safety board" .
+
+ll4:ROCLinkAvailabilityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.60"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:DegradedState .
+
+ll4:ROCLinkCybersecurityValue a assr:AssuranceAttributeValue ;
+    assr:hasAttributeValueNumber "0.80"^^xsd:decimal ;
+    assr:hasSourceConfidence "0.90"^^xsd:decimal ;
+    assr:hasValueSource ll4:RemoteNavigationNodeHealthMonitor ;
+    assr:assessedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:hasAttributeState di:NormalState .
+
+ll4:ROCLinkAvailabilityAttribute  assr:hasAttributeValue ll4:ROCLinkAvailabilityValue .
+ll4:ROCLinkCybersecurityAttribute assr:hasAttributeValue ll4:ROCLinkCybersecurityValue .
+
+ll4:ROCCommandLinkScore a assr:AssuranceScore ;
+    warrant:hasName "ROC command link node dependability score ND_j(t)" ;
+    assr:hasScoreValue "0.68"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:NodeScoreMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:ROCToVesselCommandLink assr:hasAssuranceScore ll4:ROCCommandLinkScore .
+
+ll4:RemoteNavigationScore_T2 a assr:AssuranceScore ;
+    warrant:hasName "Remote navigation node dependability score after failover" ;
+    assr:hasScoreValue "0.63"^^xsd:decimal ;
+    assr:usesCalculationMethod ll4:NodeScoreMethod ;
+    di:calculatedAt "2026-05-17T10:16:30Z"^^xsd:dateTime .
+
+ll4:RemoteNavigationFunction assr:hasAssuranceScore ll4:RemoteNavigationScore_T2 .
+
 # ── Assurance Degradation and Node Dependability Score ND = 0.38 ───────────
 
 ll4:NavigationAssuranceDegradation a assr:AssuranceDegradation ;
@@ -593,7 +708,7 @@ ll4:RiskPropagationDIMethod a di:DICalculationMethod ;
 ll4:DataLossPropagationParameter a di:RiskPropagationParameter ;
     warrant:hasName "Propagation parameters — DATA_LOSS, remote operation" ;
     di:forHazardClass cdm:DATA_LOSS ;
-    di:hasDampingFactor "0.60"^^xsd:decimal ;
+    di:hasDampingFactor "0.50"^^xsd:decimal ;
     di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
     di:configurationAppliesTo ll4:MAI_W ;
     warrant:appliesUnder warrant:RemoteOperationMode ;
@@ -619,24 +734,53 @@ ll4:MAI_W_DependabilitySupervisor a di:DependabilitySupervisor ;
 
 # ── Propagated risk (DATA_LOSS class) from the ROC command link ────────────
 
-ll4:CommLinkPropagatedRisk a di:PropagatedRisk ;
+# Upstream node j (ROC command link): no admissible inbound edge, so the
+# propagated value equals the local/residual risk:
+#   R_link = clip(0.20 + rho*sum(nothing), 0, 1) = 0.20
+# Downstream node i (remote navigation function), over the one admissible edge:
+#   R_nav  = clip(0.12 + 0.50*0.40*0.20, 0, 1) = 0.12 + 0.04 = 0.16
+# Each node's aggregated risk is the max over hazard classes; only DATA_LOSS
+# reaches these nodes in this scenario, so R_i = R_i^DATA_LOSS.
+
+ll4:ROCCommandLinkDataLossRisk a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the ROC command link" ;
     di:forHazardClass cdm:DATA_LOSS ;
-    di:hasLocalRiskValue "0.05"^^xsd:decimal ;
-    di:hasPropagatedRiskValue "0.15"^^xsd:decimal ;
+    di:hasLocalRiskValue "0.20"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.20"^^xsd:decimal ;
     di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
     di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
 
-# ── Link DI (upstream node j) ──────────────────────────────────────────────
+ll4:RemoteNavDataLossRisk_T1 a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the remote navigation function" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasLocalRiskValue "0.12"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.16"^^xsd:decimal ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime .
+
+ll4:RemoteNavDataLossRisk_T2 a di:PropagatedRisk ;
+    warrant:hasName "Propagated DATA_LOSS risk at the remote navigation function after failover" ;
+    warrant:hasDescription "Local risk falls from 0.12 to 0.08 once an independent position source is active and the approved control is in force; the propagated term over the command link is unchanged." ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasLocalRiskValue "0.08"^^xsd:decimal ;
+    di:hasPropagatedRiskValue "0.12"^^xsd:decimal ;
+    di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
+    di:calculatedAt "2026-05-17T10:16:30Z"^^xsd:dateTime .
+
+# ── Link DI (upstream node j): DI = 0.68 − 0.20·0.20 = 0.64 ───────────────
 
 ll4:ROCCommandLinkDI a di:DependabilityIndex ;
-    di:hasDIValue             "0.62"^^xsd:decimal ;
+    di:hasDIValue             "0.64"^^xsd:decimal ;
     di:hasBetaWeight          "0.20"^^xsd:decimal ;
-    di:hasAggregatedRiskValue "0.10"^^xsd:decimal ;
+    di:hasAggregatedRiskValue "0.20"^^xsd:decimal ;
     di:calculatedAt           "2026-05-17T10:15:05Z"^^xsd:dateTime ;
     di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk       ll4:ROCCommandLinkDataLossRisk ;
     di:hasDIState              di:DegradedState ;
     di:appliesTo               ll4:ROCToVesselCommandLink ;
     di:performedBy             ll4:MAI_W_DependabilitySupervisor .
+
+ll4:ROCCommandLinkScore di:contributesTo ll4:ROCCommandLinkDI .
 
 # ── Typed Risk Propagation Edge (link DI → navigation DI) ─────────────────
 
@@ -645,17 +789,17 @@ ll4:CommLinkToRemoteNavDIPropEdge a di:RiskPropagationEdge ;
     di:propagationTarget        ll4:RemoteNavigationDI ;
     di:forHazardClass           cdm:DATA_LOSS ;
     di:mirrorsDependency        ll4:CommLinkToRemoteNavDependency ;
-    di:hasRiskPropagationWeight "0.3"^^xsd:decimal .
+    di:hasRiskPropagationWeight "0.4"^^xsd:decimal .
 
-# ── Node DI (navigation function): DI = clip(0.38 − 0.25·0.15) = 0.34 ──────
+# ── Node DI (navigation function): DI = clip(0.38 − 0.25·0.16) = 0.34 ──────
 
 ll4:RemoteNavigationDI a di:DependabilityIndex ;
     di:hasDIValue             "0.34"^^xsd:decimal ;
     di:hasBetaWeight          "0.25"^^xsd:decimal ;
-    di:hasAggregatedRiskValue "0.15"^^xsd:decimal ;
+    di:hasAggregatedRiskValue "0.16"^^xsd:decimal ;
     di:calculatedAt           "2026-05-17T10:15:05Z"^^xsd:dateTime ;
     di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
-    di:hasPropagatedRisk       ll4:CommLinkPropagatedRisk ;
+    di:hasPropagatedRisk       ll4:RemoteNavDataLossRisk_T1 ;
     di:hasDIState              di:CriticalState ;
     di:appliesTo               ll4:RemoteNavigationFunction ;
     di:performedBy             ll4:MAI_W_DependabilitySupervisor ;
@@ -690,14 +834,21 @@ ll4:SysWeight_CommLink a di:DIWeight ;
 ll4:RemoteNavigationDI di:contributesToSystem ll4:MAI_W_SystemDI .
 ll4:ROCCommandLinkDI   di:contributesToSystem ll4:MAI_W_SystemDI .
 
+# DI_sys = 0.6*0.34 + 0.4*0.64 = 0.46. State = most severe attribute state
+# across the critical nodes = Critical (the command link is not a critical
+# node). Before the event DI_sys was 0.6*0.78 + 0.4*0.64 = 0.724, so the slope
+# over the 30-minute trend window is (0.46 - 0.724)/0.5 h = -0.53 per hour,
+# which breaches the configured -0.10 per hour and raises the sustained-decline
+# trigger below. Margin = 0.46 - 0.50 = -0.04 against the management floor.
+
 # DI_sys = 0.6·0.34 + 0.4·0.62 = 0.45; state = max over critical nodes = Critical;
 # margin = 0.45 − 0.50 = −0.05; slope over the last 30 min = −0.62 per hour.
 ll4:MAI_W_SystemDI a di:SystemDependabilityIndex ;
     warrant:hasName "MAI-W system dependability index" ;
-    di:hasSystemDIValue "0.45"^^xsd:decimal ;
+    di:hasSystemDIValue "0.46"^^xsd:decimal ;
     di:hasDIState di:CriticalState ;
-    di:hasTrendSlope "-0.62"^^xsd:decimal ;
-    di:hasResilienceMargin "-0.05"^^xsd:decimal ;
+    di:hasTrendSlope "-0.53"^^xsd:decimal ;
+    di:hasResilienceMargin "-0.04"^^xsd:decimal ;
     di:calculatedAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
     di:usesCalculationMethod ll4:RiskPropagationDIMethod ;
     di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
@@ -755,6 +906,16 @@ ll4:Trigger_AttributeBreach_T1 a di:ResilienceTrigger ;
     di:hasTriggerType di:ATTRIBUTE_BREACH ;
     di:triggeredAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
     di:triggeredByAttributeValue ll4:RemoteNavSafetyValue_Fused ;
+    di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
+    di:raisedBy ll4:MAI_W_DependabilitySupervisor ;
+    di:isRecordedIn ll4:MAI_W_LDC ;
+    mit:matchesRule ll4:GNSSFailoverRule .
+
+ll4:Trigger_SustainedDecline_T1 a di:ResilienceTrigger ;
+    warrant:hasName "System DI declining faster than the configured slope over the trend window" ;
+    di:hasTriggerType di:SUSTAINED_DECLINE ;
+    di:triggeredAt "2026-05-17T10:15:05Z"^^xsd:dateTime ;
+    di:triggeredByIndex ll4:MAI_W_SystemDI ;
     di:usesConfiguration ll4:MAI_W_SupervisionConfig ;
     di:raisedBy ll4:MAI_W_DependabilitySupervisor ;
     di:isRecordedIn ll4:MAI_W_LDC ;
@@ -864,7 +1025,7 @@ ll4:MAI_W_DecisionConfig a mit:DecisionConfiguration ;
 
 ll4:Eval_INSAISFailover_T1 a mit:ResponseEvaluation ;
     mit:evaluatesAction ll4:SwitchToINSAISFailover ;
-    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
     mit:hasExpectedIndex ll4:SystemDIForecast_INSAIS ;
     mit:hasImplementationCost "0.15"^^xsd:decimal ;
     mit:hasResidualExposurePenalty "0.10"^^xsd:decimal ;
@@ -881,7 +1042,7 @@ ll4:Eval_INSAISFailover_T1 a mit:ResponseEvaluation ;
 
 ll4:Eval_SafeDegradedTransit_T1 a mit:ResponseEvaluation ;
     mit:evaluatesAction ll4:SafeDegradedTransitAction ;
-    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
     mit:hasExpectedIndex ll4:SystemDIForecast_SafeDegraded ;
     mit:hasImplementationCost "0.35"^^xsd:decimal ;
     mit:hasResidualExposurePenalty "0.15"^^xsd:decimal ;
@@ -898,7 +1059,7 @@ ll4:Eval_SafeDegradedTransit_T1 a mit:ResponseEvaluation ;
 
 ll4:Eval_ControlledStop_T1 a mit:ResponseEvaluation ;
     mit:evaluatesAction ll4:ControlledStopAction ;
-    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
+    mit:respondsToTrigger ll4:Trigger_AttributeBreach_T1 , ll4:Trigger_SustainedDecline_T1 , ll4:Trigger_PredictedFloorCrossing_T1 ;
     mit:hasExpectedIndex ll4:SystemDIForecast_HoldPosition ;
     mit:hasImplementationCost "0.60"^^xsd:decimal ;
     mit:hasResidualExposurePenalty "0.05"^^xsd:decimal ;
@@ -931,7 +1092,7 @@ ll4:INSAISFailoverExecution_T1 a mit:ResponseExecution ;
     mit:authorisedBy ll4:RemoteOperatorRole ;
     mit:authorisedAt "2026-05-17T10:15:40Z"^^xsd:dateTime ;
     mit:startedAt    "2026-05-17T10:15:42Z"^^xsd:dateTime ;
-    mit:completedAt  "2026-05-17T10:16:10Z"^^xsd:dateTime ;
+    mit:completedAt  "2026-05-17T10:15:58Z"^^xsd:dateTime ;
     mit:hasResiliencePosture mit:FAIL_OPERATIONAL ;
     mit:hasOutcome "SUCCESSFUL: INS/AIS position estimate active; horizontal uncertainty 12 m; ROC operator informed." ;
     mit:hasOutcomeIndex ll4:RemoteNavigationDI_T2 ;
@@ -944,15 +1105,18 @@ ll4:RemoteOperatorRole mit:performsMitigation ll4:SwitchToINSAISFailover .
 # Post-response index: ND recovers on the virtual-sensor estimate; the graph
 # and the claim, not the scalar, confirm that the cause is controlled.
 ll4:RemoteNavigationDI_T2 a di:DependabilityIndex ;
-    di:hasDIValue             "0.66"^^xsd:decimal ;
+    di:hasDIValue             "0.60"^^xsd:decimal ;
     di:hasBetaWeight          "0.25"^^xsd:decimal ;
     di:hasAggregatedRiskValue "0.12"^^xsd:decimal ;
     di:calculatedAt           "2026-05-17T10:16:30Z"^^xsd:dateTime ;
     di:usesCalculationMethod   ll4:RiskPropagationDIMethod ;
+    di:hasPropagatedRisk       ll4:RemoteNavDataLossRisk_T2 ;
     di:hasDIState              di:DegradedState ;
     di:appliesTo               ll4:RemoteNavigationFunction ;
     di:performedBy             ll4:MAI_W_DependabilitySupervisor ;
     di:isRecordedIn            ll4:MAI_W_LDC .
+
+ll4:RemoteNavigationScore_T2 di:contributesTo ll4:RemoteNavigationDI_T2 .
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -973,8 +1137,8 @@ ll4:EV_INSPositionEstimate a assr:Evidence ;
     warrant:hasName "Independent INS/AIS position estimate active" ;
     assr:hasEvidenceSource ll4:INSPositionEstimate_T1 ;
     assr:supportsClaim ll4:CLM_NavigationIntegrity ;
-    assr:evidenceCollectedAt "2026-05-17T10:16:10Z"^^xsd:dateTime ;
-    warrant:validTo "2026-05-17T10:46:10Z"^^xsd:dateTime ;
+    assr:evidenceCollectedAt "2026-05-17T10:15:58Z"^^xsd:dateTime ;
+    warrant:validTo "2026-05-17T10:45:58Z"^^xsd:dateTime ;
     assr:hasEvidenceQuality "0.70"^^xsd:decimal ;
     warrant:derivedFrom ll4:INSAISFailoverExecution_T1 .
 
