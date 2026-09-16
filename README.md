@@ -70,7 +70,7 @@ warrant-kg-ontology/
 │   ├── example-roc-handover.ttl            ← LL4 Use Case 2 handover
 │   └── example-ecdis-spoofing.ttl          ← LL1 AIS spoofing
 ├── shapes/
-│   └── warrant-core-shapes.ttl ← SHACL validation shapes (13 shapes)
+│   └── warrant-core-shapes.ttl ← SHACL shapes (13 constraints + 1 warning)
 ├── queries/
 │   └── competency-queries.sparql ← 10 competency queries
 ├── docs/
@@ -186,12 +186,6 @@ CI runs the syntax check automatically on every PR and push to `main`/`develop`.
 ## Methodology alignment
 
 The ontology is aligned with the WARRaNT framework paper (*A Knowledge-Graph and Digital-Twin Framework for Continuous Dependability Assurance of Waterborne Cyber-Physical Systems*, draft v0409, September 2026). The mapping of the paper's mechanisms to modules, the module dependency graph, the cross-module property table and the design constraints are in [docs/modules/warrant-integration.md](docs/modules/warrant-integration.md). `examples/example-gnss-failover.ttl` is the reference instantiation cited by the paper.
-
----
-
-## Open Issues
-
-Known gaps, decisions awaiting partners, and what each Living Lab example still needs are tracked in [OPEN-ISSUES.md](OPEN-ISSUES.md). Read it before starting work, and update it in the same commit that changes what it describes.
 
 ---
 

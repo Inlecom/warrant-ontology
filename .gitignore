@@ -49,6 +49,8 @@ catalog-v001.xml
 # ── AI agent local config ────────────────────────────────────────────────────
 # Claude Code (Anthropic)
 .claude/
+# Local working notes, drafts and analysis kept outside the repository history
+Claude outputs/
 # Cursor
 .cursor/
 # GitHub Copilot
