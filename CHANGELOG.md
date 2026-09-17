@@ -4,6 +4,51 @@ All notable changes to this repository are documented here.
 
 ---
 
+## [Unreleased] — LL1 reworked around area-wide GNSS spoofing
+
+Renames `examples/example-ecdis-spoofing.ttl` to `examples/example-gnss-spoofing.ttl`
+and makes one primary business use case of it: area-wide GNSS spoofing degrading
+the bridge's navigation situational awareness. 2,450 → 2,902 triples.
+
+### Changed — scenario
+- The primary scenario is `AreaWideGNSSSpoofingScenario`, triggered by `DevGPSSpoofed`. It replaces `AISECDISSpoofingScenario`, which mixed AIS spoofing, GNSS spoofing and VDR erasure as concurrent triggers.
+- Direct AIS spoofing is kept as a separate secondary scenario, `DirectAISSpoofingScenario`, in which own-ship position stays correct.
+- ECDIS is modelled as the consumer and presentation layer of the wrong position. ECDIS compromise remains a separate, alternative cause of a wrong own-ship position.
+- VDR tampering, AMS corruption and the other FMEA entries remain as design-time knowledge. Their detection events are dated on earlier legs and take no part in the GNSS chain.
+
+### Added — design-time layer
+- Position data flows: `OwnShipPositionData`, `OwnShipAISBroadcast`, `SurroundingVesselGNSSPositionData` and `SurroundingTrafficAISReports`, plus the external `Link_AIS_VHFDataLink`. Surrounding vessels are modelled at data-flow level, not as vessel models.
+- Dependencies that make the propagation traceable: GPS → position data → ECDIS, radar geo-referencing, AIS, autopilot track control and the navigation function; our AIS → our broadcast; surrounding vessels' GNSS → their AIS reports → our AIS; ECDIS and radar → navigation officer. `Dep_GPS_to_ECDIS` and `Dep_GPS_to_Radar` now take the position data flow as their source.
+- Deviations `DevOwnShipAISBroadcastWrong` and `DevSurroundingTrafficAISPositionsWrong` (type WRONG, not SPOOFED): genuine AIS carrying positions that were wrong at their GNSS source.
+- Detection event `SurroundingTrafficGNSSCorruptionEvent`: coherent AIS-to-radar divergence across targets. `GPSSpoofingDetectionEvent` is rewritten around the radar fix on charted features, depth and dead reckoning.
+- `RadarFeedback` as a second, independent STPA feedback channel. The two process-model flaws are now the officer's own-ship position understanding and surrounding-traffic understanding.
+- Integrity metrics: GNSS against radar fix, GNSS against dead reckoning, depth consistency, coherent AIS divergence fraction and fused position confidence. Availability metrics are described as saying nothing about correctness.
+
+### Fixed — conceptual errors
+- The header described spoofed AIS as moving own ship on the ECDIS.
+- `DevGPSSpoofed` cited the "settings modified" FMEA row. The Danaos FMEA has no spoofing entry; this is now stated.
+- `DevGPSSpoofed` matched the jamming rule. It now matches a new `RuleGNSSSpoofing`.
+- `ActionDualGPSCrossCheck` implemented the independent cross-check control, which its own description said it is not. The link is removed.
+- `Threat_GNSSSpoofing` credited RAIM and constellation disagreement with detection. Detection now rests on independent evidence, and signal strength, GPS No1 against No2 and own-ship GNSS against own-ship AIS are explicitly excluded.
+- `DevECDISInterfaceModified` no longer causes the wrong-position flaw: lost feeds produce an alarmed, missing position, not a silently wrong one.
+- Obsolete version-history comments and the stale FLAG-03 and FLAG-04 notes are removed.
+
+### Added — documentation
+- A modelling assumptions block (A1–A20) in the file header, covering technical, modelling, numeric and governance assumptions.
+
+### Changed — runtime layer and Living Dependability Case
+- New position-data node index `DI_OwnShipPosition` (availability 0.95 Normal, integrity 0.05 Unsafe) propagates CYBER_THREAT risk into `DI_Navigation`. It is used for propagation only, not aggregated into the system index.
+- The navigation availability attribute stays Normal (0.90) while integrity, reliability and safety collapse.
+- The other three functions are at baseline (DI 0.80, Normal). DI_sys is 0.56: above the 0.55 floor, but in the Unsafe state.
+- `Trigger_SystemDecline` is replaced by `Trigger_PredictedFloorCrossing`, raised by the unmitigated forecast (0.50). The sudden drop is correctly not a sustained decline (slope −0.036 per hour).
+- REDS ranks three responses: revert to independent navigation (0.565, executed), reduce speed (0.43), and switch to GPS No2 / ECDIS No2 (0.425, inadmissible because its forecast stays below the floor). The previous AIS-overlay evaluations, forecasts and execution are removed.
+- The case's evidence, assumptions, obligations and nonconformities are rebuilt for the GNSS scenario. The AL is 0.66 and readiness is 0.43, with the readiness mapping now defined.
+
+### Changed — approval
+- All 51 governed artefacts (attribute weights, thresholds, aggregation weights, supervision, propagation and decision configuration, claims, evidence obligations and the AL weight set), the company position-fixing requirement and the readiness mapping are `APPROVED` by "WARRaNT LL1 use-case team". Nothing is left `PROPOSED`, and the Danaos approval dependency is removed.
+
+---
+
 ## [Unreleased] — LL1 modernisation to the 0.10 vocabulary
 
 Rewrites `examples/example-ecdis-spoofing.ttl` (LL1, Danaos CATHERINE C) to use

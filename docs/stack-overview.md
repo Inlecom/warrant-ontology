@@ -16,7 +16,7 @@ In plain terms: it defines what words like *Deviation*, *Hazard*, *Dependability
 
 ## 2. Ontology at a glance
 
-The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,110 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 4,182 triples) demonstrate realistic scenarios; the LL4 GNSS failover example and the LL1 ECDIS spoofing example each instantiate every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
+The ontology covers 9 topic areas (DAVOM, Observation, CDM, Assurance, DI, Scenario, Mitigation, Digital Twin, and a shared Core), totalling **200 classes · 194 object properties · 128 datatype properties · 70 named individuals · 3,110 triples** across 9 module files (15 terms deprecated pending removal). Five Living Lab example files (LL1–LL4, 4,634 triples) demonstrate realistic scenarios; the LL4 GNSS failover example and the LL1 GNSS spoofing example each instantiate every layer of the framework. The ontology content is covered in `docs/modules/`; this document focuses on the repository infrastructure.
 
 ---
 
@@ -43,7 +43,7 @@ warrant-kg-ontology/
 |   +-- example-communication-degradation.ttl
 |   +-- example-roc-handover.ttl
 |   +-- example-smart-container-fire.ttl
-|   \-- example-ecdis-spoofing.ttl
+|   \-- example-gnss-spoofing.ttl
 |
 +-- shapes/
 |   \-- warrant-core-shapes.ttl  <- SHACL shapes (13 constraints + 1 warning)
@@ -105,7 +105,7 @@ python scripts/validate_turtle.py --shacl
 - With `--shacl`: validates every example against the shapes with pySHACL (modules merged into the data graph, inference off)
 - Exits 0 (all pass) or 1 (any failure or violation)
 
-**Current status:** 16 files · 7,641 triples · 0 failures · zero domain and range violations · all five examples conform to the shapes · all 10 competency queries return rows
+**Current status:** 16 files · 8,093 triples · 0 failures · zero domain and range violations · all five examples conform to the shapes · all 10 competency queries return rows
 
 ### 4.2 Merge
 

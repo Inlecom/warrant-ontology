@@ -68,7 +68,7 @@ warrant-kg-ontology/
 │   ├── example-communication-degradation.ttl ← LL4 comm degradation
 │   ├── example-smart-container-fire.ttl    ← LL2 AELER fire detection
 │   ├── example-roc-handover.ttl            ← LL4 Use Case 2 handover
-│   └── example-ecdis-spoofing.ttl          ← LL1 AIS spoofing
+│   └── example-gnss-spoofing.ttl           ← LL1 area-wide GNSS spoofing
 ├── shapes/
 │   └── warrant-core-shapes.ttl ← SHACL shapes (13 constraints + 1 warning)
 ├── queries/
@@ -162,7 +162,7 @@ Never use module namespaces (`obs:`, `cdm:`, `davom:`) for instance IRIs.
 
 ## Using the Example Files
 
-Example files in `examples/` illustrate the GNSS failover, communication degradation, smart container fire, ROC handover, and ECDIS spoofing scenarios. Load them together with the ontology:
+Example files in `examples/` illustrate the GNSS failover, communication degradation, smart container fire, ROC handover, and LL1 GNSS spoofing scenarios. Load them together with the ontology:
 
 ```python
 import rdflib

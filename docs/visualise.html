@@ -105,7 +105,7 @@ svg{width:100%;height:100%}
         <option value="ex-comm">LL4 · Comm Degradation</option>
         <option value="ex-handover">LL4 · ROC Handover</option>
         <option value="ex-fire">LL2 · Container Fire</option>
-        <option value="ex-spoofing">LL1 · ECDIS Spoofing</option>
+        <option value="ex-spoofing">LL1 · GNSS Spoofing</option>
       </optgroup>
     </select>
     <input type="file" id="local-file" accept=".ttl" onchange="loadFile(this)" style="display:none"/>
@@ -237,7 +237,7 @@ const MODULE_FILES = {
   'ex-comm':        '../examples/example-communication-degradation.ttl',
   'ex-fire':        '../examples/example-smart-container-fire.ttl',
   'ex-handover':    '../examples/example-roc-handover.ttl',
-  'ex-spoofing':    '../examples/example-ecdis-spoofing.ttl',
+  'ex-spoofing':    '../examples/example-gnss-spoofing.ttl',
 };
 
 const MODULE_BTN_STYLE = {
@@ -278,7 +278,7 @@ const EXAMPLE_BTNS = [
   {key:'ex-comm',     label:'LL4 · Comm Degradation',     bg:'#1a2f3a', fg:'#9cdcfe', br:'#2a4f6a'},
   {key:'ex-handover', label:'LL4 · ROC Handover',         bg:'#1a2f3a', fg:'#9cdcfe', br:'#2a4f6a'},
   {key:'ex-fire',     label:'LL2 · Container Fire',       bg:'#1a3a35', fg:'#4ec9b0', br:'#2a5a4f'},
-  {key:'ex-spoofing', label:'LL1 · ECDIS Spoofing',       bg:'#3a2f10', fg:'#e8b84b', br:'#5a4f20'},
+  {key:'ex-spoofing', label:'LL1 · GNSS Spoofing',       bg:'#3a2f10', fg:'#e8b84b', br:'#5a4f20'},
 ];
 const egrid = document.getElementById('example-grid');
 EXAMPLE_BTNS.forEach(({key, label, bg, fg, br}) => {
@@ -331,7 +331,7 @@ const EXAMPLE_LABELS = {
   'ex-comm':     'LL4 · Comm Degradation',
   'ex-handover': 'LL4 · ROC Handover',
   'ex-fire':     'LL2 · Container Fire',
-  'ex-spoofing': 'LL1 · ECDIS Spoofing',
+  'ex-spoofing': 'LL1 · GNSS Spoofing',
 };
 
 async function loadModule(key) {
