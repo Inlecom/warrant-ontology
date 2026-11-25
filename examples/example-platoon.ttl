@@ -26,10 +26,9 @@
 # response library and scenario stubs. Runtime records (health events,
 # attribute values, indices, triggers, evaluations, executions, evidence) are
 # written by the external services with run-scoped IRIs and are not part of
-# this file. The one exception is a set of exemplar detection events, one per
-# HAZOP deviation, with synthetic timestamps: they exist so that every
-# Deviation here is reached through a DetectionEvent, and they are not trial
-# records.
+# this file. In particular no cdm:Deviation is asserted: the HAZOP entries are
+# failure modes carrying their guidewords, and Deviations appear only when a
+# runtime DetectionEvent detects one.
 #
 # Generic checks and standard responses only: no rudder- or propulsion-driven
 # dead reckoning, position validation or GNSS substitution appears anywhere in
@@ -89,7 +88,8 @@ plt:VesselF a davom:Vessel ;
 plt:PlatoonSystem a davom:CyberPhysicalSystem ;
     warrant:hasIdentifier "SYS-PLT-001" ;
     warrant:hasName "Platoon" ;
-    warrant:hasDescription "Vessel L and Vessel F operated as one formation. Holds the follower's platooning controller and, through the V2V link, the leader state it consumes. The membership of the two vessels is stated here in text only: DAVOM has no property relating a system to the vessels it spans." ;
+    warrant:hasDescription "Vessel L and Vessel F operated as one formation. Holds the follower's platooning controller and, through the V2V link, the leader state it consumes." ;
+    davom:spansVessel plt:VesselL , plt:VesselF ;
     davom:hasComponent plt:PlatooningControllerF .
 
 # ── Vessel functions (primary assets) ──────────────────────────────────────
@@ -695,148 +695,107 @@ plt:HazPlatoonCoordinationLoss cdm:isEvaluatedAs plt:RiskPlatoonCoordinationLoss
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# CDM — HAZOP DEVIATIONS AND FAILURE MODES
-# Design-time deviations, produced by failure modes (the CDM pattern). Each is
-# given an illustrative DetectionEvent in the observation section so that the
-# file keeps the rule that a Deviation exists only through a DetectionEvent.
-# No FMEA worksheet exists for the platoon, so failure modes carry no
-# severity/occurrence/detection scores.
+# CDM — HAZOP FAILURE MODES (design-time)
+# Each HAZOP entry is a failure mode carrying its guideword
+# (cdm:hasDeviationType), the elements it affects and degrades, and its causal
+# links. No cdm:Deviation is asserted here: a Deviation exists only once a
+# DetectionEvent detects it at runtime, and cdm:producesDeviation then ties it
+# back to the failure mode. No FMEA worksheet exists for the platoon, so the
+# failure modes carry no severity/occurrence/detection scores.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # — GNSS: leader
-plt:DevLeaderFixFrozen a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-01" ;
-    warrant:hasName "Leader GNSS Fix Frozen" ;
+plt:FM_LeaderGNSSHoldLastFix a cdm:FailureMode ;
+    warrant:hasIdentifier "FM-PLT-01" ;
+    warrant:hasName "Leader GNSS fix frozen" ;
     warrant:hasDescription "The leader's receiver keeps reporting its last position with a valid-fix flag while the vessel moves on, typically under a bridge or another obstruction (P2: 5–60 s, straight or turning). The value looks valid and is wrong, so the guideword is UNTRUSTED rather than UNAVAILABLE. Reaches the follower over the V2V link as a leader that appears to have stopped." ;
     cdm:hasDeviationType cdm:UNTRUSTED ;
-    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow .
-
-plt:DevLeaderFixDropout a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-02" ;
-    warrant:hasName "Leader GNSS Fix Dropout" ;
-    warrant:hasDescription "The leader's receiver reports no fix, or the fix stops arriving (P3). Detectable by its absence, unlike a frozen fix." ;
-    cdm:hasDeviationType cdm:UNAVAILABLE ;
-    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow .
-
-plt:DevLeaderFixRecoveryJump a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-03" ;
-    warrant:hasName "Leader GNSS Recovery Jump" ;
-    warrant:hasDescription "When the leader's receiver reacquires after a frozen or missing period, the reported position steps from the last held value to the true one (P4). The step is inconsistent with the vessel's heading and speed over the interval." ;
-    cdm:hasDeviationType cdm:INCONSISTENT ;
-    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow .
-
-# — GNSS: follower
-plt:DevFollowerFixFrozen a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-04" ;
-    warrant:hasName "Follower GNSS Fix Frozen" ;
-    warrant:hasDescription "The follower's own receiver holds its last position with a valid-fix flag (P7). The controller then computes gap and track error from a wrong own position." ;
-    cdm:hasDeviationType cdm:UNTRUSTED ;
-    cdm:degrades plt:GNSSReceiverF , plt:PositionFixingF .
-
-# — V2V link
-plt:DevV2VLinkLoss a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-05" ;
-    warrant:hasName "V2V Leader-State Messages Lost" ;
-    warrant:hasDescription "Leader-state messages stop arriving at the follower (P5, loss)." ;
-    cdm:hasDeviationType cdm:UNAVAILABLE ;
-    cdm:degrades plt:V2VLink , plt:LeaderStateDataFlow .
-
-plt:DevV2VLinkDelay a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-06" ;
-    warrant:hasName "V2V Leader-State Messages Late or Stale" ;
-    warrant:hasDescription "Leader-state messages arrive late, or repeat an old state, so the follower acts on where the leader was (P5, latency and staleness)." ;
-    cdm:hasDeviationType cdm:LATE ;
-    cdm:degrades plt:V2VLink , plt:LeaderStateDataFlow .
-
-# — Follower actuators (P6)
-plt:DevRudderStuckF a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-07" ;
-    warrant:hasName "Follower Rudder Stuck" ;
-    warrant:hasDescription "The follower's rudder does not move in response to commands." ;
-    cdm:hasDeviationType cdm:NO ;
-    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF .
-
-plt:DevRudderDeadbandF a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-08" ;
-    warrant:hasName "Follower Rudder Deadband" ;
-    warrant:hasDescription "Small rudder commands produce no movement, so the achieved rudder angle is less than commanded around midships." ;
-    cdm:hasDeviationType cdm:LESS ;
-    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF .
-
-plt:DevRudderSlowF a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-09" ;
-    warrant:hasName "Follower Rudder Slow" ;
-    warrant:hasDescription "The rudder reaches the commanded angle, but later than its rated rate allows." ;
-    cdm:hasDeviationType cdm:LATE ;
-    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF .
-
-plt:DevPropulsionShortfallF a cdm:Deviation ;
-    warrant:hasIdentifier "DEV-PLT-10" ;
-    warrant:hasName "Follower Propulsion Shortfall" ;
-    warrant:hasDescription "The follower's propulsion delivers less than the commanded setpoint, up to total loss of thrust, so the follower cannot hold or recover the gap." ;
-    cdm:hasDeviationType cdm:LESS ;
-    cdm:degrades plt:PropulsionF , plt:GapKeepingF .
-
-plt:FM_LeaderGNSSHoldLastFix a cdm:FailureMode ;
-    warrant:hasName "Leader receiver holds last fix during obstruction" ;
     cdm:affectsComponent plt:GNSSReceiverL ;
-    cdm:producesDeviation plt:DevLeaderFixFrozen ;
+    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
 plt:FM_LeaderGNSSSignalObstruction a cdm:FailureMode ;
-    warrant:hasName "Leader receiver loses the satellite signal" ;
+    warrant:hasIdentifier "FM-PLT-02" ;
+    warrant:hasName "Leader GNSS fix dropout" ;
+    warrant:hasDescription "The leader's receiver loses the satellite signal and reports no fix, or the fix stops arriving (P3). Detectable by its absence, unlike a frozen fix." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE ;
     cdm:affectsComponent plt:GNSSReceiverL ;
-    cdm:producesDeviation plt:DevLeaderFixDropout ;
+    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
 plt:FM_LeaderGNSSReacquisitionStep a cdm:FailureMode ;
-    warrant:hasName "Leader receiver steps to true position on reacquisition" ;
+    warrant:hasIdentifier "FM-PLT-03" ;
+    warrant:hasName "Leader GNSS recovery jump" ;
+    warrant:hasDescription "When the leader's receiver reacquires after a frozen or missing period, the reported position steps from the last held value to the true one (P4). The step is inconsistent with the vessel's heading and speed over the interval." ;
+    cdm:hasDeviationType cdm:INCONSISTENT ;
     cdm:affectsComponent plt:GNSSReceiverL ;
-    cdm:producesDeviation plt:DevLeaderFixRecoveryJump ;
+    cdm:degrades plt:GNSSReceiverL , plt:PositionFixingL , plt:LeaderStateDataFlow ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
+# — GNSS: follower
 plt:FM_FollowerGNSSHoldLastFix a cdm:FailureMode ;
-    warrant:hasName "Follower receiver holds last fix" ;
+    warrant:hasIdentifier "FM-PLT-04" ;
+    warrant:hasName "Follower GNSS fix frozen" ;
+    warrant:hasDescription "The follower's own receiver holds its last position with a valid-fix flag (P7). The controller then computes gap and track error from a wrong own position." ;
+    cdm:hasDeviationType cdm:UNTRUSTED ;
     cdm:affectsComponent plt:GNSSReceiverF ;
-    cdm:producesDeviation plt:DevFollowerFixFrozen ;
+    cdm:degrades plt:GNSSReceiverF , plt:PositionFixingF ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
-# cdm:affectsComponent cannot point at a davom:CommunicationLink, so the two
-# V2V failure modes reach the link only through their deviation's cdm:degrades.
+# — V2V link
 plt:FM_V2VLinkDropout a cdm:FailureMode ;
-    warrant:hasName "V2V radio link drops out" ;
-    warrant:hasDescription "Range, shadowing by the bridge structure or radio failure interrupts the link. The affected element is plt:V2VLink, which cdm:affectsComponent cannot express." ;
-    cdm:producesDeviation plt:DevV2VLinkLoss ;
+    warrant:hasIdentifier "FM-PLT-05" ;
+    warrant:hasName "V2V leader-state messages lost" ;
+    warrant:hasDescription "Range, shadowing by the bridge structure or radio failure interrupts the link, and leader-state messages stop arriving at the follower (P5, loss)." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE ;
+    cdm:affectsComponent plt:V2VLink ;
+    cdm:degrades plt:V2VLink , plt:LeaderStateDataFlow ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
 plt:FM_V2VLinkCongestion a cdm:FailureMode ;
-    warrant:hasName "V2V link congested or retransmitting" ;
-    warrant:hasDescription "Interference, congestion or retransmission delays leader-state messages. The affected element is plt:V2VLink, which cdm:affectsComponent cannot express." ;
-    cdm:producesDeviation plt:DevV2VLinkDelay ;
+    warrant:hasIdentifier "FM-PLT-06" ;
+    warrant:hasName "V2V leader-state messages late or stale" ;
+    warrant:hasDescription "Interference, congestion or retransmission delays leader-state messages, or the follower receives an old state again, so it acts on where the leader was (P5, latency and staleness)." ;
+    cdm:hasDeviationType cdm:LATE ;
+    cdm:affectsComponent plt:V2VLink ;
+    cdm:degrades plt:V2VLink , plt:LeaderStateDataFlow ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
+# — Follower actuators (P6)
 plt:FM_RudderActuatorSeized a cdm:FailureMode ;
-    warrant:hasName "Follower rudder actuator seized" ;
+    warrant:hasIdentifier "FM-PLT-07" ;
+    warrant:hasName "Follower rudder stuck" ;
+    warrant:hasDescription "The follower's rudder actuator is seized and the rudder does not move in response to commands." ;
+    cdm:hasDeviationType cdm:NO ;
     cdm:affectsComponent plt:RudderActuatorF ;
-    cdm:producesDeviation plt:DevRudderStuckF ;
+    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF ;
     cdm:hasHazardClass cdm:PHYSICAL_FAILURE .
 
 plt:FM_RudderLinkageBacklash a cdm:FailureMode ;
-    warrant:hasName "Follower rudder linkage backlash" ;
+    warrant:hasIdentifier "FM-PLT-08" ;
+    warrant:hasName "Follower rudder deadband" ;
+    warrant:hasDescription "Backlash in the rudder linkage: small rudder commands produce no movement, so the achieved rudder angle is less than commanded around midships." ;
+    cdm:hasDeviationType cdm:LESS ;
     cdm:affectsComponent plt:RudderActuatorF ;
-    cdm:producesDeviation plt:DevRudderDeadbandF ;
+    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF ;
     cdm:hasHazardClass cdm:PHYSICAL_FAILURE .
 
 plt:FM_RudderHydraulicDegradation a cdm:FailureMode ;
-    warrant:hasName "Follower steering hydraulics degraded" ;
+    warrant:hasIdentifier "FM-PLT-09" ;
+    warrant:hasName "Follower rudder slow" ;
+    warrant:hasDescription "Degraded steering hydraulics: the rudder reaches the commanded angle, but later than its rated rate allows." ;
+    cdm:hasDeviationType cdm:LATE ;
     cdm:affectsComponent plt:RudderActuatorF ;
-    cdm:producesDeviation plt:DevRudderSlowF ;
+    cdm:degrades plt:RudderActuatorF , plt:TrackKeepingF ;
     cdm:hasHazardClass cdm:PHYSICAL_FAILURE .
 
 plt:FM_PropulsionThrustLoss a cdm:FailureMode ;
-    warrant:hasName "Follower propulsion loses thrust" ;
+    warrant:hasIdentifier "FM-PLT-10" ;
+    warrant:hasName "Follower propulsion shortfall" ;
+    warrant:hasDescription "The follower's propulsion delivers less than the commanded setpoint, up to total loss of thrust, so the follower cannot hold or recover the gap." ;
+    cdm:hasDeviationType cdm:LESS ;
     cdm:affectsComponent plt:PropulsionF ;
-    cdm:producesDeviation plt:DevPropulsionShortfallF ;
+    cdm:degrades plt:PropulsionF , plt:GapKeepingF ;
     cdm:hasHazardClass cdm:PHYSICAL_FAILURE .
 
 
@@ -945,13 +904,13 @@ plt:UCA_LeaderSteerOnFrozenOwnFix a cdm:UnsafeControlAction ;
     warrant:hasName "Leader Autopilot Steered on a Frozen Own Fix" ;
     warrant:hasDescription "P2-solo: the route autopilot holds the course computed for the frozen position, so the leader leaves the route in a bend." .
 
-# Deviation → process-model flaw
-plt:DevLeaderFixFrozen       cdm:mayCause plt:PMF_StaleLeaderState , plt:PMF_WrongLeaderOwnPosition .
-plt:DevV2VLinkDelay          cdm:mayCause plt:PMF_StaleLeaderState .
-plt:DevLeaderFixDropout      cdm:mayCause plt:PMF_MissingLeaderState .
-plt:DevV2VLinkLoss           cdm:mayCause plt:PMF_MissingLeaderState .
-plt:DevLeaderFixRecoveryJump cdm:mayCause plt:PMF_LeaderPositionStep .
-plt:DevFollowerFixFrozen     cdm:mayCause plt:PMF_WrongFollowerOwnPosition .
+# Failure mode → process-model flaw
+plt:FM_LeaderGNSSHoldLastFix       cdm:mayCause plt:PMF_StaleLeaderState , plt:PMF_WrongLeaderOwnPosition .
+plt:FM_V2VLinkCongestion          cdm:mayCause plt:PMF_StaleLeaderState .
+plt:FM_LeaderGNSSSignalObstruction      cdm:mayCause plt:PMF_MissingLeaderState .
+plt:FM_V2VLinkDropout           cdm:mayCause plt:PMF_MissingLeaderState .
+plt:FM_LeaderGNSSReacquisitionStep cdm:mayCause plt:PMF_LeaderPositionStep .
+plt:FM_FollowerGNSSHoldLastFix     cdm:mayCause plt:PMF_WrongFollowerOwnPosition .
 
 # Process-model flaw → UCA
 plt:PMF_StaleLeaderState         cdm:mayCause plt:UCA_FollowerSpeedOnStaleLeader , plt:UCA_FollowerSteerOnStaleLeader .
@@ -968,12 +927,12 @@ plt:UCA_FollowerSteerOnFrozenOwnFix   cdm:mayCause plt:HazTrackDeparture .
 plt:UCA_LeaderSteerOnFrozenOwnFix     cdm:mayCause plt:HazTrackDeparture .
 
 # Actuator faults: the command is correct but not carried out. STPA treats this
-# as a control-path causal factor, not a UCA, so the deviations lead straight
+# as a control-path causal factor, not a UCA, so the failure modes lead straight
 # to the hazard.
-plt:DevRudderStuckF         cdm:mayCause plt:HazTrackDeparture .
-plt:DevRudderDeadbandF      cdm:mayCause plt:HazTrackDeparture .
-plt:DevRudderSlowF          cdm:mayCause plt:HazTrackDeparture .
-plt:DevPropulsionShortfallF cdm:mayCause plt:HazGapViolation .
+plt:FM_RudderActuatorSeized         cdm:mayCause plt:HazTrackDeparture .
+plt:FM_RudderLinkageBacklash      cdm:mayCause plt:HazTrackDeparture .
+plt:FM_RudderHydraulicDegradation          cdm:mayCause plt:HazTrackDeparture .
+plt:FM_PropulsionThrustLoss cdm:mayCause plt:HazGapViolation .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1049,6 +1008,20 @@ plt:ResidualRisk_SupervisedPlatoon a cdm:Risk ;
     cdm:hasRiskLevel     "Medium" ;
     cdm:hasAcceptability "ALARP" ;
     cdm:hasHazardClass   cdm:DATA_LOSS .
+
+# — Traceability: constraint → UCA it rules out; control → constraint it
+#   enforces; requirement → constraint it makes verifiable.
+plt:SC_MinimumGap     cdm:constrains plt:UCA_FollowerSpeedOnStaleLeader .
+plt:SC_TrackTolerance cdm:constrains plt:UCA_FollowerSteerOnStaleLeader , plt:UCA_FollowerSteerOnFrozenOwnFix , plt:UCA_LeaderSteerOnFrozenOwnFix .
+plt:SC_ValidLeaderState cdm:constrains plt:UCA_FollowerContinuesWithoutLeader .
+plt:SC_FixValidity    cdm:constrains plt:UCA_FollowerSpeedOnStaleLeader , plt:UCA_FollowerSteerOnStaleLeader , plt:UCA_FollowerSteerOnFrozenOwnFix , plt:UCA_LeaderSteerOnFrozenOwnFix .
+
+plt:CTRL_FixAgeMonitoring           cdm:enforces plt:SC_FixValidity .
+plt:CTRL_FixPlausibilityGate        cdm:enforces plt:SC_FixValidity .
+plt:CTRL_V2VMessageAgeMonitoring    cdm:enforces plt:SC_ValidLeaderState .
+plt:CTRL_ActuatorCommandFeedbackCheck cdm:enforces plt:SC_TrackTolerance , plt:SC_MinimumGap .
+plt:CTRL_RemoteOperatorSupervision  cdm:enforces plt:SC_MinimumGap , plt:SC_TrackTolerance , plt:SC_ValidLeaderState .
+plt:CTRL_PreBridgeGapIncrease       cdm:enforces plt:SC_MinimumGap .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1220,9 +1193,10 @@ plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # OBSERVATION — HEALTH EVENT TYPES (as detection rules)
-# The observation module has no health-event-type class; obs:DetectionRule is
-# the nearest term. Each rule names one generic check. Limits are illustrative
-# and become governed values once calibrated (T04 calibration split).
+# Each obs:DetectionRule is one health event type: a generic check, the
+# guideword it detects, the failure mode it is classified under, and its
+# limit. Limits are illustrative (PROPOSED) and become approved values once
+# calibrated (T04 calibration split).
 # ═══════════════════════════════════════════════════════════════════════════════
 
 plt:DR_FixFrozen a obs:DetectionRule ;
@@ -1275,125 +1249,40 @@ plt:GNSSFixObserverF obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropou
 plt:V2VMessageProbe  obs:supportsDetectionOf plt:DR_V2VLoss , plt:DR_V2VStale .
 plt:ActuatorFeedbackObserverF obs:supportsDetectionOf plt:DR_RudderNoResponse , plt:DR_RudderDeadband , plt:DR_RudderSlow , plt:DR_PropulsionShortfall .
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# OBSERVATION — EXEMPLAR DETECTION EVENTS
-# One illustrative DetectionEvent per HAZOP deviation, so that every Deviation
-# in the file exists through a detection (GLOSSARY §5). The DetectionEvent
-# shape requires a timestamp, so each carries a synthetic one on a reference
-# day, an hour apart. They are not trial records, not a replay of an outage,
-# and not concurrent.
-# ═══════════════════════════════════════════════════════════════════════════════
-
-plt:DE_LeaderFixFrozen a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-01" ;
-    warrant:hasName "Leader fix frozen at bridge passage (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T01:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevLeaderFixFrozen ;
-    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
-    obs:indicatesCondition plt:FM_LeaderGNSSHoldLastFix ;
-    obs:hasMissionContext plt:BridgePassageContext ;
-    obs:hasSeverityLevel "HIGH" .
-
-plt:DE_LeaderFixDropout a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-02" ;
-    warrant:hasName "Leader fix dropout (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T02:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevLeaderFixDropout ;
-    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
+# — What each rule detects, and its governed limit. Limits are illustrative
+#   (PROPOSED) until calibrated on the calibration days.
+plt:DR_FixFrozen obs:detectsDeviationType cdm:UNTRUSTED ;
+    obs:indicatesCondition plt:FM_LeaderGNSSHoldLastFix , plt:FM_FollowerGNSSHoldLastFix ;
+    obs:hasRuleThreshold "3.0"^^xsd:decimal ; obs:hasUnit "s" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_FixDropout obs:detectsDeviationType cdm:UNAVAILABLE ;
     obs:indicatesCondition plt:FM_LeaderGNSSSignalObstruction ;
-    obs:hasMissionContext plt:BridgePassageContext ;
-    obs:hasSeverityLevel "MEDIUM" .
-
-plt:DE_LeaderFixRecoveryJump a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-03" ;
-    warrant:hasName "Leader fix step on reacquisition (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T03:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevLeaderFixRecoveryJump ;
-    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
+    obs:hasRuleThreshold "3.0"^^xsd:decimal ; obs:hasUnit "s" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_FixStep obs:detectsDeviationType cdm:INCONSISTENT ;
     obs:indicatesCondition plt:FM_LeaderGNSSReacquisitionStep ;
-    obs:hasMissionContext plt:BridgePassageContext ;
-    obs:hasSeverityLevel "MEDIUM" .
-
-plt:DE_FollowerFixFrozen a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-04" ;
-    warrant:hasName "Follower fix frozen (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T04:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevFollowerFixFrozen ;
-    obs:affectsAsset plt:GNSSReceiverF , plt:PositionFixingF ;
-    obs:indicatesCondition plt:FM_FollowerGNSSHoldLastFix ;
-    obs:hasMissionContext plt:BridgePassageContext ;
-    obs:hasSeverityLevel "HIGH" .
-
-plt:DE_V2VLinkLoss a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-05" ;
-    warrant:hasName "V2V leader-state loss (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T05:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevV2VLinkLoss ;
-    obs:affectsAsset plt:V2VLink , plt:GapKeepingF , plt:TrackKeepingF ;
+    obs:hasRuleThreshold "10.0"^^xsd:decimal ; obs:hasUnit "m" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_V2VLoss obs:detectsDeviationType cdm:UNAVAILABLE ;
     obs:indicatesCondition plt:FM_V2VLinkDropout ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "HIGH" .
-
-plt:DE_V2VLinkDelay a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-06" ;
-    warrant:hasName "V2V leader-state stale (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T06:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevV2VLinkDelay ;
-    obs:affectsAsset plt:V2VLink , plt:GapKeepingF , plt:TrackKeepingF ;
+    obs:hasRuleThreshold "2.0"^^xsd:decimal ; obs:hasUnit "s" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_V2VStale obs:detectsDeviationType cdm:LATE ;
     obs:indicatesCondition plt:FM_V2VLinkCongestion ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "MEDIUM" .
-
-plt:DE_RudderStuckF a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-07" ;
-    warrant:hasName "Follower rudder does not respond (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T07:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevRudderStuckF ;
-    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    obs:hasRuleThreshold "1.0"^^xsd:decimal ; obs:hasUnit "s" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_RudderNoResponse obs:detectsDeviationType cdm:NO ;
     obs:indicatesCondition plt:FM_RudderActuatorSeized ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "HIGH" .
-
-plt:DE_RudderDeadbandF a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-08" ;
-    warrant:hasName "Follower rudder deadband (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T08:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevRudderDeadbandF ;
-    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_RudderDeadband obs:detectsDeviationType cdm:LESS ;
     obs:indicatesCondition plt:FM_RudderLinkageBacklash ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "LOW" .
-
-plt:DE_RudderSlowF a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-09" ;
-    warrant:hasName "Follower rudder slow (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T09:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevRudderSlowF ;
-    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_RudderSlow obs:detectsDeviationType cdm:LATE ;
     obs:indicatesCondition plt:FM_RudderHydraulicDegradation ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "MEDIUM" .
-
-plt:DE_PropulsionShortfallF a obs:DetectionEvent ;
-    warrant:hasIdentifier "HE-PLT-EX-10" ;
-    warrant:hasName "Follower propulsion shortfall (exemplar)" ;
-    obs:hasTimestamp "2026-01-01T10:00:00Z"^^xsd:dateTime ;
-    obs:detectionEventDetects plt:DevPropulsionShortfallF ;
-    obs:affectsAsset plt:PropulsionF , plt:GapKeepingF ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_PropulsionShortfall obs:detectsDeviationType cdm:LESS ;
     obs:indicatesCondition plt:FM_PropulsionThrustLoss ;
-    obs:hasMissionContext plt:OpenWaterwayContext ;
-    obs:hasSeverityLevel "MEDIUM" .
-
-plt:DR_FixFrozen           obs:producesDetectionEvent plt:DE_LeaderFixFrozen , plt:DE_FollowerFixFrozen .
-plt:DR_FixDropout          obs:producesDetectionEvent plt:DE_LeaderFixDropout .
-plt:DR_FixStep             obs:producesDetectionEvent plt:DE_LeaderFixRecoveryJump .
-plt:DR_V2VLoss             obs:producesDetectionEvent plt:DE_V2VLinkLoss .
-plt:DR_V2VStale            obs:producesDetectionEvent plt:DE_V2VLinkDelay .
-plt:DR_RudderNoResponse    obs:producesDetectionEvent plt:DE_RudderStuckF .
-plt:DR_RudderDeadband      obs:producesDetectionEvent plt:DE_RudderDeadbandF .
-plt:DR_RudderSlow          obs:producesDetectionEvent plt:DE_RudderSlowF .
-plt:DR_PropulsionShortfall obs:producesDetectionEvent plt:DE_PropulsionShortfallF .
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1688,6 +1577,16 @@ plt:REQ_PLT_01_MinimumGap     assr:expectsEvidence plt:OBL_AgreedGapTrackValues 
 plt:REQ_PLT_02_MaximumGap     assr:expectsEvidence plt:OBL_AgreedGapTrackValues .
 plt:REQ_PLT_03_TrackTolerance assr:expectsEvidence plt:OBL_AgreedGapTrackValues .
 
+plt:REQ_PLT_01_MinimumGap     assr:refinesConstraint plt:SC_MinimumGap .
+plt:REQ_PLT_02_MaximumGap     assr:refinesConstraint plt:SC_MinimumGap .
+plt:REQ_PLT_03_TrackTolerance assr:refinesConstraint plt:SC_TrackTolerance .
+plt:REQ_PLT_04_ValidLeaderState assr:refinesConstraint plt:SC_ValidLeaderState .
+plt:REQ_PLT_05_FixValidity    assr:refinesConstraint plt:SC_FixValidity .
+
+plt:ASM_PLT_01_GapBounds       assr:assumptionAppliesTo plt:REQ_PLT_01_MinimumGap , plt:REQ_PLT_02_MaximumGap .
+plt:ASM_PLT_02_TrackTolerance  assr:assumptionAppliesTo plt:REQ_PLT_03_TrackTolerance .
+plt:ASM_PLT_03_LeaderStateAge  assr:assumptionAppliesTo plt:REQ_PLT_04_ValidLeaderState .
+
 plt:PlatoonLDC a assr:LivingDependabilityCase ;
     warrant:hasName "Platoon Living Dependability Case (design-time baseline)" ;
     assr:caseAppliesTo plt:PlatoonSystem ;
@@ -1711,11 +1610,9 @@ plt:PlatoonLDC a assr:LivingDependabilityCase ;
 # of the baseline until it is approved.
 # CYBER_THREAT has no parameters: the platoon analysis contains no cyber
 # hazard.
-# Two further governed settings have no ontology class to live in: the
-# follower controller tuning (one parameter each for the heading and gap
-# loops) and the safety-distance logic level (fixed, elastic margin,
-# optimised). Both appear as response options in the mitigation section; a
-# switch between them is a RECONFIGURATION.
+# The follower controller tunings and the safety-distance logic levels are
+# davom:ControlConfigurations; the RECONFIGURATION responses R04 and R05 name
+# the one they switch to.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # — Attribute weights α per node and context (each node's weights sum to 1).
@@ -1811,7 +1708,62 @@ plt:DecisionConfig_Bridge_v1_1 a mit:DecisionConfiguration ;
     mit:hasCostWeight "0.10"^^xsd:decimal ;
     mit:hasPenaltyWeight "0.50"^^xsd:decimal ;
     warrant:appliesUnder plt:BridgePassageContext ;
-    warrant:hasVersion "1.1" ; warrant:hasApprovalStatus "PROPOSED" .
+    warrant:hasVersion "1.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    warrant:supersedes plt:DecisionConfig_Bridge .
+
+# — Follower controller tunings (one parameter per loop) and safety-distance
+#   logic levels, as governed control configurations. The tuning values are
+#   the trials team's balanced and conservative settings.
+plt:FollowerTuning_Balanced a davom:ControlConfiguration ;
+    warrant:hasName "Follower tuning — balanced (baseline)" ;
+    davom:configuresElement plt:PlatooningControllerF ;
+    davom:hasParameter plt:Param_Balanced_Heading , plt:Param_Balanced_Gap ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:FollowerTuning_Damped a davom:ControlConfiguration ;
+    warrant:hasName "Follower tuning — conservative, high damping" ;
+    warrant:hasDescription "Worse tracking under good signal, but it rides out erroneous leader motion during a GNSS anomaly instead of following it." ;
+    davom:configuresElement plt:PlatooningControllerF ;
+    davom:hasParameter plt:Param_Damped_Heading , plt:Param_Damped_Gap ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:Param_Balanced_Heading a davom:ConfigurationParameter ; warrant:hasName "Heading-loop tuning parameter (heading error for full rudder)" ; davom:hasParameterValue "10.0"^^xsd:decimal ; davom:hasParameterUnit "deg" .
+plt:Param_Balanced_Gap     a davom:ConfigurationParameter ; warrant:hasName "Gap-loop tuning parameter (distance error for full propeller rate)" ; davom:hasParameterValue "2.5"^^xsd:decimal ; davom:hasParameterUnit "m" .
+plt:Param_Damped_Heading   a davom:ConfigurationParameter ; warrant:hasName "Heading-loop tuning parameter (heading error for full rudder)" ; davom:hasParameterValue "15.0"^^xsd:decimal ; davom:hasParameterUnit "deg" .
+plt:Param_Damped_Gap       a davom:ConfigurationParameter ; warrant:hasName "Gap-loop tuning parameter (distance error for full propeller rate)" ; davom:hasParameterValue "5.0"^^xsd:decimal ; davom:hasParameterUnit "m" .
+
+plt:SafetyDistance_Optimised a davom:ControlConfiguration ;
+    warrant:hasName "Safety-distance logic — optimised" ;
+    warrant:hasDescription "Safety distance from the relative braking capability of both vessels." ;
+    davom:configuresElement plt:PlatooningControllerF ;
+    davom:hasParameter plt:Param_SD_Optimised ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:SafetyDistance_ElasticMargin a davom:ControlConfiguration ;
+    warrant:hasName "Safety-distance logic — elastic margin" ;
+    warrant:hasDescription "The follower's braking distance plus an operational deadband." ;
+    davom:configuresElement plt:PlatooningControllerF ;
+    davom:hasParameter plt:Param_SD_ElasticMargin ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:SafetyDistance_Fixed a davom:ControlConfiguration ;
+    warrant:hasName "Safety-distance logic — fixed" ;
+    warrant:hasDescription "The follower's braking distance against a leader assumed to stop dead." ;
+    davom:configuresElement plt:PlatooningControllerF ;
+    davom:hasParameter plt:Param_SD_Fixed ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:Param_SD_Optimised     a davom:ConfigurationParameter ; warrant:hasName "Safety-distance logic level" ; davom:hasParameterSetting "OPTIMISED" .
+plt:Param_SD_ElasticMargin a davom:ConfigurationParameter ; warrant:hasName "Safety-distance logic level" ; davom:hasParameterSetting "ELASTIC_MARGIN" .
+plt:Param_SD_Fixed         a davom:ConfigurationParameter ; warrant:hasName "Safety-distance logic level" ; davom:hasParameterSetting "FIXED" .
+
+# — Design-time aggregation of the function DIs into the platoon DI.
+plt:DIW_Open_GapKeepingF   a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:GapKeepingF   ; di:hasAggregationWeightValue "0.40"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:DIW_Open_TrackKeepingF a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:TrackKeepingF ; di:hasAggregationWeightValue "0.40"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:DIW_Open_TrackKeepingL a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:TrackKeepingL ; di:hasAggregationWeightValue "0.20"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:DIW_Bridge_GapKeepingF   a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:GapKeepingF   ; di:hasAggregationWeightValue "0.35"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:DIW_Bridge_TrackKeepingF a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:TrackKeepingF ; di:hasAggregationWeightValue "0.45"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:DIW_Bridge_TrackKeepingL a di:DIWeight ; di:weightParentNode plt:PlatoonSystem ; di:weightChildNode plt:TrackKeepingL ; di:hasAggregationWeightValue "0.20"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
 
 # — Assurance-level weights (not context-specific).
 plt:PlatoonALWeights a assr:AssuranceLevelWeightSet ;
@@ -1863,8 +1815,9 @@ plt:R03_LeaderConstantSpeed a mit:AdvisoryAction ;
 plt:R04_DampedFollowerTuning a mit:MachineActionableAction ;
     warrant:hasIdentifier "RSP-PLT-04" ;
     warrant:hasName "Switch the follower to a damped controller configuration" ;
-    warrant:hasDescription "During a GNSS anomaly, switch the heading and gap loops to their conservative, high-damping tuning, which rides out erroneous leader motion instead of following it; switch back once the input is trusted again. The tunings themselves are governed values with no ontology class of their own." ;
+    warrant:hasDescription "During a GNSS anomaly, switch the heading and gap loops to their conservative, high-damping tuning, which rides out erroneous leader motion instead of following it; switch back to the balanced tuning once the input is trusted again." ;
     mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:targetsConfiguration plt:FollowerTuning_Damped ;
     mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
     mit:addresses plt:GapKeepingF , plt:TrackKeepingF .
 
@@ -1873,6 +1826,7 @@ plt:R05_SafetyDistanceLevel a mit:MachineActionableAction ;
     warrant:hasName "Step the safety-distance logic to a more conservative level" ;
     warrant:hasDescription "Move from the optimised safety distance (relative braking of both vessels) to the elastic-margin level (braking distance plus a deadband), or to the fixed level (the follower's braking distance against a leader assumed to stop dead)." ;
     mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:targetsConfiguration plt:SafetyDistance_ElasticMargin , plt:SafetyDistance_Fixed ;
     mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
     mit:addresses plt:GapKeepingF .
 
@@ -1951,32 +1905,31 @@ plt:RULE_GapAtRisk a mit:MitigationRule ;
     warrant:hasName "Gap at risk (bridge approach, manoeuvre)" ;
     mit:recommends plt:R02_DynamicGapIncrease , plt:R03_LeaderConstantSpeed , plt:R05_SafetyDistanceLevel , plt:R10_EnhancedMonitoring .
 
-plt:DevLeaderFixFrozen       mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
-plt:DevLeaderFixDropout      mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
-plt:DevLeaderFixRecoveryJump mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
-plt:DevFollowerFixFrozen     mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
-plt:DevV2VLinkLoss           mit:matchesRule plt:RULE_V2VDegraded .
-plt:DevV2VLinkDelay          mit:matchesRule plt:RULE_V2VDegraded .
-plt:DevRudderStuckF          mit:matchesRule plt:RULE_ActuatorFault .
-plt:DevRudderDeadbandF       mit:matchesRule plt:RULE_ActuatorFault .
-plt:DevRudderSlowF           mit:matchesRule plt:RULE_ActuatorFault .
-plt:DevPropulsionShortfallF  mit:matchesRule plt:RULE_ActuatorFault .
+plt:FM_LeaderGNSSHoldLastFix       mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:FM_LeaderGNSSSignalObstruction      mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:FM_LeaderGNSSReacquisitionStep mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:FM_FollowerGNSSHoldLastFix     mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
+plt:FM_V2VLinkDropout           mit:matchesRule plt:RULE_V2VDegraded .
+plt:FM_V2VLinkCongestion          mit:matchesRule plt:RULE_V2VDegraded .
+plt:FM_RudderActuatorSeized          mit:matchesRule plt:RULE_ActuatorFault .
+plt:FM_RudderLinkageBacklash       mit:matchesRule plt:RULE_ActuatorFault .
+plt:FM_RudderHydraulicDegradation           mit:matchesRule plt:RULE_ActuatorFault .
+plt:FM_PropulsionThrustLoss  mit:matchesRule plt:RULE_ActuatorFault .
 plt:HazGapViolation          mit:matchesRule plt:RULE_GapAtRisk .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SCENARIOS — P-SCENARIO STUBS (runbook §4)
 # Definitions only; executions and results are written by the simulator with
-# run-scoped IRIs. Wind is excluded from every scenario. scen:affects cannot
-# point at the V2V link, so P5 and P8 name the follower components and
-# functions that consume it.
+# run-scoped IRIs. Wind is excluded from every scenario. Triggers are the
+# design-time failure modes; P1 replays detections of the same failure modes.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 plt:SCN_P1_RealOutageReplay a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P1" ;
     warrant:hasName "P1 — replay of the real GNSS outages (detection only)" ;
     warrant:hasDescription "The catalogued real outages under way, replayed from the trial data on the evaluation days. Scored for detection and false alarms only: the recorded vessels did not run any response." ;
-    scen:hasTrigger plt:DevLeaderFixFrozen , plt:DevFollowerFixFrozen ;
+    scen:hasTrigger plt:FM_LeaderGNSSHoldLastFix , plt:FM_FollowerGNSSHoldLastFix ;
     scen:affects plt:GNSSReceiverL , plt:GNSSReceiverF , plt:PositionFixingL , plt:PositionFixingF ;
     scen:causes plt:HazPlatoonCoordinationLoss .
 
@@ -1984,7 +1937,7 @@ plt:SCN_P2_LeaderFrozenFix a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P2" ;
     warrant:hasName "P2 — leader fix frozen under a bridge" ;
     warrant:hasDescription "Injected frozen leader fix of 5–60 s at a bridge passage, on a straight segment and in a turn, ending in a recovery jump." ;
-    scen:hasTrigger plt:DevLeaderFixFrozen ;
+    scen:hasTrigger plt:FM_LeaderGNSSHoldLastFix ;
     scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
     scen:causes plt:HazGapViolation , plt:HazTrackDeparture .
 
@@ -1992,7 +1945,7 @@ plt:SCN_P2solo_LeaderAutopilot a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P2-SOLO" ;
     warrant:hasName "P2-solo — leader alone on route autopilot with a frozen fix" ;
     warrant:hasDescription "Single-vessel variant of P2 in the simulator: the leader on route autopilot, no follower. Isolates the effect of the frozen fix on one vessel's track keeping." ;
-    scen:hasTrigger plt:DevLeaderFixFrozen ;
+    scen:hasTrigger plt:FM_LeaderGNSSHoldLastFix ;
     scen:affects plt:GNSSReceiverL , plt:RouteAutopilotL , plt:TrackKeepingL ;
     scen:causes plt:HazTrackDeparture .
 
@@ -2000,7 +1953,7 @@ plt:SCN_P3_LeaderDropout a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P3" ;
     warrant:hasName "P3 — leader fix dropout" ;
     warrant:hasDescription "Injected loss of the leader fix. Not observed in the trial data under way, where every outage was a frozen fix (ASM-PLT-04)." ;
-    scen:hasTrigger plt:DevLeaderFixDropout ;
+    scen:hasTrigger plt:FM_LeaderGNSSSignalObstruction ;
     scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
     scen:causes plt:HazPlatoonCoordinationLoss .
 
@@ -2008,7 +1961,7 @@ plt:SCN_P4_RecoveryJump a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P4" ;
     warrant:hasName "P4 — leader recovery jump" ;
     warrant:hasDescription "Injected step in the leader fix on reacquisition, sized from the real outages (12–31 m)." ;
-    scen:hasTrigger plt:DevLeaderFixRecoveryJump ;
+    scen:hasTrigger plt:FM_LeaderGNSSReacquisitionStep ;
     scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
     scen:causes plt:HazGapViolation , plt:HazTrackDeparture .
 
@@ -2016,14 +1969,14 @@ plt:SCN_P5_V2VDegradation a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P5" ;
     warrant:hasName "P5 — V2V loss, latency or staleness" ;
     warrant:hasDescription "Injected loss of leader-state messages, added latency, or repeated stale states. Beyond the trials team's evaluated cases, which list communication faults as future work." ;
-    scen:hasTrigger plt:DevV2VLinkLoss , plt:DevV2VLinkDelay ;
-    scen:affects plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:hasTrigger plt:FM_V2VLinkDropout , plt:FM_V2VLinkCongestion ;
+    scen:affects plt:V2VLink , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
     scen:causes plt:HazPlatoonCoordinationLoss .
 
 plt:SCN_P6_RudderFault a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P6" ;
     warrant:hasName "P6 — follower rudder fault (stuck, deadband, slow)" ;
-    scen:hasTrigger plt:DevRudderStuckF , plt:DevRudderDeadbandF , plt:DevRudderSlowF ;
+    scen:hasTrigger plt:FM_RudderActuatorSeized , plt:FM_RudderLinkageBacklash , plt:FM_RudderHydraulicDegradation ;
     scen:affects plt:RudderActuatorF , plt:TrackKeepingF ;
     scen:causes plt:HazTrackDeparture .
 
@@ -2031,7 +1984,7 @@ plt:SCN_P7_FollowerFrozenFix a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P7" ;
     warrant:hasName "P7 — follower fix frozen" ;
     warrant:hasDescription "Injected frozen fix on the follower's own receiver. Beyond the trials team's evaluated cases, which list follower signal loss as future work." ;
-    scen:hasTrigger plt:DevFollowerFixFrozen ;
+    scen:hasTrigger plt:FM_FollowerGNSSHoldLastFix ;
     scen:affects plt:GNSSReceiverF , plt:PlatooningControllerF , plt:TrackKeepingF , plt:GapKeepingF ;
     scen:causes plt:HazTrackDeparture , plt:HazGapViolation .
 
@@ -2039,8 +1992,8 @@ plt:SCN_P8_TurnFrozenFixAndV2V a scen:FailureScenario ;
     warrant:hasIdentifier "SCN-PLT-P8" ;
     warrant:hasName "P8 — P2 in a turn combined with P5" ;
     warrant:hasDescription "Frozen leader fix during a turn while the V2V link is also degraded: the follower cannot tell from the link whether the leader has stopped." ;
-    scen:hasTrigger plt:DevLeaderFixFrozen , plt:DevV2VLinkDelay ;
-    scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:hasTrigger plt:FM_LeaderGNSSHoldLastFix , plt:FM_V2VLinkCongestion ;
+    scen:affects plt:GNSSReceiverL , plt:V2VLink , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
     scen:causes plt:HazGapViolation , plt:HazTrackDeparture , plt:HazPlatoonCoordinationLoss .
 
 ##############################################################################
