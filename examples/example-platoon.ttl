@@ -1,0 +1,613 @@
+##############################################################################
+# WARRaNT Example: Two-Vessel Inland Platoon under GNSS Degradation at Bridges
+# File: examples/example-platoon.ttl
+# Instance namespace: https://warrant-project.eu/data/platoon#
+# Ontology version: 0.10-poc
+#
+# Use case. A leader–follower platoon of two small inland barges, Vessel L
+# (leader) and Vessel F (follower). The follower is steered by a platooning
+# controller that uses its own state estimate and the leader's state received
+# over a vessel-to-vessel (V2V) link. Under bridges the GNSS fix degrades in
+# three observed ways: the fix freezes at its last value while the vessel keeps
+# moving (frozen fix), no fix is delivered (dropout), and the position steps
+# when fixes resume (recovery jump). Sub-case: the leader alone on its route
+# autopilot.
+#
+# The case is related to LL4 (inland, remote operation) but is not an LL4
+# vessel. Vessels are anonymised; the file carries no vessel identifiers from
+# the trials, no names and no coordinates.
+#
+# Cross-vessel dependency chain (the reason for the KG): leader GNSS → leader
+# estimator → V2V leader state → follower platooning controller → follower gap
+# keeping and track keeping. A fault on Vessel L degrades a function on
+# Vessel F, which a monitor on either vessel alone cannot see.
+#
+# Scope of this file: design-time knowledge, governed configuration, the
+# response library and scenario stubs. Runtime records (health events,
+# attribute values, indices, triggers, evaluations, executions, evidence) are
+# written by the external services with run-scoped IRIs and are not part of
+# this file.
+#
+# Generic checks and standard responses only: no rudder- or propulsion-driven
+# dead reckoning, position validation or GNSS substitution appears anywhere in
+# this file.
+##############################################################################
+
+@prefix plt:     <https://warrant-project.eu/data/platoon#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix davom:   <https://warrant-project.eu/ontology/davom#> .
+@prefix obs:     <https://warrant-project.eu/ontology/observation#> .
+@prefix cdm:     <https://warrant-project.eu/ontology/cdm#> .
+@prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
+@prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix dt:      <https://warrant-project.eu/ontology/digital-twin#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ══════════════════════════════════════════════════════════════════════════
+# OPERATIONAL CONTEXTS (core)
+# Scope the governed configuration through warrant:appliesUnder. Kept apart
+# from operational mode (control authority) and environmental condition.
+# ══════════════════════════════════════════════════════════════════════════
+
+plt:OpenWaterwayContext a warrant:OperationalContext ;
+    warrant:hasIdentifier "CTX-OPEN" ;
+    warrant:hasName "Open waterway" ;
+    warrant:hasDescription "Platoon transit on an open inland waterway stretch with unobstructed GNSS reception." .
+
+plt:BridgePassageContext a warrant:OperationalContext ;
+    warrant:hasIdentifier "CTX-BRIDGE" ;
+    warrant:hasName "Bridge passage" ;
+    warrant:hasDescription "Platoon transit through a bridge zone: a known stretch, given only in a local frame, where GNSS reception degrades (frozen fix, dropout, recovery jump). Bridge zones are known in advance from the route, so the context can be entered before the degradation begins." .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# STRUCTURE (DAVOM)
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Vessels ────────────────────────────────────────────────────────────────
+
+plt:VesselL a davom:Vessel ;
+    warrant:hasIdentifier "VESSEL-L" ;
+    warrant:hasName "Vessel L (platoon leader)" ;
+    warrant:hasDescription "Small inland barge leading the platoon. Steered manually in the trials; on its route autopilot in the single-vessel sub-case. Publishes its estimated state to the follower over the V2V link." .
+
+plt:VesselF a davom:Vessel ;
+    warrant:hasIdentifier "VESSEL-F" ;
+    warrant:hasName "Vessel F (platoon follower)" ;
+    warrant:hasDescription "Small inland barge following the leader under the platooning controller, which keeps the gap to the leader and the follower on the leader's track." .
+
+# ── Platoon (the formation as one system) ──────────────────────────────────
+
+plt:PlatoonSystem a davom:CyberPhysicalSystem ;
+    warrant:hasIdentifier "SYS-PLT-001" ;
+    warrant:hasName "Platoon" ;
+    warrant:hasDescription "Vessel L and Vessel F operated as one formation. Holds the follower's platooning controller and, through the V2V link, the leader state it consumes. The membership of the two vessels is stated here in text only: DAVOM has no property relating a system to the vessels it spans." ;
+    davom:hasComponent plt:PlatooningControllerF .
+
+# ── Vessel functions (primary assets) ──────────────────────────────────────
+
+plt:PositionFixingL a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-PF-L" ;
+    warrant:hasName "Position fixing (Vessel L)" ;
+    warrant:hasDescription "Provide the leader's position, course and speed over ground as estimated from GNSS fixes and heading. Its output is also the leader state sent to the follower." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true ;
+    davom:isSupportedBy plt:NavigationSystemL .
+
+plt:TrackKeepingL a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-TK-L" ;
+    warrant:hasName "Track keeping (Vessel L, route autopilot)" ;
+    warrant:hasDescription "Single-vessel sub-case: the route autopilot keeps the leader on its planned route. Not active when the leader is steered manually." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true ;
+    davom:isSupportedBy plt:RouteAutopilotSystemL , plt:SteeringSystemL , plt:PropulsionSystemL .
+
+plt:PositionFixingF a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-PF-F" ;
+    warrant:hasName "Position fixing (Vessel F)" ;
+    warrant:hasDescription "Provide the follower's own position, course and speed over ground as estimated from GNSS fixes and heading." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true ;
+    davom:isSupportedBy plt:NavigationSystemF .
+
+plt:GapKeepingF a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-GK-F" ;
+    warrant:hasName "Gap keeping (Vessel F)" ;
+    warrant:hasDescription "Keep the follower's along-track distance to the leader within the minimum and maximum gap." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true ;
+    davom:isSupportedBy plt:PlatoonSystem , plt:PropulsionSystemF ;
+    davom:usesCommunicationLink plt:V2VLink ;
+    davom:requiresOperatorRole plt:RemoteOperatorRole .
+
+plt:TrackKeepingF a davom:VesselFunction ;
+    warrant:hasIdentifier "VF-TK-F" ;
+    warrant:hasName "Track keeping (Vessel F)" ;
+    warrant:hasDescription "Keep the follower on the leader's track within the track tolerance." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:isCriticalNode true ;
+    davom:isSupportedBy plt:PlatoonSystem , plt:SteeringSystemF ;
+    davom:usesCommunicationLink plt:V2VLink ;
+    davom:requiresOperatorRole plt:RemoteOperatorRole .
+
+plt:VesselL davom:hasFunction plt:PositionFixingL , plt:TrackKeepingL .
+plt:VesselF davom:hasFunction plt:PositionFixingF , plt:GapKeepingF , plt:TrackKeepingF .
+
+# ── Systems per vessel ─────────────────────────────────────────────────────
+
+plt:NavigationSystemL a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-NAV-L" ;
+    warrant:hasName "Navigation system (Vessel L)" ;
+    davom:hasComponent plt:GNSSReceiverL , plt:HeadingSensorL , plt:EstimatorL .
+
+plt:SteeringSystemL a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-STR-L" ;
+    warrant:hasName "Steering system (Vessel L)" ;
+    davom:hasComponent plt:RudderActuatorL , plt:RudderFeedbackL .
+
+plt:PropulsionSystemL a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-PRP-L" ;
+    warrant:hasName "Propulsion system (Vessel L)" ;
+    davom:hasComponent plt:PropulsionL , plt:PropulsionFeedbackL .
+
+plt:RouteAutopilotSystemL a davom:SoftwareSystem ;
+    warrant:hasIdentifier "SYS-RAP-L" ;
+    warrant:hasName "Route autopilot system (Vessel L)" ;
+    davom:hasComponent plt:RouteAutopilotL .
+
+plt:NavigationSystemF a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-NAV-F" ;
+    warrant:hasName "Navigation system (Vessel F)" ;
+    davom:hasComponent plt:GNSSReceiverF , plt:HeadingSensorF , plt:EstimatorF .
+
+plt:SteeringSystemF a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-STR-F" ;
+    warrant:hasName "Steering system (Vessel F)" ;
+    davom:hasComponent plt:RudderActuatorF , plt:RudderFeedbackF .
+
+plt:PropulsionSystemF a davom:TechnicalSystem ;
+    warrant:hasIdentifier "SYS-PRP-F" ;
+    warrant:hasName "Propulsion system (Vessel F)" ;
+    davom:hasComponent plt:PropulsionF , plt:PropulsionFeedbackF .
+
+# ── Components: Vessel L ───────────────────────────────────────────────────
+
+plt:GNSSReceiverL a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GNSS-L" ;
+    warrant:hasName "GNSS receiver (Vessel L)" ;
+    warrant:hasDescription "Position, course over ground and speed over ground source. Under bridges it has been observed to repeat its last position, COG and SOG unchanged (not null) and to step on recovery." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingL ;
+    davom:isCriticalNode true .
+
+plt:HeadingSensorL a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-HDG-L" ;
+    warrant:hasName "Heading sensor (Vessel L)" ;
+    warrant:hasDescription "Heading source independent of GNSS; keeps updating during GNSS outages." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingL .
+
+plt:EstimatorL a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-EST-L" ;
+    warrant:hasName "Estimator (Vessel L)" ;
+    warrant:hasDescription "Extended Kalman filter that fuses GNSS fixes and heading and propagates the state between fixes. Used as deployed; it accepts fixes as delivered and cannot by itself tell a frozen fix from a valid one." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingL ;
+    davom:isCriticalNode true .
+
+plt:RouteAutopilotL a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-RAP-L" ;
+    warrant:hasName "Route autopilot (Vessel L)" ;
+    warrant:hasDescription "Waypoint following for the leader in the single-vessel sub-case; commands rudder and propulsion from the leader's estimate." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingL .
+
+plt:RudderActuatorL a davom:ActuatorComponent ;
+    warrant:hasIdentifier "COMP-RUD-L" ;
+    warrant:hasName "Rudder actuator (Vessel L)" ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingL .
+
+plt:RudderFeedbackL a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-RUDFB-L" ;
+    warrant:hasName "Rudder feedback (Vessel L)" ;
+    warrant:hasDescription "Rudder angle sensor (actual rudder angle)." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingL .
+
+plt:PropulsionL a davom:ActuatorComponent ;
+    warrant:hasIdentifier "COMP-PRP-L" ;
+    warrant:hasName "Propulsion (Vessel L)" ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingL .
+
+plt:PropulsionFeedbackL a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-PRPFB-L" ;
+    warrant:hasName "Propulsion feedback (Vessel L)" ;
+    warrant:hasDescription "Engine actual value." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingL .
+
+# ── Components: Vessel F ───────────────────────────────────────────────────
+
+plt:GNSSReceiverF a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-GNSS-F" ;
+    warrant:hasName "GNSS receiver (Vessel F)" ;
+    warrant:hasDescription "Position, course over ground and speed over ground source of the follower." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingF ;
+    davom:isCriticalNode true .
+
+plt:HeadingSensorF a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-HDG-F" ;
+    warrant:hasName "Heading sensor (Vessel F)" ;
+    warrant:hasDescription "Heading source independent of GNSS; keeps updating during GNSS outages." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingF .
+
+plt:EstimatorF a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-EST-F" ;
+    warrant:hasName "Estimator (Vessel F)" ;
+    warrant:hasDescription "Extended Kalman filter of the follower; same design as the leader's, used as deployed." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:PositionFixingF ;
+    davom:isCriticalNode true .
+
+plt:PlatooningControllerF a davom:SoftwareComponent ;
+    warrant:hasIdentifier "COMP-PLC-F" ;
+    warrant:hasName "Platooning controller (Vessel F)" ;
+    warrant:hasDescription "Follower controller that computes rudder and engine commands from the follower's own estimate and the leader state received over the V2V link (waypoints follower). Used as deployed." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:GapKeepingF , plt:TrackKeepingF ;
+    davom:isCriticalNode true .
+
+plt:RudderActuatorF a davom:ActuatorComponent ;
+    warrant:hasIdentifier "COMP-RUD-F" ;
+    warrant:hasName "Rudder actuator (Vessel F)" ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingF .
+
+plt:RudderFeedbackF a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-RUDFB-F" ;
+    warrant:hasName "Rudder feedback (Vessel F)" ;
+    warrant:hasDescription "Rudder angle sensor (actual rudder angle)." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:TrackKeepingF .
+
+plt:PropulsionF a davom:ActuatorComponent ;
+    warrant:hasIdentifier "COMP-PRP-F" ;
+    warrant:hasName "Propulsion (Vessel F)" ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:GapKeepingF .
+
+plt:PropulsionFeedbackF a davom:SensorComponent ;
+    warrant:hasIdentifier "COMP-PRPFB-F" ;
+    warrant:hasName "Propulsion feedback (Vessel F)" ;
+    warrant:hasDescription "Engine actual value." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:GapKeepingF .
+
+# ── V2V link and the leader-state data flow ────────────────────────────────
+
+plt:LeaderStateDataFlow a davom:DataFlow ;
+    warrant:hasIdentifier "DF-LS-001" ;
+    warrant:hasName "Leader state" ;
+    warrant:hasDescription "The leader's estimated position, course, speed and heading, published by the leader estimator and consumed by the follower's platooning controller." ;
+    davom:hasAssetRole davom:PRIMARY_ASSET ;
+    davom:usesCommunicationLink plt:V2VLink .
+
+plt:V2VLink a davom:CommunicationLink ;
+    warrant:hasIdentifier "LINK-V2V-001" ;
+    warrant:hasName "V2V link" ;
+    warrant:hasDescription "Wireless vessel-to-vessel link carrying the leader state to the follower. It can be lost, delayed, or deliver a stale leader state." ;
+    davom:hasInterfaceType davom:WIRELESS ;
+    davom:carriesDataFlow plt:LeaderStateDataFlow ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:GapKeepingF , plt:TrackKeepingF ;
+    davom:isCriticalNode true .
+
+plt:EstimatorL davom:providesDataTo plt:PlatooningControllerF .
+plt:EstimatorF davom:providesDataTo plt:PlatooningControllerF .
+plt:PlatooningControllerF davom:controls plt:RudderActuatorF , plt:PropulsionF .
+plt:RouteAutopilotL davom:controls plt:RudderActuatorL , plt:PropulsionL .
+
+# ── Human operator role ────────────────────────────────────────────────────
+
+plt:RemoteOperatorRole a davom:HumanOperatorRole ;
+    warrant:hasIdentifier "ROLE-RO-001" ;
+    warrant:hasName "Remote operator" ;
+    warrant:hasDescription "Supervises the platoon and authorises escalated responses (degraded platoon operation, platoon dissolution)." ;
+    davom:hasAssetRole davom:SUPPORTING_ASSET ;
+    davom:supportsAsset plt:GapKeepingF , plt:TrackKeepingF ;
+    davom:supervises plt:PlatoonSystem ;
+    davom:participatesIn plt:GapKeepingF , plt:TrackKeepingF .
+
+plt:VesselL davom:hasOperatorRole plt:RemoteOperatorRole .
+plt:VesselF davom:hasOperatorRole plt:RemoteOperatorRole .
+
+# ── Typed dependencies (source = provider → target = consumer) ─────────────
+# The cross-vessel chain is DEP-01 → DEP-03 → DEP-04 → DEP-05 → DEP-12/DEP-13.
+# All its edges are DATA or FUNCTIONAL, the admissible types of DATA_LOSS, so
+# typed propagation of a leader GNSS fault reaches the follower's functions.
+# Actuator edges are CONTROL (commands) and FUNCTIONAL+PHYSICAL (actuation),
+# so PHYSICAL_FAILURE of an actuator reaches the function it actuates.
+
+# Vessel L: position fixing
+plt:DEP01_GNSSL_EstimatorL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-01" ;
+    warrant:hasName "GNSS receiver (L) → Estimator (L)" ;
+    davom:dependencySource plt:GNSSReceiverL ;
+    davom:dependencyTarget plt:EstimatorL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.7"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+plt:DEP02_HeadingL_EstimatorL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-02" ;
+    warrant:hasName "Heading sensor (L) → Estimator (L)" ;
+    davom:dependencySource plt:HeadingSensorL ;
+    davom:dependencyTarget plt:EstimatorL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.3"^^xsd:decimal ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP03_EstimatorL_V2V a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-03" ;
+    warrant:hasName "Estimator (L) → V2V link (leader state)" ;
+    warrant:hasDescription "Cross-vessel chain, step 2: the link transports whatever the leader estimator publishes, including a state built on a frozen fix." ;
+    davom:dependencySource plt:EstimatorL ;
+    davom:dependencyTarget plt:V2VLink ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+plt:DEP04_V2V_PlatooningControllerF a davom:CommunicationDependency ;
+    warrant:hasIdentifier "DEP-04" ;
+    warrant:hasName "V2V link → Platooning controller (F)" ;
+    warrant:hasDescription "Cross-vessel chain, step 3: the follower controller consumes the leader state delivered by the link." ;
+    davom:dependencySource plt:V2VLink ;
+    davom:dependencyTarget plt:PlatooningControllerF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.5"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 ;
+    davom:isBidirectional false .
+
+plt:DEP05_EstimatorL_PositionFixingL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-05" ;
+    warrant:hasName "Estimator (L) → Position fixing (L)" ;
+    davom:dependencySource plt:EstimatorL ;
+    davom:dependencyTarget plt:PositionFixingL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+# Vessel F: position fixing
+plt:DEP06_GNSSF_EstimatorF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-06" ;
+    warrant:hasName "GNSS receiver (F) → Estimator (F)" ;
+    davom:dependencySource plt:GNSSReceiverF ;
+    davom:dependencyTarget plt:EstimatorF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.7"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+plt:DEP07_HeadingF_EstimatorF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-07" ;
+    warrant:hasName "Heading sensor (F) → Estimator (F)" ;
+    davom:dependencySource plt:HeadingSensorF ;
+    davom:dependencyTarget plt:EstimatorF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.3"^^xsd:decimal ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP08_EstimatorF_PositionFixingF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-08" ;
+    warrant:hasName "Estimator (F) → Position fixing (F)" ;
+    davom:dependencySource plt:EstimatorF ;
+    davom:dependencyTarget plt:PositionFixingF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+plt:DEP09_EstimatorF_PlatooningControllerF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-09" ;
+    warrant:hasName "Estimator (F) → Platooning controller (F)" ;
+    davom:dependencySource plt:EstimatorF ;
+    davom:dependencyTarget plt:PlatooningControllerF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.5"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+# Vessel F: actuation and feedback
+plt:DEP10_RudderFeedbackF_PlatooningControllerF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-10" ;
+    warrant:hasName "Rudder feedback (F) → Platooning controller (F)" ;
+    davom:dependencySource plt:RudderFeedbackF ;
+    davom:dependencyTarget plt:PlatooningControllerF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP11_PropulsionFeedbackF_PlatooningControllerF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-11" ;
+    warrant:hasName "Propulsion feedback (F) → Platooning controller (F)" ;
+    davom:dependencySource plt:PropulsionFeedbackF ;
+    davom:dependencyTarget plt:PlatooningControllerF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP12_PlatooningControllerF_GapKeepingF a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-12" ;
+    warrant:hasName "Platooning controller (F) → Gap keeping (F)" ;
+    warrant:hasDescription "Cross-vessel chain, step 4." ;
+    davom:dependencySource plt:PlatooningControllerF ;
+    davom:dependencyTarget plt:GapKeepingF ;
+    davom:hasDependencyType davom:FUNCTIONAL ;
+    davom:hasDependencyWeight "0.6"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+plt:DEP13_PlatooningControllerF_TrackKeepingF a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-13" ;
+    warrant:hasName "Platooning controller (F) → Track keeping (F)" ;
+    warrant:hasDescription "Cross-vessel chain, step 4." ;
+    davom:dependencySource plt:PlatooningControllerF ;
+    davom:dependencyTarget plt:TrackKeepingF ;
+    davom:hasDependencyType davom:FUNCTIONAL ;
+    davom:hasDependencyWeight "0.6"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+plt:DEP14_PlatooningControllerF_RudderActuatorF a davom:ControlDependency ;
+    warrant:hasIdentifier "DEP-14" ;
+    warrant:hasName "Platooning controller (F) → Rudder actuator (F) (rudder command)" ;
+    davom:dependencySource plt:PlatooningControllerF ;
+    davom:dependencyTarget plt:RudderActuatorF ;
+    davom:hasDependencyType davom:CONTROL ;
+    davom:hasCriticality "High" .
+
+plt:DEP15_PlatooningControllerF_PropulsionF a davom:ControlDependency ;
+    warrant:hasIdentifier "DEP-15" ;
+    warrant:hasName "Platooning controller (F) → Propulsion (F) (engine command)" ;
+    davom:dependencySource plt:PlatooningControllerF ;
+    davom:dependencyTarget plt:PropulsionF ;
+    davom:hasDependencyType davom:CONTROL ;
+    davom:hasCriticality "High" .
+
+plt:DEP16_RudderActuatorF_TrackKeepingF a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-16" ;
+    warrant:hasName "Rudder actuator (F) → Track keeping (F)" ;
+    davom:dependencySource plt:RudderActuatorF ;
+    davom:dependencyTarget plt:TrackKeepingF ;
+    davom:hasDependencyType davom:FUNCTIONAL , davom:PHYSICAL ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+plt:DEP17_PropulsionF_GapKeepingF a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-17" ;
+    warrant:hasName "Propulsion (F) → Gap keeping (F)" ;
+    davom:dependencySource plt:PropulsionF ;
+    davom:dependencyTarget plt:GapKeepingF ;
+    davom:hasDependencyType davom:FUNCTIONAL , davom:PHYSICAL ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+# Vessel L: route autopilot sub-case
+plt:DEP18_EstimatorL_RouteAutopilotL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-18" ;
+    warrant:hasName "Estimator (L) → Route autopilot (L)" ;
+    davom:dependencySource plt:EstimatorL ;
+    davom:dependencyTarget plt:RouteAutopilotL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+plt:DEP19_RudderFeedbackL_RouteAutopilotL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-19" ;
+    warrant:hasName "Rudder feedback (L) → Route autopilot (L)" ;
+    davom:dependencySource plt:RudderFeedbackL ;
+    davom:dependencyTarget plt:RouteAutopilotL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP20_PropulsionFeedbackL_RouteAutopilotL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-20" ;
+    warrant:hasName "Propulsion feedback (L) → Route autopilot (L)" ;
+    davom:dependencySource plt:PropulsionFeedbackL ;
+    davom:dependencyTarget plt:RouteAutopilotL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasCriticality "Medium" .
+
+plt:DEP21_RouteAutopilotL_RudderActuatorL a davom:ControlDependency ;
+    warrant:hasIdentifier "DEP-21" ;
+    warrant:hasName "Route autopilot (L) → Rudder actuator (L)" ;
+    davom:dependencySource plt:RouteAutopilotL ;
+    davom:dependencyTarget plt:RudderActuatorL ;
+    davom:hasDependencyType davom:CONTROL ;
+    davom:hasCriticality "High" .
+
+plt:DEP22_RouteAutopilotL_PropulsionL a davom:ControlDependency ;
+    warrant:hasIdentifier "DEP-22" ;
+    warrant:hasName "Route autopilot (L) → Propulsion (L)" ;
+    davom:dependencySource plt:RouteAutopilotL ;
+    davom:dependencyTarget plt:PropulsionL ;
+    davom:hasDependencyType davom:CONTROL ;
+    davom:hasCriticality "High" .
+
+plt:DEP23_RouteAutopilotL_TrackKeepingL a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-23" ;
+    warrant:hasName "Route autopilot (L) → Track keeping (L)" ;
+    davom:dependencySource plt:RouteAutopilotL ;
+    davom:dependencyTarget plt:TrackKeepingL ;
+    davom:hasDependencyType davom:FUNCTIONAL ;
+    davom:hasDependencyWeight "0.6"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+plt:DEP24_RudderActuatorL_TrackKeepingL a davom:FunctionalDependency ;
+    warrant:hasIdentifier "DEP-24" ;
+    warrant:hasName "Rudder actuator (L) → Track keeping (L)" ;
+    davom:dependencySource plt:RudderActuatorL ;
+    davom:dependencyTarget plt:TrackKeepingL ;
+    davom:hasDependencyType davom:FUNCTIONAL , davom:PHYSICAL ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
+    davom:hasCriticality "High" .
+
+# Remote operator supervision
+plt:DEP25_RemoteOperator_PlatoonSystem a davom:HumanSupervisionDependency ;
+    warrant:hasIdentifier "DEP-25" ;
+    warrant:hasName "Remote operator → Platoon (supervision and authorisation)" ;
+    davom:dependencySource plt:RemoteOperatorRole ;
+    davom:dependencyTarget plt:PlatoonSystem ;
+    davom:hasDependencyType davom:CONTROL ;
+    davom:hasCriticality "Medium" .
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# OBSERVATION (minimal, declared with the structure)
+# The VesselFunction shape requires every function to be monitored, so the
+# three function-level metrics are declared here. Their observers, monitors
+# and the remaining metrics follow in the observation section.
+# ══════════════════════════════════════════════════════════════════════════
+
+plt:FixAgeMetricL a obs:DataQualityMetric ;
+    warrant:hasName "Fix age (Vessel L)" ;
+    warrant:hasDescription "Time since the last changed GNSS fix of the leader." ;
+    obs:hasUnit "s" .
+
+plt:FixAgeMetricF a obs:DataQualityMetric ;
+    warrant:hasName "Fix age (Vessel F)" ;
+    warrant:hasDescription "Time since the last changed GNSS fix of the follower." ;
+    obs:hasUnit "s" .
+
+plt:GapErrorMetric a obs:PerformanceMetric ;
+    warrant:hasName "Gap error" ;
+    warrant:hasDescription "Deviation of the follower's along-track distance to the leader from the gap setpoint." ;
+    obs:hasUnit "m" .
+
+plt:TrackErrorMetricF a obs:PerformanceMetric ;
+    warrant:hasName "Track error (Vessel F)" ;
+    warrant:hasDescription "Cross-track error of the follower relative to the leader's track." ;
+    obs:hasUnit "m" .
+
+plt:TrackErrorMetricL a obs:PerformanceMetric ;
+    warrant:hasName "Track error (Vessel L, route autopilot)" ;
+    warrant:hasDescription "Cross-track error of the leader relative to its planned route (sub-case)." ;
+    obs:hasUnit "m" .
+
+plt:GNSSReceiverL obs:hasDependabilityMetric plt:FixAgeMetricL .
+plt:GNSSReceiverF obs:hasDependabilityMetric plt:FixAgeMetricF .
+plt:GapKeepingF   obs:hasDependabilityMetric plt:GapErrorMetric .
+plt:TrackKeepingF obs:hasDependabilityMetric plt:TrackErrorMetricF .
+plt:TrackKeepingL obs:hasDependabilityMetric plt:TrackErrorMetricL .
+
+##############################################################################
+# END example-platoon.ttl
+##############################################################################
