@@ -269,10 +269,10 @@ cdm:FailureMode a owl:Class ;
 ##############################################################################
 
 cdm:hasDeviationType a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw ) ] ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:FailureMode ) ] ;
     rdfs:range cdm:DeviationType ;
     rdfs:label "has deviation type"@en ;
-    rdfs:comment "Tags a Deviation individual (or a ProcessModelFlaw, whose divergence from reality is itself a guideword-typed condition, typically WRONG or LATE) with a HAZOP guideword from the cdm:DeviationType controlled vocabulary."@en .
+    rdfs:comment "Tags a Deviation individual (or a ProcessModelFlaw, whose divergence from reality is itself a guideword-typed condition, typically WRONG or LATE) with a HAZOP guideword from the cdm:DeviationType controlled vocabulary. On a FailureMode it is the design-time HAZOP guideword of the deviation that failure mode produces: design-time hazard analysis types the failure mode, and a cdm:Deviation individual is created only when a DetectionEvent detects it (cdm:producesDeviation links it back to the failure mode)."@en .
 
 cdm:hasHazardClass a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:ThreatScenario cdm:Risk cdm:FailureMode ) ] ;
@@ -305,9 +305,9 @@ cdm:exploits a owl:ObjectProperty ;
 
 cdm:affectsComponent a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:FailureMode cdm:Vulnerability ) ] ;
-    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:Subsystem ) ] ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:Subsystem davom:CommunicationLink ) ] ;
     rdfs:label "affects component"@en ;
-    rdfs:comment "Links a FailureMode or Vulnerability to the element(s) it degrades, puts out of service, or exposes. Normally a Component and its subclasses (SensorComponent, SoftwareComponent, etc.); a System or Subsystem is admissible where the failure mode is analysed at that level, as in a software system whose data output goes stale."@en .
+    rdfs:comment "Links a FailureMode or Vulnerability to the element(s) it degrades, puts out of service, or exposes. Normally a Component and its subclasses (SensorComponent, SoftwareComponent, etc.); a System or Subsystem is admissible where the failure mode is analysed at that level, as in a software system whose data output goes stale; a CommunicationLink where the failure mode is a link failure (dropout, congestion)."@en .
 
 cdm:producesDeviation a owl:ObjectProperty ;
     rdfs:domain cdm:FailureMode ;
@@ -316,10 +316,10 @@ cdm:producesDeviation a owl:ObjectProperty ;
     rdfs:comment "Links a FailureMode to the Deviation(s) it generates, connecting FMEA failure mode analysis to the HAZOP/STPA causal chain."@en .
 
 cdm:mayCause a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:UnsafeControlAction ) ] ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:ProcessModelFlaw cdm:UnsafeControlAction cdm:FailureMode ) ] ;
     rdfs:range [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction cdm:ProcessModelFlaw ) ] ;
     rdfs:label "may cause"@en ;
-    rdfs:comment "Causal propagation within the CDM chain. A deviation or an unsafe input may also cause a ProcessModelFlaw, which is the STPA path by which a wrong or falsified input corrupts the controller's model of the process before any unsafe control action is issued. The link from a Deviation, Hazard, or UnsafeControlAction to an assr:AssuranceDegradation is expressed by assr:causesAssuranceDegradation (declared in warrant-assurance, which imports this module), not by this property."@en .
+    rdfs:comment "Causal propagation within the CDM chain. A FailureMode is admissible as the source in design-time analysis, standing for the deviation it produces. A deviation or an unsafe input may also cause a ProcessModelFlaw, which is the STPA path by which a wrong or falsified input corrupts the controller's model of the process before any unsafe control action is issued. The link from a Deviation, Hazard, or UnsafeControlAction to an assr:AssuranceDegradation is expressed by assr:causesAssuranceDegradation (declared in warrant-assurance, which imports this module), not by this property."@en .
 
 cdm:mayLeadTo a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:UnsafeControlAction ) ] ;
@@ -342,6 +342,18 @@ cdm:prevents a owl:ObjectProperty ;
     rdfs:range cdm:Hazard ;
     rdfs:label "prevents"@en .
 
+cdm:constrains a owl:ObjectProperty ;
+    rdfs:domain cdm:SafetyConstraint ;
+    rdfs:range cdm:UnsafeControlAction ;
+    rdfs:label "constrains"@en ;
+    rdfs:comment "The unsafe control action a safety constraint rules out (STPA: each safety constraint is derived from one or more UCAs)."@en .
+
+cdm:enforces a owl:ObjectProperty ;
+    rdfs:domain cdm:Control ;
+    rdfs:range cdm:SafetyConstraint ;
+    rdfs:label "enforces"@en ;
+    rdfs:comment "The safety constraint a control implements or helps enforce."@en .
+
 cdm:issues a owl:ObjectProperty ;
     rdfs:domain cdm:Controller ;
     rdfs:range davom:ControlAction ;
@@ -363,7 +375,7 @@ cdm:updates a owl:ObjectProperty ;
     rdfs:label "updates"@en .
 
 cdm:degrades a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:Deviation cdm:ThreatScenario cdm:Vulnerability ) ] ;
+    rdfs:domain [ owl:unionOf ( cdm:Hazard cdm:Deviation cdm:ThreatScenario cdm:Vulnerability cdm:FailureMode ) ] ;
     rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction davom:DataFlow davom:CommunicationLink davom:SecurityZone ) ] ;
     rdfs:label "degrades"@en ;
     rdfs:comment "Links a hazard, deviation, threat scenario, or vulnerability to the assets it degrades or exposes: components, systems, functions, data flows, communication links (including conduits), or security zones."@en .

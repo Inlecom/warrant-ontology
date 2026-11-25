@@ -73,12 +73,13 @@ scen:DeviationTrigger a owl:Class ; rdfs:subClassOf scen:ScenarioTrigger ; rdfs:
 
 scen:hasTrigger a owl:ObjectProperty ;
     rdfs:domain scen:Scenario ;
-    rdfs:range [ owl:unionOf ( cdm:Deviation scen:Failure scen:Threat warrant:EnvironmentalCondition scen:EventTrigger ) ] ;
-    rdfs:label "has trigger"@en .
+    rdfs:range [ owl:unionOf ( cdm:Deviation cdm:FailureMode scen:Failure scen:Threat warrant:EnvironmentalCondition scen:EventTrigger ) ] ;
+    rdfs:label "has trigger"@en ;
+    rdfs:comment "What starts the scenario. A cdm:FailureMode is the design-time trigger of an injected fault, typed by its HAZOP guideword; a cdm:Deviation is used when the scenario replays a detected deviation."@en .
 
 scen:affects a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( scen:Scenario cdm:Deviation cdm:Hazard ) ] ;
-    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction ) ] ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:VesselFunction davom:CommunicationLink ) ] ;
     rdfs:label "affects"@en .
 
 scen:causes a owl:ObjectProperty ;

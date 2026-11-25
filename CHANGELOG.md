@@ -4,6 +4,34 @@ All notable changes to this repository are documented here.
 
 ---
 
+## [Unreleased] — Gaps found while modelling the platoon example
+
+Additive changes found while building `examples/example-platoon.ttl`. They add new terms, widen
+domains or ranges, and correct comments; no term is removed or renamed, and `owl:versionInfo`
+stays `0.10-poc`. Data valid under 0.10-poc stays valid.
+
+### Added
+- `davom:spansVessel` (System → Vessel), for a system distributed over several vessels, such as a platoon.
+- `davom:ControlConfiguration` and `davom:ConfigurationParameter` with `davom:configuresElement`, `davom:hasParameter`, `davom:hasParameterValue`, `davom:hasParameterUnit` and `davom:hasParameterSetting`, for governed controller tunings and selectable control policies.
+- `mit:targetsConfiguration` (action or procedure → `davom:ControlConfiguration`), naming the configuration a RECONFIGURATION response switches to.
+- `obs:detectsDeviationType` (DetectionRule → DeviationType) and `obs:hasRuleThreshold` (DetectionRule → decimal), so that a detection rule can serve as a design-time health event type.
+- `cdm:constrains` (SafetyConstraint → UnsafeControlAction), `cdm:enforces` (Control → SafetyConstraint) and `assr:refinesConstraint` (Requirement → SafetyConstraint), for STPA traceability.
+- `di:weightParentNode` and `di:weightChildNode` (DIWeight → OperationalEntity), for aggregation weights declared before any index instance exists.
+- `warrant:supersedes`, linking a governed artefact to the version it replaces.
+
+### Changed — design-time HAZOP pattern
+- `cdm:hasDeviationType`, `cdm:mayCause` and `cdm:degrades` also accept a `cdm:FailureMode`; `scen:hasTrigger` and `mit:matchesRule` accept it too. Design-time HAZOP entries are failure modes carrying the guideword. `cdm:Deviation` individuals exist only through a DetectionEvent, which keeps the detection-event rule strict instead of forcing exemplar events into hazard models. Documented in the integration guide (rule 1) and in the modelling conventions.
+- `obs:indicatesCondition` and `obs:hasUnit` also accept an `obs:DetectionRule`.
+
+### Changed — ranges
+- `cdm:affectsComponent` and `scen:affects` accept a `davom:CommunicationLink`.
+- `assr:assumptionAppliesTo` accepts an `assr:Requirement`.
+
+### Fixed
+- The comments on `davom:FUNCTIONAL`, `davom:DATA` and `davom:CONTROL` described the direction consumer-first ("the source needs the target"), contrary to the `davom:Dependency` convention (source = provider). They now read provider-first, matching how every example uses them.
+
+---
+
 ## [Unreleased] — LL1 reworked around area-wide GNSS spoofing
 
 Renames `examples/example-ecdis-spoofing.ttl` to `examples/example-gnss-spoofing.ttl`

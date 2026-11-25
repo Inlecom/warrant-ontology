@@ -130,7 +130,7 @@ Every object property or subclass axiom in the Turtle sources whose domain or ra
 |---|---|---|
 | `obs:detectionEventDetects` | `obs:DetectionEvent` → `cdm:Deviation` | **The detection-event rule.** Only path to a Deviation |
 | `obs:detects` | `obs:DetectionEvent` → `cdm:Deviation` | SPARQL shortcut only |
-| `obs:indicatesCondition` | `obs:HealthEvent` → `cdm:Hazard ∪ cdm:FailureMode ∪ cdm:Deviation ∪ cdm:ThreatScenario` | Health event classified against design-time knowledge |
+| `obs:indicatesCondition` | `obs:HealthEvent ∪ obs:DetectionRule` → `cdm:Hazard ∪ cdm:FailureMode ∪ cdm:Deviation ∪ cdm:ThreatScenario` | Health event (or the rule that produces it) classified against design-time knowledge |
 | `obs:hasRootCause` | `obs:HealthEvent` → `cdm:CausalEntity ∪ obs:HealthEvent ∪ warrant:OperationalEntity` | Diagnosed root cause |
 | `obs:captures`, `obs:presents` | `davom:OperatorInterface` → observation items | HMI in/out |
 | `davom:HumanOperatorRole ⊑ obs:DataSource` | | Operator roles are data sources |
@@ -140,7 +140,7 @@ Every object property or subclass axiom in the Turtle sources whose domain or ra
 | Axiom | Domain → Range | Semantics |
 |---|---|---|
 | `cdm:propagatesOverDependencyType` | `cdm:HazardClass` → `davom:DependencyType` | Admissible propagation types per hazard class |
-| `cdm:affectsComponent` | `cdm:FailureMode ∪ cdm:Vulnerability` → `davom:Component` | FMEA / vulnerability anchoring |
+| `cdm:affectsComponent` | `cdm:FailureMode ∪ cdm:Vulnerability` → `davom:Component ∪ davom:System ∪ davom:Subsystem ∪ davom:CommunicationLink` | FMEA / vulnerability anchoring |
 | `cdm:degrades` | hazard / deviation / threat / vulnerability → components, systems, functions, data flows, links, zones | Affected assets |
 | `cdm:issues`, `cdm:actsOn`, `cdm:isPerformedUnder` | STPA loop over `davom:ControlAction` and `warrant:OperationalMode` | Control structure |
 
@@ -220,6 +220,8 @@ These constraints are **non-negotiable** across all modules. Violation breaks th
 
 ### 1. The Detection Event Rule
 > A `Deviation` **must** be created via `detectionEventDetects` from a `DetectionEvent`. Direct assertion of `Deviation` individuals without a `DetectionEvent` is prohibited. `DetectionEvent` is the `HealthEvent` that identifies a deviation; a `PredictedConditionEvent` anticipates a condition and is not subject to this rule.
+>
+> Design-time hazard analysis does not create `Deviation` individuals. A HAZOP entry is a `cdm:FailureMode` carrying the guideword (`cdm:hasDeviationType`), the elements it affects (`cdm:affectsComponent`, `cdm:degrades`) and its causal links (`cdm:mayCause`); scenarios trigger on it (`scen:hasTrigger`) and the response library matches it (`mit:matchesRule`). The health event type that detects it is an `obs:DetectionRule` with `obs:detectsDeviationType` and `obs:indicatesCondition`. At runtime the `DetectionEvent` creates the `Deviation`, which `cdm:producesDeviation` ties back to the failure mode.
 
 ### 2. Operational States Are Closed
 > `DependabilityIndexState` (label "Operational State") has exactly five named individuals: `NormalState`, `DegradedState`, `CriticalState`, `FailedState`, `UnsafeState`, totally ordered by severity. Subclassing it is prohibited. New states require formal ontology revision.

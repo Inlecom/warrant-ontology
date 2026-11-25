@@ -132,7 +132,7 @@ di:DIWeight a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:CalculationEntity ;
     rdfs:label "DI Aggregation Weight"@en ;
-    rdfs:comment "The reified hierarchical aggregation weight γ_p,i^{m(t)} of child index i (di:weightChild) within parent index p (di:weightParent): DI_p = Σ_{i ∈ ch(p)} γ_p,i·DI_i, with the weights of one parent under one context non-negative and summing to one. Mode-dependent controlled configuration: warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy. Reified so that the same child may carry different weights under different parents or modes."@en .
+    rdfs:comment "The reified hierarchical aggregation weight γ_p,i^{m(t)} of child index i (di:weightChild) within parent index p (di:weightParent): DI_p = Σ_{i ∈ ch(p)} γ_p,i·DI_i, with the weights of one parent under one context non-negative and summing to one. Mode-dependent controlled configuration: warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy. Reified so that the same child may carry different weights under different parents or modes. At design time, before any index instance exists, the aggregation structure is stated on the nodes with di:weightParentNode and di:weightChildNode; a runtime index then takes the weight of its node."@en .
 
 di:DICalculationMethod a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
@@ -323,6 +323,18 @@ di:weightParent a owl:ObjectProperty ;
     rdfs:range [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
     rdfs:label "weight parent"@en ;
     rdfs:comment "The parent index p whose aggregation this weight belongs to."@en .
+
+di:weightParentNode a owl:ObjectProperty ;
+    rdfs:domain di:DIWeight ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "weight parent node"@en ;
+    rdfs:comment "Design-time form of di:weightParent: the node (system, function, vessel) whose index aggregates the child's."@en .
+
+di:weightChildNode a owl:ObjectProperty ;
+    rdfs:domain di:DIWeight ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "weight child node"@en ;
+    rdfs:comment "Design-time form of di:weightChild: the node whose index contributes to the parent's with this weight."@en .
 
 di:weightChild a owl:ObjectProperty ;
     rdfs:domain di:DIWeight ;

@@ -146,7 +146,8 @@ obs:COMPONENT_LEVEL a obs:MonitoringLevel ; rdfs:label "COMPONENT_LEVEL"@en ; rd
 obs:FUNCTION_LEVEL  a obs:MonitoringLevel ; rdfs:label "FUNCTION_LEVEL"@en ;  rdfs:comment "Monitor responsible for a VesselFunction."@en .
 obs:SYSTEM_LEVEL    a obs:MonitoringLevel ; rdfs:label "SYSTEM_LEVEL"@en ;    rdfs:comment "Monitor responsible for a System, the Vessel, or a system of systems."@en .
 
-obs:DetectionRule    a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Detection Rule"@en .
+obs:DetectionRule    a owl:Class ; rdfs:subClassOf obs:EvidenceEntity ; rdfs:label "Detection Rule"@en ;
+    rdfs:comment "A design-time health event type: the check that, when it fires, produces a DetectionEvent. It names the guideword it detects (obs:detectsDeviationType), the condition it is classified under (obs:indicatesCondition), and its limit (obs:hasRuleThreshold, obs:hasUnit). The limit is governed configuration (warrant:hasVersion, warrant:hasApprovalStatus); evaluating the rule is external."@en .
 
 obs:HumanObservation a owl:Class ;
     rdfs:subClassOf obs:EvidenceEntity ;
@@ -299,7 +300,7 @@ obs:affectsAsset a owl:ObjectProperty ;
     rdfs:comment "The affected component, subsystem, function, system, link, or operational role (health-event field affectedAsset)."@en .
 
 obs:indicatesCondition a owl:ObjectProperty ;
-    rdfs:domain obs:HealthEvent ;
+    rdfs:domain [ owl:unionOf ( obs:HealthEvent obs:DetectionRule ) ] ;
     rdfs:range [ owl:unionOf ( cdm:Hazard cdm:FailureMode cdm:Deviation cdm:ThreatScenario ) ] ;
     rdfs:label "indicates condition"@en ;
     rdfs:comment "The condition or hazard class the event has been classified against in the design-time knowledge (health-event field condition). For a DetectionEvent the detected Deviation is asserted with obs:detectionEventDetects; this property may additionally name the Hazard or FailureMode the event was classified under."@en .
@@ -348,8 +349,20 @@ obs:hasTimestamp a owl:DatatypeProperty ;
     rdfs:range xsd:dateTime ;
     rdfs:label "has timestamp"@en .
 
+obs:detectsDeviationType a owl:ObjectProperty ;
+    rdfs:domain obs:DetectionRule ;
+    rdfs:range cdm:DeviationType ;
+    rdfs:label "detects deviation type"@en ;
+    rdfs:comment "The HAZOP guideword of the deviations this rule detects; the DetectionEvents it produces detect Deviations of this type."@en .
+
+obs:hasRuleThreshold a owl:DatatypeProperty ;
+    rdfs:domain obs:DetectionRule ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has rule threshold"@en ;
+    rdfs:comment "The limit at which the rule fires, in the unit given by obs:hasUnit. Governed configuration; how the limit is compared is described by the rule and evaluated externally."@en .
+
 obs:hasUnit a owl:DatatypeProperty ;
-    rdfs:domain [ owl:unionOf ( obs:Measurement obs:Metric ) ] ;
+    rdfs:domain [ owl:unionOf ( obs:Measurement obs:Metric obs:DetectionRule ) ] ;
     rdfs:range xsd:string ;
     rdfs:label "has unit"@en ;
     rdfs:comment "Unit of measurement as a string. Future alignment: obs:hasUnit ≈ qudt:unit."@en .

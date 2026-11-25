@@ -182,9 +182,9 @@ davom:DependencyType a owl:Class ;
     rdfs:label "Dependency Type"@en ;
     rdfs:comment "Closed controlled vocabulary of the five canonical dependency types over which risk propagates: functional, data, control, physical, cyber. Each hazard class is associated at design time with the admissible subset of these types (cdm:propagatesOverDependencyType), and typed risk propagation follows only dependencies of an admissible type. Adding a value requires ontology revision."@en .
 
-davom:FUNCTIONAL a davom:DependencyType ; rdfs:label "FUNCTIONAL"@en ; rdfs:comment "The source needs the target to deliver its function. Effects normally propagate from provider to consumer."@en .
-davom:DATA       a davom:DependencyType ; rdfs:label "DATA"@en ;       rdfs:comment "The source consumes a data product of the target. Effects normally propagate from provider to consumer."@en .
-davom:CONTROL    a davom:DependencyType ; rdfs:label "CONTROL"@en ;    rdfs:comment "The source is commanded, supervised, or authorised by the target."@en .
+davom:FUNCTIONAL a davom:DependencyType ; rdfs:label "FUNCTIONAL"@en ; rdfs:comment "The target needs the source to deliver its function. Effects propagate from source (provider) to target (consumer)."@en .
+davom:DATA       a davom:DependencyType ; rdfs:label "DATA"@en ;       rdfs:comment "The target consumes a data product of the source. Effects propagate from source (provider) to target (consumer)."@en .
+davom:CONTROL    a davom:DependencyType ; rdfs:label "CONTROL"@en ;    rdfs:comment "The target is commanded, supervised, or authorised by the source (a controller and the actuator it commands; a human role and the system it supervises). Effects propagate from source to target."@en .
 davom:PHYSICAL   a davom:DependencyType ; rdfs:label "PHYSICAL"@en ;   rdfs:comment "Mechanical, thermal, electrical, or spatial coupling. May be directed or symmetric depending on the mechanism."@en .
 davom:CYBER      a davom:DependencyType ; rdfs:label "CYBER"@en ;      rdfs:comment "Access, trust, or network reachability. May be bidirectional where the conduit permits reverse access, control, or trust exploitation; not assumed bidirectional in every case (see davom:isBidirectional)."@en .
 
@@ -217,6 +217,49 @@ davom:hasComponent a owl:ObjectProperty ;
     rdfs:range davom:Component ;
     rdfs:label "has component"@en ;
     rdfs:comment "Component membership. A System may hold components directly where no subsystem decomposition is modelled, or through a Subsystem where it is; both are valid and the Living Lab inventories use both."@en .
+
+davom:spansVessel a owl:ObjectProperty ;
+    rdfs:domain davom:System ;
+    rdfs:range davom:Vessel ;
+    rdfs:label "spans vessel"@en ;
+    rdfs:comment "Names each vessel a distributed system extends over, such as a platooning or convoy system whose components sit on several vessels. Not needed for a system on one vessel, which is reached from the vessel through its functions (davom:hasFunction, davom:isSupportedBy)."@en .
+
+davom:ControlConfiguration a owl:Class ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Control Configuration"@en ;
+    rdfs:comment "A governed, versioned parameter set of a controller or other configurable element: for example a controller tuning (conservative, balanced, aggressive) or a selectable control policy such as a safety-distance logic level. Carries warrant:appliesUnder, warrant:hasVersion, warrant:hasApprovalStatus and warrant:approvedBy like any governed artefact. A RECONFIGURATION response names the configuration it switches to with mit:targetsConfiguration. The control law itself stays outside the KG."@en .
+
+davom:ConfigurationParameter a owl:Class ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Configuration Parameter"@en ;
+    rdfs:comment "One named parameter of a davom:ControlConfiguration, with either a numeric value (davom:hasParameterValue, unit in davom:hasParameterUnit) or a categorical setting (davom:hasParameterSetting)."@en .
+
+davom:configuresElement a owl:ObjectProperty ;
+    rdfs:domain davom:ControlConfiguration ;
+    rdfs:range [ owl:unionOf ( davom:Component davom:System davom:Subsystem ) ] ;
+    rdfs:label "configures element"@en ;
+    rdfs:comment "The component, system or subsystem the configuration applies to."@en .
+
+davom:hasParameter a owl:ObjectProperty ;
+    rdfs:domain davom:ControlConfiguration ;
+    rdfs:range davom:ConfigurationParameter ;
+    rdfs:label "has parameter"@en .
+
+davom:hasParameterValue a owl:DatatypeProperty ;
+    rdfs:domain davom:ConfigurationParameter ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "has parameter value"@en .
+
+davom:hasParameterUnit a owl:DatatypeProperty ;
+    rdfs:domain davom:ConfigurationParameter ;
+    rdfs:range xsd:string ;
+    rdfs:label "has parameter unit"@en .
+
+davom:hasParameterSetting a owl:DatatypeProperty ;
+    rdfs:domain davom:ConfigurationParameter ;
+    rdfs:range xsd:string ;
+    rdfs:label "has parameter setting"@en ;
+    rdfs:comment "Categorical value of a parameter, e.g. FIXED, ELASTIC_MARGIN or OPTIMISED for a safety-distance logic level."@en .
 
 davom:dependsOn a owl:ObjectProperty ;
     rdfs:domain warrant:OperationalEntity ;

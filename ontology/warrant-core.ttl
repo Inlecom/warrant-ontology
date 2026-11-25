@@ -229,6 +229,12 @@ warrant:hasApprovalStatus a owl:DatatypeProperty ;
     rdfs:label "has approval status"@en ;
     rdfs:comment "Governance status of a configuration artefact, e.g. PROPOSED, APPROVED, SUPERSEDED. Operational learning may propose a change (PROPOSED); it enters the operational baseline only when APPROVED."@en .
 
+warrant:supersedes a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range owl:Thing ;
+    rdfs:label "supersedes"@en ;
+    rdfs:comment "Links a version of a governed configuration artefact (threshold set, weight, floor, approved control, claim wording, configuration) to the earlier version it replaces. The newer version points at the older one; each keeps its own warrant:hasVersion and warrant:hasApprovalStatus, and the older one becomes SUPERSEDED only once the newer one is APPROVED. A PROPOSED version that supersedes the baseline does not displace it until approved."@en .
+
 ##############################################################################
 # END warrant-core.ttl
 ##############################################################################

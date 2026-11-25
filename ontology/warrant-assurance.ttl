@@ -317,9 +317,15 @@ assr:hasObligationStatus a owl:ObjectProperty ;
 
 assr:assumptionAppliesTo a owl:ObjectProperty ;
     rdfs:domain assr:Assumption ;
-    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:CausalEntity assr:AssuranceClaim warrant:ContextEntity ) ] ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:CausalEntity assr:AssuranceClaim assr:Requirement warrant:ContextEntity ) ] ;
     rdfs:label "assumption applies to"@en ;
-    rdfs:comment "The element, hazard analysis artefact, claim, or context the assumption underpins."@en .
+    rdfs:comment "The element, hazard analysis artefact, claim, requirement, or context the assumption underpins. On a requirement it typically carries an assumed value the requirement refers to."@en .
+
+assr:refinesConstraint a owl:ObjectProperty ;
+    rdfs:domain assr:Requirement ;
+    rdfs:range cdm:SafetyConstraint ;
+    rdfs:label "refines constraint"@en ;
+    rdfs:comment "The STPA safety constraint a requirement makes verifiable."@en .
 
 assr:isChallengedBy a owl:ObjectProperty ;
     rdfs:domain assr:Assumption ;

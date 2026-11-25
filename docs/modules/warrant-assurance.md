@@ -97,12 +97,12 @@ container.
 | `assr:STALE` | STALE | Fulfilling evidence exists but is outside its validity period. |
 | `assr:UNTRACEABLE` | UNTRACEABLE | Fulfilling evidence exists but its source or provenance cannot be traced. |
 
-## Object properties (33)
+## Object properties (34)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
 | `assr:addressesRequirement` | `assr:AssuranceClaim` | `assr:Requirement` | The requirement this claim argues is satisfied. Second link of the chain Evidence → AssuranceClaim → Requirement. |
-| `assr:assumptionAppliesTo` | `assr:Assumption` | `warrant:OperationalEntity` ∪ `cdm:CausalEntity` ∪ `assr:AssuranceClaim` ∪ `warrant:ContextEntity` | The element, hazard analysis artefact, claim, or context the assumption underpins. |
+| `assr:assumptionAppliesTo` | `assr:Assumption` | `warrant:OperationalEntity` ∪ `cdm:CausalEntity` ∪ `assr:AssuranceClaim` ∪ `assr:Requirement` ∪ `warrant:ContextEntity` | The element, hazard analysis artefact, claim, requirement, or context the assumption underpins. On a requirement it typically carries an assumed value the requirement refers to. |
 | `assr:caseAppliesTo` | `assr:LivingDependabilityCase` | `warrant:OperationalEntity` | The vessel or system of systems this Living Dependability Case is maintained for. |
 | `assr:causesAssuranceDegradation` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `cdm:UnsafeControlAction` | `assr:AssuranceDegradation` | causes assurance degradation |
 | `assr:challengesClaim` | `assr:Evidence` ∪ `obs:HealthEvent` ∪ `assr:Assumption` | `assr:AssuranceClaim` | An evidence item, a health event (e.g. GNSS spoofing detected), or a changed/invalidated assumption challenges a previously supported claim, prompting its re-evaluation. |
@@ -128,6 +128,7 @@ container.
 | `assr:includesRequirement` | `assr:LivingDependabilityCase` | `assr:Requirement` | includes requirement |
 | `assr:isChallengedBy` | `assr:Assumption` | `obs:HealthEvent` ∪ `assr:Evidence` | The health event or evidence that indicates the assumption may no longer hold. This is how an assumption's invalidation becomes a monitored condition. |
 | `assr:isFulfilledBy` | `assr:EvidenceObligation` | `assr:Evidence` | The evidence item(s) currently satisfying this obligation. |
+| `assr:refinesConstraint` | `assr:Requirement` | `cdm:SafetyConstraint` | The STPA safety constraint a requirement makes verifiable. |
 | `assr:relatesToRequirement` | `assr:Nonconformity` | `assr:Requirement` | relates to requirement |
 | `assr:supportsClaim` | `assr:Evidence` | `assr:AssuranceClaim` | First link of the chain Evidence → AssuranceClaim → Requirement: this evidence item supports the claim. |
 | `assr:updatesAssuranceScore` | `assr:AssuranceDegradation` ∪ `assr:CalculationInput` | `assr:AssuranceScore` | updates assurance score |

@@ -151,7 +151,14 @@ ll4:GNSSSignalLossDeviation a cdm:UnavailableDeviation .  # DO NOT USE
 - A `cdm:Risk` carries likelihood and the impact triple (`hasSafetyImpact`, `hasEnvironmentalImpact`, `hasFinancialImpact`); `hasImpact` is the governing maximum.
 - A design-time safeguard is a `cdm:Control` that `mitigates` a hazard/threat/failure mode and `hasResidualRisk`. The runtime action that relies on it is a `mit:MitigationAction` with `mit:implementsControl`.
 - Every `davom:Dependency` carries `davom:hasDependencyType`; `dependencySource` is the provider (upstream), `dependencyTarget` the consumer (downstream).
-- Assumptions and scope statements are `assr:Assumption` individuals so that their invalidation can be monitored (`assr:isChallengedBy`).
+- Assumptions and scope statements are `assr:Assumption` individuals so that their invalidation can be monitored (`assr:isChallengedBy`). An assumption may carry the assumed value a requirement refers to (`assr:assumptionAppliesTo` a `assr:Requirement`).
+- HAZOP deviations are design-time `cdm:FailureMode`s with `cdm:hasDeviationType`, never `cdm:Deviation` individuals: a Deviation exists only once a `DetectionEvent` detects it. Causal links (`cdm:mayCause`), affected assets (`cdm:affectsComponent`, `cdm:degrades`), scenario triggers (`scen:hasTrigger`) and rule matching (`mit:matchesRule`) all accept the failure mode.
+- A health event type is an `obs:DetectionRule` with `obs:detectsDeviationType`, `obs:indicatesCondition` (the failure mode or hazard), and a governed limit `obs:hasRuleThreshold` with `obs:hasUnit`.
+- STPA traceability: `cdm:SafetyConstraint` `cdm:prevents` a hazard and `cdm:constrains` the UCA it rules out; a `cdm:Control` `cdm:enforces` the constraint; an `assr:Requirement` `assr:refinesConstraint` it.
+- A system distributed over several vessels (platoon, convoy) names them with `davom:spansVessel`.
+- Controller tunings and selectable control policies are governed `davom:ControlConfiguration`s (`davom:configuresElement`, `davom:hasParameter`); a RECONFIGURATION response names its target with `mit:targetsConfiguration`.
+- A new version of a governed artefact `warrant:supersedes` the one it replaces; it displaces the baseline only once APPROVED.
+- Aggregation weights can be declared before any index exists: a `di:DIWeight` with `di:weightParentNode` and `di:weightChildNode`.
 
 ---
 
