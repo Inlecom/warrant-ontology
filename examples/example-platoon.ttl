@@ -1621,6 +1621,131 @@ plt:PlatoonLDC a assr:LivingDependabilityCase ;
     assr:includesClaim plt:CLM_PLT_01_GapKeeping , plt:CLM_PLT_02_TrackKeeping , plt:CLM_PLT_03_FaultyInputsDetected , plt:CLM_PLT_04_ActuatorFaultsDetected ;
     assr:includesAssumption plt:ASM_PLT_01_GapBounds , plt:ASM_PLT_02_TrackTolerance , plt:ASM_PLT_03_LeaderStateAge , plt:ASM_PLT_04_GNSSOutageProfile .
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GOVERNED CONFIGURATION PER OPERATIONAL CONTEXT
+# Everything the external computation reads that a person must approve:
+# attribute weights α, propagation parameters ρ and ε per hazard class, REDS
+# weights λ and η, and the assurance-level weights. Thresholds and supervision
+# configurations (floors) are in the DI section above. All values are
+# illustrative. The bridge-passage decision configuration also carries a
+# PROPOSED revision, to show that a change from operational learning stays out
+# of the baseline until it is approved.
+# CYBER_THREAT has no parameters: the platoon analysis contains no cyber
+# hazard.
+# Two further governed settings have no ontology class to live in: the
+# follower controller tuning (one parameter each for the heading and gap
+# loops) and the safety-distance logic level (fixed, elastic margin,
+# optimised). Both appear as response options in the mitigation section; a
+# switch between them is a RECONFIGURATION.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# — Attribute weights α per node and context (each node's weights sum to 1).
+#   Track keeping on L has a single modelled attribute, so its weight is 1.
+plt:W_Open_GapKeepingSafety         a assr:AssuranceWeight ; assr:hasWeightValue "0.60"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Open_GapKeepingAvailability   a assr:AssuranceWeight ; assr:hasWeightValue "0.40"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Open_TrackKeepingFSafety      a assr:AssuranceWeight ; assr:hasWeightValue "0.60"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Open_TrackKeepingFAvailability a assr:AssuranceWeight ; assr:hasWeightValue "0.40"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Open_TrackKeepingLSafety      a assr:AssuranceWeight ; assr:hasWeightValue "1.00"^^xsd:decimal ; warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:W_Bridge_GapKeepingSafety         a assr:AssuranceWeight ; assr:hasWeightValue "0.75"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Bridge_GapKeepingAvailability   a assr:AssuranceWeight ; assr:hasWeightValue "0.25"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Bridge_TrackKeepingFSafety      a assr:AssuranceWeight ; assr:hasWeightValue "0.75"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Bridge_TrackKeepingFAvailability a assr:AssuranceWeight ; assr:hasWeightValue "0.25"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+plt:W_Bridge_TrackKeepingLSafety      a assr:AssuranceWeight ; assr:hasWeightValue "1.00"^^xsd:decimal ; warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:GapKeepingSafetyAttribute          assr:hasWeight plt:W_Open_GapKeepingSafety , plt:W_Bridge_GapKeepingSafety .
+plt:GapKeepingAvailabilityAttribute    assr:hasWeight plt:W_Open_GapKeepingAvailability , plt:W_Bridge_GapKeepingAvailability .
+plt:TrackKeepingFSafetyAttribute       assr:hasWeight plt:W_Open_TrackKeepingFSafety , plt:W_Bridge_TrackKeepingFSafety .
+plt:TrackKeepingFAvailabilityAttribute assr:hasWeight plt:W_Open_TrackKeepingFAvailability , plt:W_Bridge_TrackKeepingFAvailability .
+plt:TrackKeepingLSafetyAttribute       assr:hasWeight plt:W_Open_TrackKeepingLSafety , plt:W_Bridge_TrackKeepingLSafety .
+
+# — Calculation method and propagation parameters ρ, ε per hazard class and
+#   context. Propagation is stronger at bridge passages, where the margin to
+#   absorb an upstream fault is smaller.
+plt:RiskPropagationDIMethod a di:DICalculationMethod ;
+    warrant:hasName "Typed risk propagation and risk-adjusted DI" ;
+    warrant:hasDescription "DI_i = clip(ND_i − β_i·R_i); R_i = max_h R_i^h after damped fixed-point propagation over the dependency types admissible for each hazard class. Computed externally; inputs, weights and results are stored in the KG." ;
+    warrant:hasVersion "1.0" ;
+    di:hasAggregationOperator "MAX" .
+
+plt:RPP_Open_DataLoss a di:RiskPropagationParameter ;
+    warrant:hasName "Propagation parameters — DATA_LOSS, open waterway" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasDampingFactor "0.50"^^xsd:decimal ;
+    di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:OpenWaterwayContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:RPP_Open_PhysicalFailure a di:RiskPropagationParameter ;
+    warrant:hasName "Propagation parameters — PHYSICAL_FAILURE, open waterway" ;
+    di:forHazardClass cdm:PHYSICAL_FAILURE ;
+    di:hasDampingFactor "0.40"^^xsd:decimal ;
+    di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:OpenWaterwayContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:RPP_Bridge_DataLoss a di:RiskPropagationParameter ;
+    warrant:hasName "Propagation parameters — DATA_LOSS, bridge passage" ;
+    di:forHazardClass cdm:DATA_LOSS ;
+    di:hasDampingFactor "0.70"^^xsd:decimal ;
+    di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:BridgePassageContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:RPP_Bridge_PhysicalFailure a di:RiskPropagationParameter ;
+    warrant:hasName "Propagation parameters — PHYSICAL_FAILURE, bridge passage" ;
+    di:forHazardClass cdm:PHYSICAL_FAILURE ;
+    di:hasDampingFactor "0.60"^^xsd:decimal ;
+    di:hasConvergenceTolerance "0.001"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:BridgePassageContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+# — REDS weights λ (cost) and η (residual-exposure penalty) per context. At a
+#   bridge, disruption matters less than residual exposure.
+plt:DecisionConfig_Open a mit:DecisionConfiguration ;
+    warrant:hasName "Platoon REDS weights — open waterway" ;
+    mit:hasCostWeight "0.30"^^xsd:decimal ;
+    mit:hasPenaltyWeight "0.20"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:DecisionConfig_Bridge a mit:DecisionConfiguration ;
+    warrant:hasName "Platoon REDS weights — bridge passage" ;
+    mit:hasCostWeight "0.10"^^xsd:decimal ;
+    mit:hasPenaltyWeight "0.40"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:DecisionConfig_Bridge_v1_1 a mit:DecisionConfiguration ;
+    warrant:hasName "Platoon REDS weights — bridge passage (proposed revision)" ;
+    warrant:hasDescription "Proposed from operational learning: a higher penalty weight, so that responses which leave the follower acting on an unverified leader state rank lower. Not in the baseline: the supervisor keeps using version 1.0 until this one is approved." ;
+    mit:hasCostWeight "0.10"^^xsd:decimal ;
+    mit:hasPenaltyWeight "0.50"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ;
+    warrant:hasVersion "1.1" ; warrant:hasApprovalStatus "PROPOSED" .
+
+# — Assurance-level weights (not context-specific).
+plt:PlatoonALWeights a assr:AssuranceLevelWeightSet ;
+    warrant:hasName "Platoon Assurance Level weights" ;
+    assr:hasCompletenessWeight "0.30"^^xsd:decimal ;
+    assr:hasFreshnessWeight    "0.20"^^xsd:decimal ;
+    assr:hasQualityWeight      "0.20"^^xsd:decimal ;
+    assr:hasMonitoringWeight   "0.15"^^xsd:decimal ;
+    assr:hasTraceabilityWeight "0.15"^^xsd:decimal ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
 ##############################################################################
 # END example-platoon.ttl
 ##############################################################################
