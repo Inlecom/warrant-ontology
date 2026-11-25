@@ -104,8 +104,8 @@ plt:PositionFixingL a davom:VesselFunction ;
 
 plt:TrackKeepingL a davom:VesselFunction ;
     warrant:hasIdentifier "VF-TK-L" ;
-    warrant:hasName "Track keeping (Vessel L, route autopilot)" ;
-    warrant:hasDescription "Single-vessel sub-case: the route autopilot keeps the leader on its planned route. Not active when the leader is steered manually." ;
+    warrant:hasName "Track keeping (Vessel L)" ;
+    warrant:hasDescription "Keep the leader on its intended track. In platoon operation the leader's skipper steers and the follower replicates the track the leader actually sails. The route autopilot does it only in the simulator's single-vessel sub-case (P2-solo)." ;
     davom:hasAssetRole davom:PRIMARY_ASSET ;
     davom:isCriticalNode true ;
     davom:isSupportedBy plt:RouteAutopilotSystemL , plt:SteeringSystemL , plt:PropulsionSystemL .
@@ -183,7 +183,7 @@ plt:PropulsionSystemF a davom:TechnicalSystem ;
 plt:GNSSReceiverL a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-GNSS-L" ;
     warrant:hasName "GNSS receiver (Vessel L)" ;
-    warrant:hasDescription "Position, course over ground and speed over ground source. Under bridges it has been observed to repeat its last position, COG and SOG unchanged (not null) and to step on recovery." ;
+    warrant:hasDescription "Dual-antenna GNSS RTK receiver; position at 10 Hz. The antenna is offset from midship, so the reported position is corrected by the lever arm to the midship reference point. Under bridges it has been observed to repeat its last position, COG and SOG unchanged (not null) and to step on recovery." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingL ;
     davom:isCriticalNode true .
@@ -191,7 +191,7 @@ plt:GNSSReceiverL a davom:SensorComponent ;
 plt:HeadingSensorL a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-HDG-L" ;
     warrant:hasName "Heading sensor (Vessel L)" ;
-    warrant:hasDescription "Heading source independent of GNSS; keeps updating during GNSS outages." ;
+    warrant:hasDescription "Heading from the dual-antenna GNSS installation. Whether it is independent of the GNSS position solution is not established: in the trial data heading kept updating while position froze, which suggests it is. Treated as independent only under plt:ASM_PLT_05_HeadingIndependence." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingL .
 
@@ -206,7 +206,7 @@ plt:EstimatorL a davom:SoftwareComponent ;
 plt:RouteAutopilotL a davom:SoftwareComponent ;
     warrant:hasIdentifier "COMP-RAP-L" ;
     warrant:hasName "Route autopilot (Vessel L)" ;
-    warrant:hasDescription "Waypoint following for the leader in the single-vessel sub-case; commands rudder and propulsion from the leader's estimate." ;
+    warrant:hasDescription "Waypoint following for the leader in the single-vessel sub-case; commands rudder and propulsion from the leader's estimate. Present in the simulator only (P2-solo): in platoon operation the leader is steered by its skipper." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:TrackKeepingL .
 
@@ -219,7 +219,7 @@ plt:RudderActuatorL a davom:ActuatorComponent ;
 plt:RudderFeedbackL a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-RUDFB-L" ;
     warrant:hasName "Rudder feedback (Vessel L)" ;
-    warrant:hasDescription "Rudder angle sensor (actual rudder angle)." ;
+    warrant:hasDescription "Rudder angle sensor (actual rudder angle), reported at 1 Hz." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:TrackKeepingL .
 
@@ -241,7 +241,7 @@ plt:PropulsionFeedbackL a davom:SensorComponent ;
 plt:GNSSReceiverF a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-GNSS-F" ;
     warrant:hasName "GNSS receiver (Vessel F)" ;
-    warrant:hasDescription "Position, course over ground and speed over ground source of the follower." ;
+    warrant:hasDescription "Dual-antenna GNSS RTK receiver of the follower; position at 10 Hz, corrected by the antenna lever arm to the midship reference point." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingF ;
     davom:isCriticalNode true .
@@ -249,7 +249,7 @@ plt:GNSSReceiverF a davom:SensorComponent ;
 plt:HeadingSensorF a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-HDG-F" ;
     warrant:hasName "Heading sensor (Vessel F)" ;
-    warrant:hasDescription "Heading source independent of GNSS; keeps updating during GNSS outages." ;
+    warrant:hasDescription "Heading from the dual-antenna GNSS installation. Whether it is independent of the GNSS position solution is not established: in the trial data heading kept updating while position froze, which suggests it is. Treated as independent only under plt:ASM_PLT_05_HeadingIndependence." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingF .
 
@@ -264,7 +264,7 @@ plt:EstimatorF a davom:SoftwareComponent ;
 plt:PlatooningControllerF a davom:SoftwareComponent ;
     warrant:hasIdentifier "COMP-PLC-F" ;
     warrant:hasName "Platooning controller (Vessel F)" ;
-    warrant:hasDescription "Follower controller that computes rudder and engine commands from the follower's own estimate and the leader state received over the V2V link (waypoints follower). Used as deployed." ;
+    warrant:hasDescription "Decoupled follower controller, used as deployed. Lateral: line-of-sight guidance over the leader's recorded track, steering toward the first recorded leader position at the look-ahead distance (about 1.5–1.7 ship lengths), then a heading PID to the rudder command. Longitudinal: a separate gap PID sets the propeller rate toward the target safety distance. Both loops use back-calculation anti-windup. The control loop and position run at 10 Hz; rudder command and feedback at 1 Hz." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:GapKeepingF , plt:TrackKeepingF ;
     davom:isCriticalNode true .
@@ -278,7 +278,7 @@ plt:RudderActuatorF a davom:ActuatorComponent ;
 plt:RudderFeedbackF a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-RUDFB-F" ;
     warrant:hasName "Rudder feedback (Vessel F)" ;
-    warrant:hasDescription "Rudder angle sensor (actual rudder angle)." ;
+    warrant:hasDescription "Rudder angle sensor (actual rudder angle), reported at 1 Hz." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:TrackKeepingF .
 
@@ -300,7 +300,7 @@ plt:PropulsionFeedbackF a davom:SensorComponent ;
 plt:LeaderStateDataFlow a davom:DataFlow ;
     warrant:hasIdentifier "DF-LS-001" ;
     warrant:hasName "Leader state" ;
-    warrant:hasDescription "The leader's estimated position, course, speed and heading, published by the leader estimator and consumed by the follower's platooning controller." ;
+    warrant:hasDescription "The leader's estimated position, course, speed and heading, published by the leader estimator and consumed by the follower's platooning controller. The follower keeps the received positions as the leader's recorded track, which its line-of-sight guidance follows; a wrong leader position therefore enters the track the follower steers along, not only the current gap." ;
     davom:hasAssetRole davom:PRIMARY_ASSET ;
     davom:usesCommunicationLink plt:V2VLink .
 
@@ -323,8 +323,8 @@ plt:RouteAutopilotL davom:controls plt:RudderActuatorL , plt:PropulsionL .
 
 plt:RemoteOperatorRole a davom:HumanOperatorRole ;
     warrant:hasIdentifier "ROLE-RO-001" ;
-    warrant:hasName "Remote operator" ;
-    warrant:hasDescription "Supervises the platoon and authorises escalated responses (degraded platoon operation, platoon dissolution)." ;
+    warrant:hasName "Remote control operation safety officer" ;
+    warrant:hasDescription "Remote control operation safety officer: supervises the platoon and authorises escalated responses (degraded platoon operation, platoon dissolution)." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:GapKeepingF , plt:TrackKeepingF ;
     davom:supervises plt:PlatoonSystem ;
@@ -332,6 +332,14 @@ plt:RemoteOperatorRole a davom:HumanOperatorRole ;
 
 plt:VesselL davom:hasOperatorRole plt:RemoteOperatorRole .
 plt:VesselF davom:hasOperatorRole plt:RemoteOperatorRole .
+
+plt:LeaderSkipperRole a davom:HumanOperatorRole ;
+    warrant:hasIdentifier "ROLE-SK-L" ;
+    warrant:hasName "Leader skipper" ;
+    warrant:hasDescription "Steers the leader in platoon operation and keeps situational awareness and collision avoidance for the whole platoon; the followers replicate the leader's track. Expected to sail smooth, predictable trajectories and to leave extra margin at bottlenecks for the followers' lateral deviation." ;
+    davom:participatesIn plt:TrackKeepingL .
+
+plt:VesselL davom:hasOperatorRole plt:LeaderSkipperRole .
 
 # ── Typed dependencies (source = provider → target = consumer) ─────────────
 # The cross-vessel chain is DEP-01 → DEP-03 → DEP-04 → DEP-05 → DEP-12/DEP-13.
@@ -642,7 +650,7 @@ plt:HazGapViolation a cdm:Hazard ;
 plt:HazTrackDeparture a cdm:Hazard ;
     warrant:hasIdentifier "HAZ-PLT-02" ;
     warrant:hasName "Platoon Vessel Outside Track Tolerance" ;
-    warrant:hasDescription "A platoon vessel's cross-track error exceeds the track tolerance, most critically in a turn or at a bridge passage where the margin to piers and banks is smallest. Applies to the follower in platoon mode and to the leader on route autopilot (P2-solo)." ;
+    warrant:hasDescription "A platoon vessel's cross-track error exceeds the track tolerance, or the follower's hull leaves the leader's swept path, most critically in a turn or at a bridge passage where the margin to piers and banks is smallest. Applies to the follower in platoon mode and to the leader on route autopilot (P2-solo)." ;
     cdm:hasHazardClass cdm:DATA_LOSS , cdm:PHYSICAL_FAILURE ;
     cdm:hasOperationalContext plt:BridgePassageContext ;
     cdm:mayLeadTo plt:AccidentAllisionOrGrounding .
@@ -920,7 +928,7 @@ plt:PMF_WrongLeaderOwnPosition a cdm:ProcessModelFlaw ;
 
 plt:UCA_FollowerSpeedOnStaleLeader a cdm:UnsafeControlAction ;
     warrant:hasName "Follower Speed Set from a Stale or Jumping Leader State" ;
-    warrant:hasDescription "Propulsion setpoint wrong in amount: the follower slows for a leader that seems to have stopped and opens the gap, or fails to slow when the real leader decelerates and closes it; after a recovery jump it corrects abruptly." .
+    warrant:hasDescription "Propulsion setpoint wrong in amount: the follower slows for a leader that seems to have stopped and opens the gap, or fails to slow when the real leader decelerates and closes it; after a recovery jump it corrects abruptly. Controller tuning is a causal factor: an aggressive gap loop follows the erroneous leader motion and breaches the safety distance, where a damped one rides it out." .
 
 plt:UCA_FollowerSteerOnStaleLeader a cdm:UnsafeControlAction ;
     warrant:hasName "Follower Steered Toward a Stale or Jumping Leader Track" ;
@@ -1005,7 +1013,7 @@ plt:CTRL_FixAgeMonitoring a cdm:Control ;
 plt:CTRL_FixPlausibilityGate a cdm:Control ;
     warrant:hasIdentifier "CTRL-PLT-02" ;
     warrant:hasName "Kinematic plausibility gate on position fixes" ;
-    warrant:hasDescription "A new fix is rejected if it implies a displacement the vessel's heading and last speed over ground cannot explain over the interval. Uses heading and speed only, not rudder or propulsion data (D2)." ;
+    warrant:hasDescription "A new fix is rejected if it implies a displacement the vessel's heading and last speed over ground cannot explain over the interval: the check that tells a legitimate manoeuvre from a sensor anomaly. Uses heading and speed only, not rudder or propulsion data (D2). Relies on heading being independent of the GNSS position (plt:ASM_PLT_05_HeadingIndependence)." ;
     cdm:mitigates plt:FM_LeaderGNSSReacquisitionStep .
 
 plt:CTRL_V2VMessageAgeMonitoring a cdm:Control ;
@@ -1076,10 +1084,12 @@ plt:PropulsionF       obs:hasDependabilityMetric plt:PropulsionTrackingErrorMetr
 
 plt:GNSSFixObserverL a obs:Sensor ;
     warrant:hasName "Leader GNSS fix output" ;
+    obs:hasSamplingRate "10.0"^^xsd:decimal ;
     obs:measures plt:FixAgeMetricL , plt:FixStepResidualMetricL .
 
 plt:GNSSFixObserverF a obs:Sensor ;
     warrant:hasName "Follower GNSS fix output" ;
+    obs:hasSamplingRate "10.0"^^xsd:decimal ;
     obs:measures plt:FixAgeMetricF .
 
 plt:V2VMessageProbe a obs:Probe ;
@@ -1088,12 +1098,62 @@ plt:V2VMessageProbe a obs:Probe ;
 
 plt:ActuatorFeedbackObserverF a obs:Sensor ;
     warrant:hasName "Follower rudder and propulsion feedback" ;
+    warrant:hasDescription "Rudder feedback arrives at 1 Hz, against a 10 Hz control loop." ;
+    obs:hasSamplingRate "1.0"^^xsd:decimal ;
     obs:measures plt:RudderTrackingErrorMetricF , plt:PropulsionTrackingErrorMetricF .
 
 plt:PlatoonGeometryVirtualSensor a obs:VirtualSensor ;
     warrant:hasName "Platoon geometry virtual sensor" ;
     warrant:hasDescription "Computes gap error from the two vessels' fixes and the gap setpoint, and cross-track error of each vessel from its fix and the planned track. It inherits every GNSS and V2V fault: gap error computed from a frozen leader fix is wrong. Computation is external." ;
-    obs:estimates plt:GapErrorMetric , plt:TrackErrorMetricF , plt:TrackErrorMetricL .
+    obs:estimates plt:GapErrorMetric , plt:TrackErrorMetricF , plt:TrackErrorMetricL ,
+        plt:SafetyGapMetric , plt:ElasticGapMetric , plt:MeanTrackErrorIntegralF , plt:MaxTrackErrorF ,
+        plt:MeanSweptPathErrorF , plt:MaxSweptPathErrorF , plt:MeanRudderIntegralF , plt:MeanRudderTotalVariationF .
+
+# — Run-level safety and performance indexes, in the trials team's terms.
+#   Aggregates over a run, used to assess the assurance requirements; computed
+#   externally from the time series.
+plt:SafetyGapMetric a obs:SafetyMetric ;
+    warrant:hasName "Safety gap" ;
+    warrant:hasDescription "Mean undershoot of the gap below the safety distance d_s (collision risk); its maximum is reported alongside." ;
+    obs:hasUnit "m" .
+
+plt:ElasticGapMetric a obs:PerformanceMetric ;
+    warrant:hasName "Elastic gap" ;
+    warrant:hasDescription "Mean overshoot of the gap above the safety distance d_s; its maximum is reported alongside." ;
+    obs:hasUnit "m" .
+
+plt:MeanTrackErrorIntegralF a obs:PerformanceMetric ;
+    warrant:hasName "Mean track-error integral (mTEI, Vessel F)" ;
+    warrant:hasDescription "Time-mean of the absolute cross-track error to the leader's track." ;
+    obs:hasUnit "m" .
+
+plt:MaxTrackErrorF a obs:SafetyMetric ;
+    warrant:hasName "Maximum track error (MTE, Vessel F)" ;
+    warrant:hasDescription "Maximum absolute cross-track error. Unreliable during a positional jump, when the mean is the usable figure." ;
+    obs:hasUnit "m" .
+
+plt:MeanSweptPathErrorF a obs:PerformanceMetric ;
+    warrant:hasName "Mean swept-path error (mSPE, Vessel F)" ;
+    warrant:hasDescription "Time-mean distance of the part of the follower's hull outside the leader's swept path to that path." ;
+    obs:hasUnit "m" .
+
+plt:MaxSweptPathErrorF a obs:SafetyMetric ;
+    warrant:hasName "Maximum swept-path error (MSPE, Vessel F)" ;
+    obs:hasUnit "m" .
+
+plt:MeanRudderIntegralF a obs:PerformanceMetric ;
+    warrant:hasName "Mean rudder integral (mRI, Vessel F)" ;
+    warrant:hasDescription "Time-mean of the absolute rudder angle: amplitude of steering effort." ;
+    obs:hasUnit "deg" .
+
+plt:MeanRudderTotalVariationF a obs:PerformanceMetric ;
+    warrant:hasName "Mean rudder total variation (mRTV, Vessel F)" ;
+    warrant:hasDescription "Time-mean of the absolute rudder angle change per step: smoothness of steering, a proxy for steering-gear wear." ;
+    obs:hasUnit "deg" .
+
+plt:GapKeepingF   obs:hasDependabilityMetric plt:SafetyGapMetric , plt:ElasticGapMetric .
+plt:TrackKeepingF obs:hasDependabilityMetric plt:MeanTrackErrorIntegralF , plt:MaxTrackErrorF , plt:MeanSweptPathErrorF , plt:MaxSweptPathErrorF .
+plt:RudderActuatorF obs:hasDependabilityMetric plt:MeanRudderIntegralF , plt:MeanRudderTotalVariationF .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1168,7 +1228,7 @@ plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
 plt:DR_FixFrozen a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-01" ;
     warrant:hasName "Frozen fix" ;
-    warrant:hasDescription "Position repeated for longer than the maximum fix age (illustrative: 3 s at a 1 Hz receiver) while records keep arriving and heading keeps updating. An exactly repeated position is itself the indication, since a live fix always jitters. The heading condition separates a frozen fix from a logger-side gap, in which every channel stops at once and which fix age alone would also flag." .
+    warrant:hasDescription "Position repeated for longer than the maximum fix age (illustrative: 3 s, i.e. about 30 epochs at the 10 Hz position rate) while records keep arriving and heading keeps updating. An exactly repeated position is itself the indication, since a live fix always jitters. The heading condition separates a frozen fix from a logger-side gap, in which every channel stops at once and which fix age alone would also flag." .
 
 plt:DR_FixDropout a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-02" ;
@@ -1198,12 +1258,12 @@ plt:DR_RudderNoResponse a obs:DetectionRule ;
 plt:DR_RudderDeadband a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-07" ;
     warrant:hasName "Rudder deadband" ;
-    warrant:hasDescription "Small commands around midships produce no reported movement, while large commands do." .
+    warrant:hasDescription "Small commands around midships produce no reported movement, while large commands do. With 1 Hz feedback the deadband is resolved only over several seconds of commands." .
 
 plt:DR_RudderSlow a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-08" ;
     warrant:hasName "Rudder slow" ;
-    warrant:hasDescription "Reported rudder rate below the rated rate after a command step." .
+    warrant:hasDescription "Reported rudder rate below the rated rate after a command step. With 1 Hz feedback the rate is resolved only to about one second, so only a clearly slow rudder is detectable." .
 
 plt:DR_PropulsionShortfall a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-09" ;
@@ -1462,7 +1522,7 @@ plt:PlatoonDependabilitySupervisor a di:DependabilitySupervisor ;
 plt:REQ_PLT_01_MinimumGap a assr:Requirement ;
     warrant:hasIdentifier "REQ-PLT-01" ;
     warrant:hasName "Minimum gap" ;
-    warrant:hasDescription "In platoon mode the gap between leader stern and follower bow shall not fall below the minimum safe gap (value: plt:ASM_PLT_01_GapBounds)." ;
+    warrant:hasDescription "In platoon mode the hull-to-hull gap shall not fall below the safety distance d_s (the follower's braking distance plus the static safety distance): the safety gap, the undershoot below d_s, shall be zero (value: plt:ASM_PLT_01_GapBounds)." ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
     assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
     assr:hasRequirementCategory "SYSTEM" ;
@@ -1471,7 +1531,7 @@ plt:REQ_PLT_01_MinimumGap a assr:Requirement ;
 plt:REQ_PLT_02_MaximumGap a assr:Requirement ;
     warrant:hasIdentifier "REQ-PLT-02" ;
     warrant:hasName "Maximum gap" ;
-    warrant:hasDescription "In platoon mode the gap shall not exceed the maximum gap, beyond which the follower leaves the leader's protected water (value: plt:ASM_PLT_01_GapBounds)." ;
+    warrant:hasDescription "In platoon mode the elastic gap, the overshoot above d_s, shall stay within the maximum, beyond which the follower leaves the leader's protected water and visual range (value: plt:ASM_PLT_01_GapBounds)." ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
     assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
     assr:hasRequirementCategory "SYSTEM" ;
@@ -1480,7 +1540,7 @@ plt:REQ_PLT_02_MaximumGap a assr:Requirement ;
 plt:REQ_PLT_03_TrackTolerance a assr:Requirement ;
     warrant:hasIdentifier "REQ-PLT-03" ;
     warrant:hasName "Track tolerance" ;
-    warrant:hasDescription "Each platoon vessel's cross-track error shall stay within the track tolerance of the active operational context, tighter at bridge passages (values: plt:ASM_PLT_02_TrackTolerance)." ;
+    warrant:hasDescription "The follower's maximum track error (MTE) and maximum swept-path error (MSPE) shall stay within the lateral margin of the narrowest section of the active operational context, and the leader's cross-track error within the same margin (values: plt:ASM_PLT_02_TrackTolerance)." ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
     assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
     assr:hasRequirementCategory "SYSTEM" ;
@@ -1513,17 +1573,33 @@ plt:REQ_PLT_06_ActuatorFaultDetection a assr:Requirement ;
     assr:hasRequirementCategory "SYSTEM" ;
     assr:expectsEvidence plt:OBL_DetectionUnderInjection .
 
+plt:REQ_PLT_07_ActuatorSmoothness a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-07" ;
+    warrant:hasName "Actuator effort bounded" ;
+    warrant:hasDescription "The follower's mean rudder total variation (mRTV) and mean rudder integral (mRI) shall stay below limits set at calibration, so that the tuning does not buy track precision with steering-gear wear." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection .
+
+plt:ASM_PLT_05_HeadingIndependence a assr:Assumption ;
+    warrant:hasIdentifier "ASM-PLT-05" ;
+    warrant:hasName "Heading is independent of the GNSS position solution" ;
+    warrant:hasDescription "Heading comes from the dual-antenna GNSS installation, so it may share a common cause with the position fix. In the trial data heading kept updating through every frozen-fix outage while position, COG and SOG froze (T04 data survey), which supports independence. To be confirmed with the trials team. If it fails, the frozen-fix rule loses its heading condition and the kinematic plausibility gate its reference." ;
+    assr:assumptionAppliesTo plt:HeadingSensorL , plt:HeadingSensorF , plt:CTRL_FixPlausibilityGate , plt:CLM_PLT_03_FaultyInputsDetected ;
+    assr:hasValidityStatus "UNDER_REVIEW" .
+
 plt:ASM_PLT_01_GapBounds a assr:Assumption ;
     warrant:hasIdentifier "ASM-PLT-01" ;
-    warrant:hasName "Gap setpoint 50 m, minimum 25 m, maximum 150 m" ;
-    warrant:hasDescription "Assumed values. The setpoint matches the median leader–follower distance observed while the two vessels sailed together (48–64 m, T04 data survey). The minimum leaves margin for the phantom gap closure of up to about 20 m seen while the leader's fix is frozen. To be replaced by values agreed with the platoon operator." ;
+    warrant:hasName "Gap: no undershoot of d_s (value pending); maximum 150 m" ;
+    warrant:hasDescription "The minimum is the safety distance d_s = the follower's braking distance + the static safety distance (trials team's definition, hull to hull). No numeric d_s is available until braking distances are measured. The median leader–follower distance in the trial data (48–64 m, T04 data survey) is probably between antennas, not hull to hull, so it is not directly comparable; d_s must also absorb the phantom gap closure of up to about 20 m seen while the leader's fix is frozen. Maximum gap: assumed 150 m. To be replaced by values agreed with the platoon operator." ;
     assr:assumptionAppliesTo plt:HazGapViolation , plt:CLM_PLT_01_GapKeeping ;
     assr:hasValidityStatus "UNDER_REVIEW" .
 
 plt:ASM_PLT_02_TrackTolerance a assr:Assumption ;
     warrant:hasIdentifier "ASM-PLT-02" ;
-    warrant:hasName "Track tolerance 10 m in open waterway, 5 m at bridge passages" ;
-    warrant:hasDescription "Assumed values for the half-width of the safe track envelope. To be replaced by values derived from fairway and bridge-opening widths for the route." ;
+    warrant:hasName "Lateral margin about 1 m in both contexts" ;
+    warrant:hasDescription "Derived from the trials team's figures: guaranteed waterway width 6.6 m for the classes on the route, bridge spans 11.17–29 m, vessel beam 4.3 m. In the narrowest section the margin is (6.6 − 4.3) / 2 ≈ 1.15 m each side; the trials team's simulations kept the maximum lateral deviation within 1 m. Tolerance assumed 1.0 m for MTE and MSPE in both contexts; a wider guaranteed width at a given section would relax it. Replaces the earlier 10 m / 5 m placeholder." ;
     assr:assumptionAppliesTo plt:HazTrackDeparture , plt:CLM_PLT_02_TrackKeeping , plt:OpenWaterwayContext , plt:BridgePassageContext ;
     assr:hasValidityStatus "UNDER_REVIEW" .
 
@@ -1598,7 +1674,7 @@ plt:OBL_DetectionUnderInjection a assr:EvidenceObligation ;
 
 plt:OBL_GapTrackUnderInjection a assr:EvidenceObligation ;
     warrant:hasName "Gap and track error with and without the response, per injected scenario" ;
-    warrant:hasDescription "Minimum and maximum gap and maximum cross-track error per injected scenario run, compared with the bounds in ASM-PLT-01 and ASM-PLT-02." ;
+    warrant:hasDescription "Per injected scenario run: safety gap and elastic gap (mean and maximum), mTEI, MTE, mSPE, MSPE, mRI and mRTV, compared with the bounds in ASM-PLT-01 and ASM-PLT-02." ;
     assr:declaredBy "WARRaNT platoon use-case team" ;
     assr:hasObligationStatus assr:MISSING .
 
@@ -1617,9 +1693,11 @@ plt:PlatoonLDC a assr:LivingDependabilityCase ;
     assr:caseAppliesTo plt:PlatoonSystem ;
     assr:hasBaselineVersion "DC-PLT-0.1" ;
     assr:includesRequirement plt:REQ_PLT_01_MinimumGap , plt:REQ_PLT_02_MaximumGap , plt:REQ_PLT_03_TrackTolerance ,
-        plt:REQ_PLT_04_ValidLeaderState , plt:REQ_PLT_05_FixValidity , plt:REQ_PLT_06_ActuatorFaultDetection ;
+        plt:REQ_PLT_04_ValidLeaderState , plt:REQ_PLT_05_FixValidity , plt:REQ_PLT_06_ActuatorFaultDetection ,
+        plt:REQ_PLT_07_ActuatorSmoothness ;
     assr:includesClaim plt:CLM_PLT_01_GapKeeping , plt:CLM_PLT_02_TrackKeeping , plt:CLM_PLT_03_FaultyInputsDetected , plt:CLM_PLT_04_ActuatorFaultsDetected ;
-    assr:includesAssumption plt:ASM_PLT_01_GapBounds , plt:ASM_PLT_02_TrackTolerance , plt:ASM_PLT_03_LeaderStateAge , plt:ASM_PLT_04_GNSSOutageProfile .
+    assr:includesAssumption plt:ASM_PLT_01_GapBounds , plt:ASM_PLT_02_TrackTolerance , plt:ASM_PLT_03_LeaderStateAge , plt:ASM_PLT_04_GNSSOutageProfile ,
+        plt:ASM_PLT_05_HeadingIndependence .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
