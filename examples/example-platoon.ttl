@@ -1168,7 +1168,7 @@ plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
 plt:DR_FixFrozen a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-01" ;
     warrant:hasName "Frozen fix" ;
-    warrant:hasDescription "Fix age above the maximum (illustrative: 3 s at a 1 Hz receiver) while the receiver still flags the fix as valid. An exactly repeated position is itself the indication, since a live fix always jitters." .
+    warrant:hasDescription "Position repeated for longer than the maximum fix age (illustrative: 3 s at a 1 Hz receiver) while records keep arriving and heading keeps updating. An exactly repeated position is itself the indication, since a live fix always jitters. The heading condition separates a frozen fix from a logger-side gap, in which every channel stops at once and which fix age alone would also flag." .
 
 plt:DR_FixDropout a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-02" ;
@@ -1449,6 +1449,177 @@ plt:PlatoonDependabilitySupervisor a di:DependabilitySupervisor ;
     warrant:hasName "Platoon Dependability Supervisor" ;
     warrant:hasDescription "Selects the configuration whose operational context is active. It raises resilience triggers; it does not choose or start a response." ;
     di:usesConfiguration plt:SupervisionConfig_Open , plt:SupervisionConfig_Bridge .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ASSURANCE — REQUIREMENTS, ASSUMPTIONS, CLAIMS, EVIDENCE OBLIGATIONS
+# No operator-agreed gap or track values exist, so the requirements state the
+# property and the numbers sit in assumptions (UNDER_REVIEW). Requirements are
+# PROPOSED until those values are agreed. Claims are CLAIM_UNSUPPORTED: no
+# evidence exists yet, and every obligation is MISSING.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:REQ_PLT_01_MinimumGap a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-01" ;
+    warrant:hasName "Minimum gap" ;
+    warrant:hasDescription "In platoon mode the gap between leader stern and follower bow shall not fall below the minimum safe gap (value: plt:ASM_PLT_01_GapBounds)." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection .
+
+plt:REQ_PLT_02_MaximumGap a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-02" ;
+    warrant:hasName "Maximum gap" ;
+    warrant:hasDescription "In platoon mode the gap shall not exceed the maximum gap, beyond which the follower leaves the leader's protected water (value: plt:ASM_PLT_01_GapBounds)." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection .
+
+plt:REQ_PLT_03_TrackTolerance a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-03" ;
+    warrant:hasName "Track tolerance" ;
+    warrant:hasDescription "Each platoon vessel's cross-track error shall stay within the track tolerance of the active operational context, tighter at bridge passages (values: plt:ASM_PLT_02_TrackTolerance)." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection .
+
+plt:REQ_PLT_04_ValidLeaderState a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-04" ;
+    warrant:hasName "Platooning only on a valid leader state" ;
+    warrant:hasDescription "The follower shall not platoon on a leader state that is missing, older than the maximum age, or derived from an untrusted leader fix, and shall leave platoon mode for a degraded mode within the bounded time (values: plt:ASM_PLT_03_LeaderStateAge). Implements SC-PLT-03." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_DetectionOnRealOutages , plt:OBL_DetectionUnderInjection .
+
+plt:REQ_PLT_05_FixValidity a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-05" ;
+    warrant:hasName "No control on invalid fixes" ;
+    warrant:hasDescription "Neither controller shall act on a position fix that fails the freshness or kinematic plausibility check. Implements SC-PLT-04." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_DetectionOnRealOutages , plt:OBL_FalseAlarmsOnNominal .
+
+plt:REQ_PLT_06_ActuatorFaultDetection a assr:Requirement ;
+    warrant:hasIdentifier "REQ-PLT-06" ;
+    warrant:hasName "Actuator faults detected" ;
+    warrant:hasDescription "Stuck, deadband and slow rudder faults and propulsion shortfall on the follower shall be detected from command-versus-feedback comparison within the detection time (value to be set at calibration)." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:declaredBy "WARRaNT platoon use-case team (assumed values)" ;
+    assr:hasRequirementCategory "SYSTEM" ;
+    assr:expectsEvidence plt:OBL_DetectionUnderInjection .
+
+plt:ASM_PLT_01_GapBounds a assr:Assumption ;
+    warrant:hasIdentifier "ASM-PLT-01" ;
+    warrant:hasName "Gap setpoint 50 m, minimum 25 m, maximum 150 m" ;
+    warrant:hasDescription "Assumed values. The setpoint matches the median leader–follower distance observed while the two vessels sailed together (48–64 m, T04 data survey). The minimum leaves margin for the phantom gap closure of up to about 20 m seen while the leader's fix is frozen. To be replaced by values agreed with the platoon operator." ;
+    assr:assumptionAppliesTo plt:HazGapViolation , plt:CLM_PLT_01_GapKeeping ;
+    assr:hasValidityStatus "UNDER_REVIEW" .
+
+plt:ASM_PLT_02_TrackTolerance a assr:Assumption ;
+    warrant:hasIdentifier "ASM-PLT-02" ;
+    warrant:hasName "Track tolerance 10 m in open waterway, 5 m at bridge passages" ;
+    warrant:hasDescription "Assumed values for the half-width of the safe track envelope. To be replaced by values derived from fairway and bridge-opening widths for the route." ;
+    assr:assumptionAppliesTo plt:HazTrackDeparture , plt:CLM_PLT_02_TrackKeeping , plt:OpenWaterwayContext , plt:BridgePassageContext ;
+    assr:hasValidityStatus "UNDER_REVIEW" .
+
+plt:ASM_PLT_03_LeaderStateAge a assr:Assumption ;
+    warrant:hasIdentifier "ASM-PLT-03" ;
+    warrant:hasName "Leader state valid for 1 s; degraded mode within 5 s" ;
+    warrant:hasDescription "Assumed values for the maximum leader-state age and the time allowed to leave platoon mode once it is exceeded." ;
+    assr:assumptionAppliesTo plt:HazPlatoonCoordinationLoss , plt:CLM_PLT_03_FaultyInputsDetected ;
+    assr:hasValidityStatus "UNDER_REVIEW" .
+
+plt:ASM_PLT_04_GNSSOutageProfile a assr:Assumption ;
+    warrant:hasIdentifier "ASM-PLT-04" ;
+    warrant:hasName "GNSS outages under way are frozen fixes of 5–60 s" ;
+    warrant:hasDescription "The detection design assumes the outage profile seen in the trial data: under way, every real outage was a frozen fix (position repeated, rows still arriving, heading still updating), not a dropout, and ended in a recovery jump of 12–31 m (T04 data survey). Dropouts are kept in the analysis but are not observed. A different receiver or route may break this assumption." ;
+    assr:assumptionAppliesTo plt:FM_LeaderGNSSHoldLastFix , plt:FM_LeaderGNSSSignalObstruction , plt:CLM_PLT_03_FaultyInputsDetected ;
+    assr:hasValidityStatus "UNDER_REVIEW" .
+
+plt:CLM_PLT_01_GapKeeping a assr:AssuranceClaim ;
+    warrant:hasIdentifier "CLM-PLT-01" ;
+    warrant:hasName "The follower keeps the gap within bounds under GNSS, V2V and propulsion faults" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:addressesRequirement plt:REQ_PLT_01_MinimumGap , plt:REQ_PLT_02_MaximumGap ;
+    assr:claimAppliesTo plt:GapKeepingF , plt:CTRL_PreBridgeGapIncrease ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection ;
+    assr:hasClaimStatus assr:CLAIM_UNSUPPORTED .
+
+plt:CLM_PLT_02_TrackKeeping a assr:AssuranceClaim ;
+    warrant:hasIdentifier "CLM-PLT-02" ;
+    warrant:hasName "Both vessels stay within track tolerance under GNSS, V2V and rudder faults" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:addressesRequirement plt:REQ_PLT_03_TrackTolerance ;
+    assr:claimAppliesTo plt:TrackKeepingF , plt:TrackKeepingL ;
+    assr:expectsEvidence plt:OBL_GapTrackUnderInjection ;
+    assr:hasClaimStatus assr:CLAIM_UNSUPPORTED .
+
+plt:CLM_PLT_03_FaultyInputsDetected a assr:AssuranceClaim ;
+    warrant:hasIdentifier "CLM-PLT-03" ;
+    warrant:hasName "Frozen, missing and jumping fixes and stale leader states are detected before they are acted on" ;
+    warrant:hasDescription "Claimed for the generic checks only: fix age, kinematic plausibility from heading and last speed, and V2V message age. No claim is made for rudder- or propulsion-based position validation, which is out of scope (D2)." ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:addressesRequirement plt:REQ_PLT_04_ValidLeaderState , plt:REQ_PLT_05_FixValidity ;
+    assr:claimAppliesTo plt:CTRL_FixAgeMonitoring , plt:CTRL_FixPlausibilityGate , plt:CTRL_V2VMessageAgeMonitoring ;
+    assr:expectsEvidence plt:OBL_DetectionOnRealOutages , plt:OBL_FalseAlarmsOnNominal , plt:OBL_DetectionUnderInjection ;
+    assr:hasClaimStatus assr:CLAIM_UNSUPPORTED .
+
+plt:CLM_PLT_04_ActuatorFaultsDetected a assr:AssuranceClaim ;
+    warrant:hasIdentifier "CLM-PLT-04" ;
+    warrant:hasName "Follower rudder and propulsion faults are detected from command versus feedback" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" ;
+    assr:addressesRequirement plt:REQ_PLT_06_ActuatorFaultDetection ;
+    assr:claimAppliesTo plt:CTRL_ActuatorCommandFeedbackCheck ;
+    assr:expectsEvidence plt:OBL_DetectionUnderInjection ;
+    assr:hasClaimStatus assr:CLAIM_UNSUPPORTED .
+
+plt:OBL_DetectionOnRealOutages a assr:EvidenceObligation ;
+    warrant:hasName "Detection of the real outages in the evaluation days" ;
+    warrant:hasDescription "Detection result and latency for each catalogued real GNSS outage in the evaluation split (P1), scored only on the evaluation days." ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    assr:hasObligationStatus assr:MISSING .
+
+plt:OBL_FalseAlarmsOnNominal a assr:EvidenceObligation ;
+    warrant:hasName "False-alarm rate on nominal segments" ;
+    warrant:hasDescription "Alarms raised on the nominal segments of the evaluation split. Logger-side gaps, which stop every channel on both vessels at once, must not count as GNSS faults." ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    assr:hasObligationStatus assr:MISSING .
+
+plt:OBL_DetectionUnderInjection a assr:EvidenceObligation ;
+    warrant:hasName "Detection under injected faults (P2–P8, P2-solo)" ;
+    warrant:hasDescription "Detection result and latency for each injected scenario run: frozen fix, dropout, recovery jump, V2V loss and staleness, rudder and propulsion faults." ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    assr:hasObligationStatus assr:MISSING .
+
+plt:OBL_GapTrackUnderInjection a assr:EvidenceObligation ;
+    warrant:hasName "Gap and track error with and without the response, per injected scenario" ;
+    warrant:hasDescription "Minimum and maximum gap and maximum cross-track error per injected scenario run, compared with the bounds in ASM-PLT-01 and ASM-PLT-02." ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    assr:hasObligationStatus assr:MISSING .
+
+plt:OBL_AgreedGapTrackValues a assr:EvidenceObligation ;
+    warrant:hasName "Operator agreement of gap and track values" ;
+    warrant:hasDescription "Values agreed with the platoon operator that retire assumptions ASM-PLT-01 to ASM-PLT-03 and let the requirements move from PROPOSED to APPROVED." ;
+    assr:declaredBy "WARRaNT platoon use-case team" ;
+    assr:hasObligationStatus assr:MISSING .
+
+plt:REQ_PLT_01_MinimumGap     assr:expectsEvidence plt:OBL_AgreedGapTrackValues .
+plt:REQ_PLT_02_MaximumGap     assr:expectsEvidence plt:OBL_AgreedGapTrackValues .
+plt:REQ_PLT_03_TrackTolerance assr:expectsEvidence plt:OBL_AgreedGapTrackValues .
+
+plt:PlatoonLDC a assr:LivingDependabilityCase ;
+    warrant:hasName "Platoon Living Dependability Case (design-time baseline)" ;
+    assr:caseAppliesTo plt:PlatoonSystem ;
+    assr:hasBaselineVersion "DC-PLT-0.1" ;
+    assr:includesRequirement plt:REQ_PLT_01_MinimumGap , plt:REQ_PLT_02_MaximumGap , plt:REQ_PLT_03_TrackTolerance ,
+        plt:REQ_PLT_04_ValidLeaderState , plt:REQ_PLT_05_FixValidity , plt:REQ_PLT_06_ActuatorFaultDetection ;
+    assr:includesClaim plt:CLM_PLT_01_GapKeeping , plt:CLM_PLT_02_TrackKeeping , plt:CLM_PLT_03_FaultyInputsDetected , plt:CLM_PLT_04_ActuatorFaultsDetected ;
+    assr:includesAssumption plt:ASM_PLT_01_GapBounds , plt:ASM_PLT_02_TrackTolerance , plt:ASM_PLT_03_LeaderStateAge , plt:ASM_PLT_04_GNSSOutageProfile .
 
 ##############################################################################
 # END example-platoon.ttl
