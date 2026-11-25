@@ -1824,6 +1824,225 @@ plt:PlatoonALWeights a assr:AssuranceLevelWeightSet ;
     assr:declaredBy "WARRaNT platoon use-case team" ;
     warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MITIGATION — STANDARD RESPONSE LIBRARY
+# Candidate responses the decision support ranks; the DI never selects or
+# starts one. Generic responses only (D2): nothing here uses rudder or
+# propulsion data to estimate, validate or substitute position. The one
+# position-related response propagates from heading and last speed over
+# ground, which is kinematic, not rudder- or propulsion-driven dead reckoning.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:R01_RejectInvalidFixes a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-01" ;
+    warrant:hasName "Reject frozen or jumping fixes and bridge them kinematically" ;
+    warrant:hasDescription "Fixes that fail the freshness or plausibility check are not passed to the estimator; the estimator bridges the gap from heading and the last speed over ground, and the next accepted fix is blended in rather than stepped to. Bounded in time: after the maximum bridging time the response hands over to R06 or R07. Depends on heading being independent of the GNSS position (plt:ASM_PLT_05_HeadingIndependence)." ;
+    mit:hasStrategyType mit:LOGICAL_ISOLATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:implementsControl plt:CTRL_FixAgeMonitoring , plt:CTRL_FixPlausibilityGate ;
+    mit:addresses plt:PositionFixingL , plt:PositionFixingF , plt:LeaderStateDataFlow .
+
+plt:R02_DynamicGapIncrease a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-02" ;
+    warrant:hasName "Dynamic gap control: expand the formation" ;
+    warrant:hasDescription "Raise the gap setpoint during manoeuvres, ahead of a bridge passage or while an input is degraded, and contract it again only once the platoon is stable on a straight segment." ;
+    mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:implementsControl plt:CTRL_PreBridgeGapIncrease ;
+    mit:addresses plt:GapKeepingF .
+
+plt:R03_LeaderConstantSpeed a mit:AdvisoryAction ;
+    warrant:hasIdentifier "RSP-PLT-03" ;
+    warrant:hasName "Leader holds constant speed through shadowed areas" ;
+    warrant:hasDescription "Advisory to the leader's skipper: reduce speed before a bridge and hold it constant until the platoon is clear, so that a frozen or jumping leader fix carries little apparent speed change for the follower's gap loop to react to." ;
+    mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:TrackKeepingL , plt:GapKeepingF .
+
+plt:R04_DampedFollowerTuning a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-04" ;
+    warrant:hasName "Switch the follower to a damped controller configuration" ;
+    warrant:hasDescription "During a GNSS anomaly, switch the heading and gap loops to their conservative, high-damping tuning, which rides out erroneous leader motion instead of following it; switch back once the input is trusted again. The tunings themselves are governed values with no ontology class of their own." ;
+    mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:GapKeepingF , plt:TrackKeepingF .
+
+plt:R05_SafetyDistanceLevel a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-05" ;
+    warrant:hasName "Step the safety-distance logic to a more conservative level" ;
+    warrant:hasDescription "Move from the optimised safety distance (relative braking of both vessels) to the elastic-margin level (braking distance plus a deadband), or to the fixed level (the follower's braking distance against a leader assumed to stop dead)." ;
+    mit:hasStrategyType mit:RECONFIGURATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:GapKeepingF .
+
+plt:R06_DegradedPlatoonMode a mit:AdvisoryAction ;
+    warrant:hasIdentifier "RSP-PLT-06" ;
+    warrant:hasName "Degraded platoon mode: larger gap and reduced speed" ;
+    warrant:hasDescription "The platoon continues with an enlarged gap setpoint and the leader at reduced speed until the degraded input recovers or the operator decides otherwise." ;
+    mit:hasStrategyType mit:SAFE_DEGRADED_MODE ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:requiresAuthorisationFrom plt:RemoteOperatorRole ;
+    mit:addresses plt:GapKeepingF , plt:TrackKeepingF .
+
+plt:R07_FollowerHoldCourse a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-07" ;
+    warrant:hasName "Follower holds heading and speed without leader input" ;
+    warrant:hasDescription "When no valid leader state is available, the follower stops following the leader's recorded track and holds its last heading and speed for a bounded time, while the operator is alerted. Not a position estimate: the follower simply stops steering on leader data." ;
+    mit:hasStrategyType mit:SAFE_DEGRADED_MODE ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:GapKeepingF , plt:TrackKeepingF , plt:V2VLink .
+
+plt:R08_AlertSafetyOfficer a mit:AdvisoryAction ;
+    warrant:hasIdentifier "RSP-PLT-08" ;
+    warrant:hasName "Alert the remote control operation safety officer" ;
+    warrant:hasDescription "Raise the degradation, its health events and the ranked responses to the safety officer, who may take over or authorise an escalated response." ;
+    mit:hasStrategyType mit:OPERATOR_ESCALATION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:implementsControl plt:CTRL_RemoteOperatorSupervision ;
+    mit:addresses plt:GapKeepingF , plt:TrackKeepingF .
+
+plt:R09_DissolvePlatoon a mit:AdvisoryAction ;
+    warrant:hasIdentifier "RSP-PLT-09" ;
+    warrant:hasName "Dissolve the platoon" ;
+    warrant:hasDescription "The follower leaves platoon mode, opens the gap and comes to a controlled stop or holding position in the waterway under the safety officer's control; the leader continues or stops as directed." ;
+    mit:hasStrategyType mit:SAFE_DEGRADED_MODE ;
+    mit:hasDefaultPosture mit:FAIL_SAFE ;
+    mit:requiresAuthorisationFrom plt:RemoteOperatorRole ;
+    mit:addresses plt:GapKeepingF , plt:TrackKeepingF .
+
+plt:R10_EnhancedMonitoring a mit:MachineActionableAction ;
+    warrant:hasIdentifier "RSP-PLT-10" ;
+    warrant:hasName "Enhanced monitoring ahead of and through a bridge passage" ;
+    warrant:hasDescription "Switch to the bridge-passage supervision configuration (higher floor, short trend window and prediction horizon) and tighten the fix-age and V2V staleness limits for the passage." ;
+    mit:hasStrategyType mit:ENHANCED_MONITORING ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:NavigationSystemL , plt:NavigationSystemF , plt:V2VLink .
+
+plt:R11_CameraSubstitution a mit:AdvisoryAction ;
+    warrant:hasIdentifier "RSP-PLT-11" ;
+    warrant:hasName "Camera-based position substitution (not evaluated)" ;
+    warrant:hasDescription "Suggested by the trials team: replace the GNSS position under a bridge with a camera-based relative estimate. Listed for completeness only. The cameras are not in the WARRaNT simulator, so this response is never ranked or executed in the evaluation." ;
+    mit:hasStrategyType mit:VIRTUAL_SENSOR_SUBSTITUTION ;
+    mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
+    mit:addresses plt:PositionFixingL , plt:PositionFixingF .
+
+plt:LeaderSkipperRole mit:performsMitigation plt:R03_LeaderConstantSpeed .
+
+# — Rules: which responses the decision support considers for which condition
+plt:RULE_LeaderGNSSUntrusted a mit:MitigationRule ;
+    warrant:hasName "Leader GNSS frozen, missing or jumping" ;
+    mit:recommends plt:R01_RejectInvalidFixes , plt:R02_DynamicGapIncrease , plt:R04_DampedFollowerTuning ,
+        plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer .
+
+plt:RULE_FollowerGNSSUntrusted a mit:MitigationRule ;
+    warrant:hasName "Follower GNSS frozen" ;
+    mit:recommends plt:R01_RejectInvalidFixes , plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer , plt:R09_DissolvePlatoon .
+
+plt:RULE_V2VDegraded a mit:MitigationRule ;
+    warrant:hasName "V2V leader state lost or stale" ;
+    mit:recommends plt:R07_FollowerHoldCourse , plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer , plt:R09_DissolvePlatoon .
+
+plt:RULE_ActuatorFault a mit:MitigationRule ;
+    warrant:hasName "Follower rudder or propulsion fault" ;
+    mit:recommends plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer , plt:R09_DissolvePlatoon .
+
+plt:RULE_GapAtRisk a mit:MitigationRule ;
+    warrant:hasName "Gap at risk (bridge approach, manoeuvre)" ;
+    mit:recommends plt:R02_DynamicGapIncrease , plt:R03_LeaderConstantSpeed , plt:R05_SafetyDistanceLevel , plt:R10_EnhancedMonitoring .
+
+plt:DevLeaderFixFrozen       mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:DevLeaderFixDropout      mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:DevLeaderFixRecoveryJump mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:DevFollowerFixFrozen     mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
+plt:DevV2VLinkLoss           mit:matchesRule plt:RULE_V2VDegraded .
+plt:DevV2VLinkDelay          mit:matchesRule plt:RULE_V2VDegraded .
+plt:DevRudderStuckF          mit:matchesRule plt:RULE_ActuatorFault .
+plt:DevRudderDeadbandF       mit:matchesRule plt:RULE_ActuatorFault .
+plt:DevRudderSlowF           mit:matchesRule plt:RULE_ActuatorFault .
+plt:DevPropulsionShortfallF  mit:matchesRule plt:RULE_ActuatorFault .
+plt:HazGapViolation          mit:matchesRule plt:RULE_GapAtRisk .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SCENARIOS — P-SCENARIO STUBS (runbook §4)
+# Definitions only; executions and results are written by the simulator with
+# run-scoped IRIs. Wind is excluded from every scenario. scen:affects cannot
+# point at the V2V link, so P5 and P8 name the follower components and
+# functions that consume it.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:SCN_P1_RealOutageReplay a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P1" ;
+    warrant:hasName "P1 — replay of the real GNSS outages (detection only)" ;
+    warrant:hasDescription "The catalogued real outages under way, replayed from the trial data on the evaluation days. Scored for detection and false alarms only: the recorded vessels did not run any response." ;
+    scen:hasTrigger plt:DevLeaderFixFrozen , plt:DevFollowerFixFrozen ;
+    scen:affects plt:GNSSReceiverL , plt:GNSSReceiverF , plt:PositionFixingL , plt:PositionFixingF ;
+    scen:causes plt:HazPlatoonCoordinationLoss .
+
+plt:SCN_P2_LeaderFrozenFix a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P2" ;
+    warrant:hasName "P2 — leader fix frozen under a bridge" ;
+    warrant:hasDescription "Injected frozen leader fix of 5–60 s at a bridge passage, on a straight segment and in a turn, ending in a recovery jump." ;
+    scen:hasTrigger plt:DevLeaderFixFrozen ;
+    scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:causes plt:HazGapViolation , plt:HazTrackDeparture .
+
+plt:SCN_P2solo_LeaderAutopilot a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P2-SOLO" ;
+    warrant:hasName "P2-solo — leader alone on route autopilot with a frozen fix" ;
+    warrant:hasDescription "Single-vessel variant of P2 in the simulator: the leader on route autopilot, no follower. Isolates the effect of the frozen fix on one vessel's track keeping." ;
+    scen:hasTrigger plt:DevLeaderFixFrozen ;
+    scen:affects plt:GNSSReceiverL , plt:RouteAutopilotL , plt:TrackKeepingL ;
+    scen:causes plt:HazTrackDeparture .
+
+plt:SCN_P3_LeaderDropout a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P3" ;
+    warrant:hasName "P3 — leader fix dropout" ;
+    warrant:hasDescription "Injected loss of the leader fix. Not observed in the trial data under way, where every outage was a frozen fix (ASM-PLT-04)." ;
+    scen:hasTrigger plt:DevLeaderFixDropout ;
+    scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:causes plt:HazPlatoonCoordinationLoss .
+
+plt:SCN_P4_RecoveryJump a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P4" ;
+    warrant:hasName "P4 — leader recovery jump" ;
+    warrant:hasDescription "Injected step in the leader fix on reacquisition, sized from the real outages (12–31 m)." ;
+    scen:hasTrigger plt:DevLeaderFixRecoveryJump ;
+    scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:causes plt:HazGapViolation , plt:HazTrackDeparture .
+
+plt:SCN_P5_V2VDegradation a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P5" ;
+    warrant:hasName "P5 — V2V loss, latency or staleness" ;
+    warrant:hasDescription "Injected loss of leader-state messages, added latency, or repeated stale states. Beyond the trials team's evaluated cases, which list communication faults as future work." ;
+    scen:hasTrigger plt:DevV2VLinkLoss , plt:DevV2VLinkDelay ;
+    scen:affects plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:causes plt:HazPlatoonCoordinationLoss .
+
+plt:SCN_P6_RudderFault a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P6" ;
+    warrant:hasName "P6 — follower rudder fault (stuck, deadband, slow)" ;
+    scen:hasTrigger plt:DevRudderStuckF , plt:DevRudderDeadbandF , plt:DevRudderSlowF ;
+    scen:affects plt:RudderActuatorF , plt:TrackKeepingF ;
+    scen:causes plt:HazTrackDeparture .
+
+plt:SCN_P7_FollowerFrozenFix a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P7" ;
+    warrant:hasName "P7 — follower fix frozen" ;
+    warrant:hasDescription "Injected frozen fix on the follower's own receiver. Beyond the trials team's evaluated cases, which list follower signal loss as future work." ;
+    scen:hasTrigger plt:DevFollowerFixFrozen ;
+    scen:affects plt:GNSSReceiverF , plt:PlatooningControllerF , plt:TrackKeepingF , plt:GapKeepingF ;
+    scen:causes plt:HazTrackDeparture , plt:HazGapViolation .
+
+plt:SCN_P8_TurnFrozenFixAndV2V a scen:FailureScenario ;
+    warrant:hasIdentifier "SCN-PLT-P8" ;
+    warrant:hasName "P8 — P2 in a turn combined with P5" ;
+    warrant:hasDescription "Frozen leader fix during a turn while the V2V link is also degraded: the follower cannot tell from the link whether the leader has stopped." ;
+    scen:hasTrigger plt:DevLeaderFixFrozen , plt:DevV2VLinkDelay ;
+    scen:affects plt:GNSSReceiverL , plt:PlatooningControllerF , plt:GapKeepingF , plt:TrackKeepingF ;
+    scen:causes plt:HazGapViolation , plt:HazTrackDeparture , plt:HazPlatoonCoordinationLoss .
+
 ##############################################################################
 # END example-platoon.ttl
 ##############################################################################
