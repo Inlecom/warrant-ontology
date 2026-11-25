@@ -26,7 +26,10 @@
 # response library and scenario stubs. Runtime records (health events,
 # attribute values, indices, triggers, evaluations, executions, evidence) are
 # written by the external services with run-scoped IRIs and are not part of
-# this file.
+# this file. The one exception is a set of exemplar detection events, one per
+# HAZOP deviation, with synthetic timestamps: they exist so that every
+# Deviation here is reached through a DetectionEvent, and they are not trial
+# records.
 #
 # Generic checks and standard responses only: no rudder- or propulsion-driven
 # dead reckoning, position validation or GNSS substitution appears anywhere in
@@ -1038,6 +1041,414 @@ plt:ResidualRisk_SupervisedPlatoon a cdm:Risk ;
     cdm:hasRiskLevel     "Medium" ;
     cdm:hasAcceptability "ALARP" ;
     cdm:hasHazardClass   cdm:DATA_LOSS .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OBSERVATION — METRICS AND OBSERVERS
+# Completes the five metrics declared with the structure. Values stay
+# external: no measurement is recorded here.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:FixStepResidualMetricL a obs:DataQualityMetric ;
+    warrant:hasName "Fix step residual (Vessel L)" ;
+    warrant:hasDescription "Distance between a new leader fix and the position predicted from the previous fix, heading and last speed over ground. Kinematic only; no rudder or propulsion input (D2)." ;
+    obs:hasUnit "m" .
+
+plt:V2VMessageAgeMetric a obs:DataQualityMetric ;
+    warrant:hasName "Leader-state message age" ;
+    warrant:hasDescription "Time between the leader's timestamp on the latest received leader-state message and its receipt at the follower." ;
+    obs:hasUnit "s" .
+
+plt:RudderTrackingErrorMetricF a obs:PerformanceMetric ;
+    warrant:hasName "Rudder command-to-feedback error (Vessel F)" ;
+    warrant:hasDescription "Difference between commanded and reported rudder angle, and its evolution after a command change." ;
+    obs:hasUnit "deg" .
+
+plt:PropulsionTrackingErrorMetricF a obs:PerformanceMetric ;
+    warrant:hasName "Propulsion setpoint-to-feedback error (Vessel F)" ;
+    warrant:hasDescription "Shortfall of reported propulsion output against the commanded setpoint, as a fraction of the setpoint." ;
+    obs:hasUnit "1" .
+
+plt:GNSSReceiverL     obs:hasDependabilityMetric plt:FixStepResidualMetricL .
+plt:V2VLink           obs:hasDependabilityMetric plt:V2VMessageAgeMetric .
+plt:RudderActuatorF   obs:hasDependabilityMetric plt:RudderTrackingErrorMetricF .
+plt:PropulsionF       obs:hasDependabilityMetric plt:PropulsionTrackingErrorMetricF .
+
+plt:GNSSFixObserverL a obs:Sensor ;
+    warrant:hasName "Leader GNSS fix output" ;
+    obs:measures plt:FixAgeMetricL , plt:FixStepResidualMetricL .
+
+plt:GNSSFixObserverF a obs:Sensor ;
+    warrant:hasName "Follower GNSS fix output" ;
+    obs:measures plt:FixAgeMetricF .
+
+plt:V2VMessageProbe a obs:Probe ;
+    warrant:hasName "Follower V2V message probe" ;
+    obs:measures plt:V2VMessageAgeMetric .
+
+plt:ActuatorFeedbackObserverF a obs:Sensor ;
+    warrant:hasName "Follower rudder and propulsion feedback" ;
+    obs:measures plt:RudderTrackingErrorMetricF , plt:PropulsionTrackingErrorMetricF .
+
+plt:PlatoonGeometryVirtualSensor a obs:VirtualSensor ;
+    warrant:hasName "Platoon geometry virtual sensor" ;
+    warrant:hasDescription "Computes gap error from the two vessels' fixes and the gap setpoint, and cross-track error of each vessel from its fix and the planned track. It inherits every GNSS and V2V fault: gap error computed from a frozen leader fix is wrong. Computation is external." ;
+    obs:estimates plt:GapErrorMetric , plt:TrackErrorMetricF , plt:TrackErrorMetricL .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OBSERVATION — NODE HEALTH MONITORS
+# One monitor per monitored node. Health events cross from the leader's
+# navigation monitor to the follower's function monitors, mirroring the
+# cross-vessel dependency chain (DEP-01 → DEP-03 → DEP-04 → DEP-12/13).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:NHM_NavigationL a obs:NodeHealthMonitor ;
+    warrant:hasName "Leader navigation system health monitor" ;
+    obs:monitorsNode plt:NavigationSystemL ;
+    obs:hasMonitoringLevel obs:SYSTEM_LEVEL ;
+    obs:consumes plt:FixAgeMetricL , plt:FixStepResidualMetricL ;
+    obs:exchangesHealthEventWith plt:NHM_TrackKeepingL , plt:NHM_V2VLink .
+
+plt:NHM_NavigationF a obs:NodeHealthMonitor ;
+    warrant:hasName "Follower navigation system health monitor" ;
+    obs:monitorsNode plt:NavigationSystemF ;
+    obs:hasMonitoringLevel obs:SYSTEM_LEVEL ;
+    obs:consumes plt:FixAgeMetricF ;
+    obs:exchangesHealthEventWith plt:NHM_GapKeepingF , plt:NHM_TrackKeepingF .
+
+plt:NHM_V2VLink a obs:NodeHealthMonitor ;
+    warrant:hasName "V2V link health monitor" ;
+    warrant:hasDescription "Runs on the follower. Also relays the leader navigation monitor's health events, so the follower learns that the leader's fix is untrusted, not only that its messages are late." ;
+    obs:monitorsNode plt:V2VLink ;
+    obs:hasMonitoringLevel obs:COMPONENT_LEVEL ;
+    obs:consumes plt:V2VMessageAgeMetric ;
+    obs:exchangesHealthEventWith plt:NHM_GapKeepingF , plt:NHM_TrackKeepingF .
+
+plt:NHM_SteeringF a obs:NodeHealthMonitor ;
+    warrant:hasName "Follower steering system health monitor" ;
+    obs:monitorsNode plt:SteeringSystemF ;
+    obs:hasMonitoringLevel obs:SYSTEM_LEVEL ;
+    obs:consumes plt:RudderTrackingErrorMetricF ;
+    obs:exchangesHealthEventWith plt:NHM_TrackKeepingF .
+
+plt:NHM_PropulsionF a obs:NodeHealthMonitor ;
+    warrant:hasName "Follower propulsion system health monitor" ;
+    obs:monitorsNode plt:PropulsionSystemF ;
+    obs:hasMonitoringLevel obs:SYSTEM_LEVEL ;
+    obs:consumes plt:PropulsionTrackingErrorMetricF ;
+    obs:exchangesHealthEventWith plt:NHM_GapKeepingF .
+
+plt:NHM_GapKeepingF a obs:NodeHealthMonitor ;
+    warrant:hasName "Follower gap-keeping function health monitor" ;
+    obs:monitorsNode plt:GapKeepingF ;
+    obs:hasMonitoringLevel obs:FUNCTION_LEVEL ;
+    obs:consumes plt:GapErrorMetric .
+
+plt:NHM_TrackKeepingF a obs:NodeHealthMonitor ;
+    warrant:hasName "Follower track-keeping function health monitor" ;
+    obs:monitorsNode plt:TrackKeepingF ;
+    obs:hasMonitoringLevel obs:FUNCTION_LEVEL ;
+    obs:consumes plt:TrackErrorMetricF .
+
+plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
+    warrant:hasName "Leader track-keeping function health monitor" ;
+    obs:monitorsNode plt:TrackKeepingL ;
+    obs:hasMonitoringLevel obs:FUNCTION_LEVEL ;
+    obs:consumes plt:TrackErrorMetricL .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OBSERVATION — HEALTH EVENT TYPES (as detection rules)
+# The observation module has no health-event-type class; obs:DetectionRule is
+# the nearest term. Each rule names one generic check. Limits are illustrative
+# and become governed values once calibrated (T04 calibration split).
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:DR_FixFrozen a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-01" ;
+    warrant:hasName "Frozen fix" ;
+    warrant:hasDescription "Fix age above the maximum (illustrative: 3 s at a 1 Hz receiver) while the receiver still flags the fix as valid. An exactly repeated position is itself the indication, since a live fix always jitters." .
+
+plt:DR_FixDropout a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-02" ;
+    warrant:hasName "Fix dropout" ;
+    warrant:hasDescription "No fix, or a fix flagged invalid, for longer than the maximum fix age." .
+
+plt:DR_FixStep a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-03" ;
+    warrant:hasName "Fix step on reacquisition" ;
+    warrant:hasDescription "Fix step residual above the kinematic gate (illustrative: 10 m) on the first fix after a frozen or missing period." .
+
+plt:DR_V2VLoss a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-04" ;
+    warrant:hasName "V2V leader-state loss" ;
+    warrant:hasDescription "No leader-state message received within the timeout (illustrative: 2 s)." .
+
+plt:DR_V2VStale a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-05" ;
+    warrant:hasName "V2V leader-state late or stale" ;
+    warrant:hasDescription "Message age above the staleness limit (illustrative: 1 s), or a repeated sequence number." .
+
+plt:DR_RudderNoResponse a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-06" ;
+    warrant:hasName "Rudder does not respond" ;
+    warrant:hasDescription "Reported rudder angle unchanged after a command change larger than the deadband allowance." .
+
+plt:DR_RudderDeadband a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-07" ;
+    warrant:hasName "Rudder deadband" ;
+    warrant:hasDescription "Small commands around midships produce no reported movement, while large commands do." .
+
+plt:DR_RudderSlow a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-08" ;
+    warrant:hasName "Rudder slow" ;
+    warrant:hasDescription "Reported rudder rate below the rated rate after a command step." .
+
+plt:DR_PropulsionShortfall a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-09" ;
+    warrant:hasName "Propulsion shortfall" ;
+    warrant:hasDescription "Reported propulsion output below the commanded setpoint by more than the allowance for longer than the settling time." .
+
+plt:GNSSFixObserverL obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout , plt:DR_FixStep .
+plt:GNSSFixObserverF obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout .
+plt:V2VMessageProbe  obs:supportsDetectionOf plt:DR_V2VLoss , plt:DR_V2VStale .
+plt:ActuatorFeedbackObserverF obs:supportsDetectionOf plt:DR_RudderNoResponse , plt:DR_RudderDeadband , plt:DR_RudderSlow , plt:DR_PropulsionShortfall .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OBSERVATION — EXEMPLAR DETECTION EVENTS
+# One illustrative DetectionEvent per HAZOP deviation, so that every Deviation
+# in the file exists through a detection (GLOSSARY §5). The DetectionEvent
+# shape requires a timestamp, so each carries a synthetic one on a reference
+# day, an hour apart. They are not trial records, not a replay of an outage,
+# and not concurrent.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:DE_LeaderFixFrozen a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-01" ;
+    warrant:hasName "Leader fix frozen at bridge passage (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T01:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevLeaderFixFrozen ;
+    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
+    obs:indicatesCondition plt:FM_LeaderGNSSHoldLastFix ;
+    obs:hasMissionContext plt:BridgePassageContext ;
+    obs:hasSeverityLevel "HIGH" .
+
+plt:DE_LeaderFixDropout a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-02" ;
+    warrant:hasName "Leader fix dropout (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T02:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevLeaderFixDropout ;
+    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
+    obs:indicatesCondition plt:FM_LeaderGNSSSignalObstruction ;
+    obs:hasMissionContext plt:BridgePassageContext ;
+    obs:hasSeverityLevel "MEDIUM" .
+
+plt:DE_LeaderFixRecoveryJump a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-03" ;
+    warrant:hasName "Leader fix step on reacquisition (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T03:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevLeaderFixRecoveryJump ;
+    obs:affectsAsset plt:GNSSReceiverL , plt:PositionFixingL ;
+    obs:indicatesCondition plt:FM_LeaderGNSSReacquisitionStep ;
+    obs:hasMissionContext plt:BridgePassageContext ;
+    obs:hasSeverityLevel "MEDIUM" .
+
+plt:DE_FollowerFixFrozen a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-04" ;
+    warrant:hasName "Follower fix frozen (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T04:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevFollowerFixFrozen ;
+    obs:affectsAsset plt:GNSSReceiverF , plt:PositionFixingF ;
+    obs:indicatesCondition plt:FM_FollowerGNSSHoldLastFix ;
+    obs:hasMissionContext plt:BridgePassageContext ;
+    obs:hasSeverityLevel "HIGH" .
+
+plt:DE_V2VLinkLoss a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-05" ;
+    warrant:hasName "V2V leader-state loss (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T05:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevV2VLinkLoss ;
+    obs:affectsAsset plt:V2VLink , plt:GapKeepingF , plt:TrackKeepingF ;
+    obs:indicatesCondition plt:FM_V2VLinkDropout ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "HIGH" .
+
+plt:DE_V2VLinkDelay a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-06" ;
+    warrant:hasName "V2V leader-state stale (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T06:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevV2VLinkDelay ;
+    obs:affectsAsset plt:V2VLink , plt:GapKeepingF , plt:TrackKeepingF ;
+    obs:indicatesCondition plt:FM_V2VLinkCongestion ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "MEDIUM" .
+
+plt:DE_RudderStuckF a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-07" ;
+    warrant:hasName "Follower rudder does not respond (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T07:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevRudderStuckF ;
+    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    obs:indicatesCondition plt:FM_RudderActuatorSeized ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "HIGH" .
+
+plt:DE_RudderDeadbandF a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-08" ;
+    warrant:hasName "Follower rudder deadband (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T08:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevRudderDeadbandF ;
+    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    obs:indicatesCondition plt:FM_RudderLinkageBacklash ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "LOW" .
+
+plt:DE_RudderSlowF a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-09" ;
+    warrant:hasName "Follower rudder slow (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T09:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevRudderSlowF ;
+    obs:affectsAsset plt:RudderActuatorF , plt:TrackKeepingF ;
+    obs:indicatesCondition plt:FM_RudderHydraulicDegradation ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "MEDIUM" .
+
+plt:DE_PropulsionShortfallF a obs:DetectionEvent ;
+    warrant:hasIdentifier "HE-PLT-EX-10" ;
+    warrant:hasName "Follower propulsion shortfall (exemplar)" ;
+    obs:hasTimestamp "2026-01-01T10:00:00Z"^^xsd:dateTime ;
+    obs:detectionEventDetects plt:DevPropulsionShortfallF ;
+    obs:affectsAsset plt:PropulsionF , plt:GapKeepingF ;
+    obs:indicatesCondition plt:FM_PropulsionThrustLoss ;
+    obs:hasMissionContext plt:OpenWaterwayContext ;
+    obs:hasSeverityLevel "MEDIUM" .
+
+plt:DR_FixFrozen           obs:producesDetectionEvent plt:DE_LeaderFixFrozen , plt:DE_FollowerFixFrozen .
+plt:DR_FixDropout          obs:producesDetectionEvent plt:DE_LeaderFixDropout .
+plt:DR_FixStep             obs:producesDetectionEvent plt:DE_LeaderFixRecoveryJump .
+plt:DR_V2VLoss             obs:producesDetectionEvent plt:DE_V2VLinkLoss .
+plt:DR_V2VStale            obs:producesDetectionEvent plt:DE_V2VLinkDelay .
+plt:DR_RudderNoResponse    obs:producesDetectionEvent plt:DE_RudderStuckF .
+plt:DR_RudderDeadband      obs:producesDetectionEvent plt:DE_RudderDeadbandF .
+plt:DR_RudderSlow          obs:producesDetectionEvent plt:DE_RudderSlowF .
+plt:DR_PropulsionShortfall obs:producesDetectionEvent plt:DE_PropulsionShortfallF .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DI — ATTRIBUTES, THRESHOLDS AND FLOORS PER OPERATIONAL CONTEXT
+# Thresholds (τ^D > τ^C > τ^F > τ^U) on the platoon's three functions, stricter
+# at bridge passages. Values are illustrative, pending calibration. Assurance
+# weights, propagation parameters and decision configuration follow in the
+# governed-configuration section.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:GapKeepingSafetyAttribute        a assr:Safety       ; warrant:hasName "Gap keeping (F) — safety"@en .
+plt:GapKeepingAvailabilityAttribute  a assr:Availability ; warrant:hasName "Gap keeping (F) — availability"@en .
+plt:TrackKeepingFSafetyAttribute     a assr:Safety       ; warrant:hasName "Track keeping (F) — safety"@en .
+plt:TrackKeepingFAvailabilityAttribute a assr:Availability ; warrant:hasName "Track keeping (F) — availability"@en .
+plt:TrackKeepingLSafetyAttribute     a assr:Safety       ; warrant:hasName "Track keeping (L) — safety"@en .
+
+plt:GapKeepingF   assr:hasAssuranceAttribute plt:GapKeepingSafetyAttribute , plt:GapKeepingAvailabilityAttribute .
+plt:TrackKeepingF assr:hasAssuranceAttribute plt:TrackKeepingFSafetyAttribute , plt:TrackKeepingFAvailabilityAttribute .
+plt:TrackKeepingL assr:hasAssuranceAttribute plt:TrackKeepingLSafetyAttribute .
+
+# — Open waterway
+plt:THR_Open_GapKeepingSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:GapKeepingSafetyAttribute ; di:thresholdAppliesToNode plt:GapKeepingF ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.40"^^xsd:decimal ;
+    di:hasFailedThreshold "0.20"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Open_GapKeepingAvailability a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:GapKeepingAvailabilityAttribute ; di:thresholdAppliesToNode plt:GapKeepingF ;
+    di:hasNormalMinimum "0.75"^^xsd:decimal ; di:hasCriticalThreshold "0.35"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Open_TrackKeepingFSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingFSafetyAttribute ; di:thresholdAppliesToNode plt:TrackKeepingF ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.40"^^xsd:decimal ;
+    di:hasFailedThreshold "0.20"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Open_TrackKeepingFAvailability a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingFAvailabilityAttribute ; di:thresholdAppliesToNode plt:TrackKeepingF ;
+    di:hasNormalMinimum "0.75"^^xsd:decimal ; di:hasCriticalThreshold "0.35"^^xsd:decimal ;
+    di:hasFailedThreshold "0.15"^^xsd:decimal ; di:hasUnsafeThreshold "0.05"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Open_TrackKeepingLSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingLSafetyAttribute ; di:thresholdAppliesToNode plt:TrackKeepingL ;
+    di:hasNormalMinimum "0.70"^^xsd:decimal ; di:hasCriticalThreshold "0.40"^^xsd:decimal ;
+    di:hasFailedThreshold "0.20"^^xsd:decimal ; di:hasUnsafeThreshold "0.10"^^xsd:decimal ;
+    warrant:appliesUnder plt:OpenWaterwayContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+# — Bridge passage: less margin, so every band starts higher
+plt:THR_Bridge_GapKeepingSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:GapKeepingSafetyAttribute ; di:thresholdAppliesToNode plt:GapKeepingF ;
+    di:hasNormalMinimum "0.80"^^xsd:decimal ; di:hasCriticalThreshold "0.55"^^xsd:decimal ;
+    di:hasFailedThreshold "0.35"^^xsd:decimal ; di:hasUnsafeThreshold "0.20"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Bridge_GapKeepingAvailability a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:GapKeepingAvailabilityAttribute ; di:thresholdAppliesToNode plt:GapKeepingF ;
+    di:hasNormalMinimum "0.80"^^xsd:decimal ; di:hasCriticalThreshold "0.50"^^xsd:decimal ;
+    di:hasFailedThreshold "0.30"^^xsd:decimal ; di:hasUnsafeThreshold "0.15"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Bridge_TrackKeepingFSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingFSafetyAttribute ; di:thresholdAppliesToNode plt:TrackKeepingF ;
+    di:hasNormalMinimum "0.85"^^xsd:decimal ; di:hasCriticalThreshold "0.60"^^xsd:decimal ;
+    di:hasFailedThreshold "0.40"^^xsd:decimal ; di:hasUnsafeThreshold "0.25"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Bridge_TrackKeepingFAvailability a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingFAvailabilityAttribute ; di:thresholdAppliesToNode plt:TrackKeepingF ;
+    di:hasNormalMinimum "0.80"^^xsd:decimal ; di:hasCriticalThreshold "0.50"^^xsd:decimal ;
+    di:hasFailedThreshold "0.30"^^xsd:decimal ; di:hasUnsafeThreshold "0.15"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+plt:THR_Bridge_TrackKeepingLSafety a di:DIThreshold ;
+    di:thresholdAppliesToAttribute plt:TrackKeepingLSafetyAttribute ; di:thresholdAppliesToNode plt:TrackKeepingL ;
+    di:hasNormalMinimum "0.85"^^xsd:decimal ; di:hasCriticalThreshold "0.60"^^xsd:decimal ;
+    di:hasFailedThreshold "0.40"^^xsd:decimal ; di:hasUnsafeThreshold "0.25"^^xsd:decimal ;
+    warrant:appliesUnder plt:BridgePassageContext ; warrant:hasVersion "1.0" ; warrant:hasApprovalStatus "APPROVED" ; warrant:approvedBy "WARRaNT platoon use-case team" .
+
+# — Supervision: management floor, trend window and prediction horizon per
+#   context. At a bridge the horizon is short because a frozen fix there lasts
+#   5–60 s; the floor is higher because the margin is smaller.
+plt:SupervisionConfig_Open a di:SupervisionConfiguration ;
+    warrant:hasName "Platoon supervision configuration — open waterway" ;
+    di:hasTrendWindow "PT5M"^^xsd:duration ;
+    di:hasTrendSlopeThreshold "0.10"^^xsd:decimal ;
+    di:hasPredictionHorizon "PT2M"^^xsd:duration ;
+    di:hasManagementFloor "0.50"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:OpenWaterwayContext ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:hasApprovalStatus "APPROVED" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:SupervisionConfig_Bridge a di:SupervisionConfiguration ;
+    warrant:hasName "Platoon supervision configuration — bridge passage" ;
+    di:hasTrendWindow "PT1M"^^xsd:duration ;
+    di:hasTrendSlopeThreshold "0.05"^^xsd:decimal ;
+    di:hasPredictionHorizon "PT30S"^^xsd:duration ;
+    di:hasManagementFloor "0.65"^^xsd:decimal ;
+    di:configurationAppliesTo plt:PlatoonSystem ;
+    warrant:appliesUnder plt:BridgePassageContext ;
+    warrant:hasVersion "1.0" ;
+    warrant:approvedBy "WARRaNT platoon use-case team" ;
+    warrant:hasApprovalStatus "APPROVED" ;
+    warrant:validFrom "2026-01-01T00:00:00Z"^^xsd:dateTime .
+
+plt:PlatoonDependabilitySupervisor a di:DependabilitySupervisor ;
+    warrant:hasName "Platoon Dependability Supervisor" ;
+    warrant:hasDescription "Selects the configuration whose operational context is active. It raises resilience triggers; it does not choose or start a response." ;
+    di:usesConfiguration plt:SupervisionConfig_Open , plt:SupervisionConfig_Bridge .
 
 ##############################################################################
 # END example-platoon.ttl
