@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Dependability Index (DI) Ontology Module
-# Version: 0.10-poc
+# Version: 0.11-poc
 # IRI: https://warrant-project.eu/ontology/dependability-index
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-observation.ttl,
 #          warrant-cdm.ttl, warrant-assurance.ttl
@@ -112,14 +112,14 @@ Node-level DI with typed, per-hazard-class risk propagation (PropagatedRisk,
 RiskPropagationEdge, RiskPropagationParameter), hierarchical aggregation (DIWeight,
 aggregatesInto, SystemDependabilityIndex), attribute-wise operational state
 (DependabilityIndexState named individuals, DIThreshold per node and attribute,
-hasAttributeState), resilience triggers (ResilienceTrigger, ResilienceTriggerType,
-SupervisionConfiguration), DI forecasts (DIForecast, produced by the Digital Twin or
+hasAttributeState), resilience-trigger evaluations and firings (TriggerEvaluation,
+TriggerEvaluationResult, ResilienceTrigger, ResilienceTriggerType, SupervisionConfiguration), DI and attribute forecasts (DIForecast, produced by the Digital Twin or
 a predictive service), calculation methods, and update events. All computation is
 external; the KG stores inputs, configured parameters, results and audit events."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-09-06"^^xsd:date ;
-    owl:versionInfo "0.10-poc" .
+    dcterms:modified "2026-11-26"^^xsd:date ;
+    owl:versionInfo "0.11-poc" .
 
 
 ##############################################################################
@@ -202,7 +202,7 @@ di:DIForecast a owl:Class ;
     rdfs:subClassOf warrant:CalculationEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Dependability Index Forecast"@en ;
-    rdfs:comment "A predicted value of a node or system DI over a horizon, produced by the Digital Twin's predictive simulation, a what-if scenario execution, or a predictive analytical service (di:forecastProducedBy → obs:DataSource; the Digital Twin is declared a DataSource in warrant-digital-twin). Two uses: (1) the Supervisor's anticipatory trigger T_pred, which fires when the forecast minimum over the planning horizon falls below the configured management floor (di:triggeredByForecast); (2) the expected effect E[DI_sys(t+Δt) | u] of a candidate response u evaluated by REDS (mit:hasExpectedIndex). The forecast lives in this module so that both consumers reference a DI-module class and no module imports warrant-digital-twin."@en .
+    rdfs:comment "A predicted value of a node or system DI (di:forecastsIndex), or of one node attribute value (di:forecastsAttribute, e.g. the gap-keeping or track-keeping attribute of a follower vessel), over a horizon, produced by the Digital Twin's predictive simulation, a what-if scenario execution, or a predictive analytical service (di:forecastProducedBy → obs:DataSource; the Digital Twin is declared a DataSource in warrant-digital-twin). Two uses: (1) the Supervisor's anticipatory trigger T_pred, which fires when the forecast DI minimum over the planning horizon falls below the configured management floor, or a forecast attribute value falls below its Normal minimum (di:triggeredByForecast); (2) the expected effect E[DI_sys(t+Δt) | u] of a candidate response u evaluated by REDS (mit:hasExpectedIndex). The forecast lives in this module so that both consumers reference a DI-module class and no module imports warrant-digital-twin."@en .
 
 di:SupervisionConfiguration a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
@@ -210,11 +210,26 @@ di:SupervisionConfiguration a owl:Class ;
     rdfs:label "Supervision Configuration"@en ;
     rdfs:comment "The vessel- and mode-specific controlled parameters of the resilience criterion: trend window W (di:hasTrendWindow), sustained-decline slope threshold ε_W (di:hasTrendSlopeThreshold), prediction horizon T_p (di:hasPredictionHorizon), and DI management floor φ_DI (di:hasManagementFloor). Versioned and approved (warrant:hasVersion, warrant:approvedBy, warrant:validFrom/validTo), scoped by warrant:appliesUnder. If vessel mode or weights change, the trend window is restarted or the series rebased so that a configuration change is not mistaken for degradation."@en .
 
+di:TriggerEvaluation a owl:Class ;
+    rdfs:subClassOf di:DependabilityEntity ;
+    rdfs:subClassOf warrant:CalculationEntity ;
+    rdfs:label "Trigger Evaluation"@en ;
+    rdfs:comment "One evaluation of one term of the resilience criterion (di:hasTriggerType) for one node or system (di:evaluatedFor) at one instant (di:evaluatedAt), with its three-valued result (di:hasEvaluationResult): TRUE, FALSE or NOT_EVALUABLE. Recording FALSE and NOT_EVALUABLE evaluations makes the safeguard that missing information is never evidence of no fault auditable: a NOT_EVALUABLE evaluation names the inputs it lacked (di:hasMissingInput) and is never read as FALSE. An evaluation whose result is TRUE is a firing and is typed di:ResilienceTrigger. Which evaluations are stored (every one, or only changes of result) is a deployment choice."@en .
+
+di:TriggerEvaluationResult a owl:Class ;
+    rdfs:label "Trigger Evaluation Result"@en ;
+    rdfs:comment "Closed controlled vocabulary of the three-valued result of a trigger evaluation. Named individuals only."@en .
+
+di:TRUE          a di:TriggerEvaluationResult ; rdfs:label "TRUE"@en ;          rdfs:comment "The term was evaluated on sufficient inputs and its condition holds: the evaluation is a firing (di:ResilienceTrigger)."@en .
+di:FALSE         a di:TriggerEvaluationResult ; rdfs:label "FALSE"@en ;         rdfs:comment "The term was evaluated on sufficient inputs and its condition does not hold."@en .
+di:NOT_EVALUABLE a di:TriggerEvaluationResult ; rdfs:label "NOT_EVALUABLE"@en ; rdfs:comment "The term could not be evaluated because required inputs were missing, stale or invalid (di:hasMissingInput). Never equivalent to FALSE: missing information is not evidence of no fault."@en .
+
 di:ResilienceTrigger a owl:Class ;
+    rdfs:subClassOf di:TriggerEvaluation ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Resilience Trigger"@en ;
-    rdfs:comment "A recorded firing of the resilience criterion T_res = T_attr ∨ T_trend ∨ T_pred by the Dependability Supervisor. Its type (di:hasTriggerType) records why diagnosis and resilience evaluation were initiated: an attribute breached its Normal minimum (di:triggeredByAttributeValue), the system DI declined persistently (di:triggeredByIndex), or a forecast predicted a floor crossing (di:triggeredByForecast). Any one term initiates the Knowledge Graph query and REDS evaluation (mit:ResponseEvaluation mit:respondsToTrigger); the query result, not the DI value alone, establishes the affected nodes, causes, controls and candidate responses. A trigger is recorded in the Living Dependability Case together with the state and DI."@en .
+    rdfs:comment "A recorded firing of the resilience criterion T_res = T_attr ∨ T_trend ∨ T_pred by the Dependability Supervisor: a di:TriggerEvaluation whose result is di:TRUE. Its type (di:hasTriggerType) records why diagnosis and resilience evaluation were initiated: an attribute breached its Normal minimum (di:triggeredByAttributeValue), the system DI declined persistently (di:triggeredByIndex), or a forecast predicted a floor crossing (di:triggeredByForecast). Any one term initiates the Knowledge Graph query and REDS evaluation (mit:ResponseEvaluation mit:respondsToTrigger); the query result, not the DI value alone, establishes the affected nodes, causes, controls and candidate responses. A trigger is recorded in the Living Dependability Case together with the state and DI."@en .
 
 di:ResilienceTriggerType a owl:Class ;
     rdfs:label "Resilience Trigger Type"@en ;
@@ -296,6 +311,7 @@ di:thresholdAppliesToNode a owl:ObjectProperty ;
     rdfs:label "threshold applies to node"@en .
 
 di:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:subPropertyOf warrant:usesCalculationMethod ;
     rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex di:PropagatedRisk di:DIForecast di:DIUpdateEvent ) ] ;
     rdfs:range di:DICalculationMethod ;
     rdfs:label "uses calculation method"@en .
@@ -374,10 +390,10 @@ di:isReportedWith a owl:ObjectProperty ;
     rdfs:comment "The Assurance Level computed for the same reporting instant. The system DI (operational condition) and the AL (confidence in the evidence) must always be reported together."@en .
 
 di:isRecordedIn a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( di:SystemDependabilityIndex di:DependabilityIndex di:ResilienceTrigger di:DIUpdateEvent ) ] ;
+    rdfs:domain [ owl:unionOf ( di:SystemDependabilityIndex di:DependabilityIndex di:TriggerEvaluation di:DIUpdateEvent ) ] ;
     rdfs:range assr:LivingDependabilityCase ;
     rdfs:label "is recorded in"@en ;
-    rdfs:comment "Records this index, state, trigger, or update in the Living Dependability Case."@en .
+    rdfs:comment "Records this index, state, trigger evaluation (fired or not), or update in the Living Dependability Case."@en .
 
 di:forecastsIndex a owl:ObjectProperty ;
     rdfs:domain di:DIForecast ;
@@ -391,7 +407,7 @@ di:forecastProducedBy a owl:ObjectProperty ;
     rdfs:comment "Provenance of the forecast: the Digital Twin, scenario engine, or predictive analytical service that produced it."@en .
 
 di:hasTriggerType a owl:ObjectProperty ;
-    rdfs:domain di:ResilienceTrigger ;
+    rdfs:domain di:TriggerEvaluation ;
     rdfs:range di:ResilienceTriggerType ;
     rdfs:label "has trigger type"@en .
 
@@ -414,15 +430,33 @@ di:triggeredByForecast a owl:ObjectProperty ;
     rdfs:comment "For PREDICTED_FLOOR_CROSSING: the forecast that predicted the floor crossing."@en .
 
 di:usesConfiguration a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( di:ResilienceTrigger di:SystemDependabilityIndex di:DependabilitySupervisor ) ] ;
+    rdfs:domain [ owl:unionOf ( di:TriggerEvaluation di:SystemDependabilityIndex di:DependabilitySupervisor ) ] ;
     rdfs:range di:SupervisionConfiguration ;
     rdfs:label "uses configuration"@en ;
     rdfs:comment "The supervision configuration (window, slope threshold, horizon, floor) in force when the trigger was evaluated or the margin computed."@en .
 
 di:raisedBy a owl:ObjectProperty ;
-    rdfs:domain di:ResilienceTrigger ;
+    rdfs:domain di:TriggerEvaluation ;
     rdfs:range di:DependabilitySupervisor ;
     rdfs:label "raised by"@en .
+
+di:hasEvaluationResult a owl:ObjectProperty ;
+    rdfs:domain di:TriggerEvaluation ;
+    rdfs:range di:TriggerEvaluationResult ;
+    rdfs:label "has evaluation result"@en ;
+    rdfs:comment "The three-valued result of the evaluation: di:TRUE, di:FALSE or di:NOT_EVALUABLE. A di:ResilienceTrigger has di:TRUE."@en .
+
+di:evaluatedFor a owl:ObjectProperty ;
+    rdfs:domain di:TriggerEvaluation ;
+    rdfs:range warrant:OperationalEntity ;
+    rdfs:label "evaluated for"@en ;
+    rdfs:comment "The node (component, function, system) or the whole system the trigger term was evaluated for."@en .
+
+di:forecastsAttribute a owl:ObjectProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range assr:AssuranceAttribute ;
+    rdfs:label "forecasts attribute"@en ;
+    rdfs:comment "The node's attribute individual (the object of assr:hasAssuranceAttribute) whose value the forecast predicts. A forecast targets either a DI (di:forecastsIndex) or one attribute, never both. Attribute forecasts feed the attribute part of the PREDICTED_FLOOR_CROSSING term and the expected-effect estimates of REDS."@en .
 
 di:configurationAppliesTo a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( di:SupervisionConfiguration di:RiskPropagationParameter ) ] ;
@@ -568,7 +602,7 @@ di:hasForecastValue a owl:DatatypeProperty ;
     rdfs:domain di:DIForecast ;
     rdfs:range xsd:decimal ;
     rdfs:label "has forecast value"@en ;
-    rdfs:comment "The predicted DI value in [0,1] at di:forecastValidAt, or the predicted minimum over the horizon when used for the T_pred test."@en .
+    rdfs:comment "The predicted DI or attribute value in [0,1] at di:forecastValidAt, or the predicted minimum over the target interval or horizon when used for the T_pred test."@en .
 
 di:hasForecastHorizon a owl:DatatypeProperty ;
     rdfs:domain di:DIForecast ;
@@ -585,7 +619,13 @@ di:forecastValidAt a owl:DatatypeProperty ;
     rdfs:domain di:DIForecast ;
     rdfs:range xsd:dateTime ;
     rdfs:label "forecast valid at"@en ;
-    rdfs:comment "The future instant the forecast value refers to."@en .
+    rdfs:comment "The future instant the forecast value refers to, or the start of the target interval when di:forecastValidUntil is given."@en .
+
+di:forecastValidUntil a owl:DatatypeProperty ;
+    rdfs:domain di:DIForecast ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "forecast valid until"@en ;
+    rdfs:comment "End of the target interval [di:forecastValidAt, di:forecastValidUntil] when the forecast value is the predicted minimum over an interval (e.g. a bridge passage) rather than a value at one instant."@en .
 
 di:hasForecastConfidence a owl:DatatypeProperty ;
     rdfs:domain di:DIForecast ;
@@ -620,7 +660,20 @@ di:hasManagementFloor a owl:DatatypeProperty ;
 di:triggeredAt a owl:DatatypeProperty ;
     rdfs:domain di:ResilienceTrigger ;
     rdfs:range xsd:dateTime ;
-    rdfs:label "triggered at"@en .
+    rdfs:label "triggered at"@en ;
+    rdfs:comment "When the trigger fired; equal to its di:evaluatedAt."@en .
+
+di:evaluatedAt a owl:DatatypeProperty ;
+    rdfs:domain di:TriggerEvaluation ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "evaluated at"@en ;
+    rdfs:comment "The instant the trigger term was evaluated (its event time)."@en .
+
+di:hasMissingInput a owl:DatatypeProperty ;
+    rdfs:domain di:TriggerEvaluation ;
+    rdfs:range xsd:string ;
+    rdfs:label "has missing input"@en ;
+    rdfs:comment "For a NOT_EVALUABLE evaluation: one input that was missing, stale or invalid, stated as the record or quantity it needed (e.g. 'follower gap measurement older than 2 s', 'DI history shorter than the trend window'). One value per missing input."@en .
 
 di:hasPreviousValue a owl:DatatypeProperty ;
     rdfs:domain di:DIUpdateEvent ;
