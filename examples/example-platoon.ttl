@@ -1726,7 +1726,7 @@ plt:TrackKeepingLSafetyAttribute       assr:hasWeight plt:W_Open_TrackKeepingLSa
 #   absorb an upstream fault is smaller.
 plt:RiskPropagationDIMethod a di:DICalculationMethod ;
     warrant:hasName "Typed risk propagation and risk-adjusted DI" ;
-    warrant:hasDescription "Risk adjustment per attribute, then aggregation: d̃_i,a = clip(d_i,a − β_i·R_i,a), DI_i = Σ_a w̄_i,a·c_i,a·d̃_i,a / Σ_a w̄_i,a·c_i,a (DI paper, Eq. A.17). R_i,a = max_h R_i,a^h after damped fixed-point propagation over the dependency types admissible for each hazard class. Computed externally; inputs, weights and results are stored in the KG." ;
+    warrant:hasDescription "Risk adjustment per attribute, then aggregation: d̃_i,a = clip(d_i,a − β_i·R_i,a), DI_i = Σ_a w̄_i,a·c_i,a·d̃_i,a / Σ_a w̄_i,a·c_i,a (DI paper, Eq. A.17). R_i,a = max_{h ∈ H(a)} ι_h·R_i^h, where R_i^h is the risk of hazard class h after damped fixed-point propagation over the dependency types admissible for h. Computed externally; inputs, weights and results are stored in the KG." ;
     warrant:hasVersion "1.0" ;
     di:hasAggregationOperator "MAX" .
 
