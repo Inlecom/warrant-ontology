@@ -2,7 +2,7 @@
 # WARRaNT Example: Two-Vessel Inland Platoon under GNSS Degradation at Bridges
 # File: examples/example-platoon.ttl
 # Instance namespace: https://warrant-project.eu/data/platoon#
-# Ontology version: 0.10-poc
+# Ontology version: 0.11-poc
 #
 # Use case. A leader–follower platoon of two small inland barges, Vessel L
 # (leader) and Vessel F (follower). The follower is steered by a platooning
@@ -26,7 +26,8 @@
 # response library and scenario stubs. Runtime records (health events,
 # attribute values, indices, triggers, evaluations, executions, evidence) are
 # written by the external services with run-scoped IRIs and are not part of
-# this file. In particular no cdm:Deviation is asserted: the HAZOP entries are
+# this file (example-platoon-runtime.ttl holds a small sample of them). In
+# particular no cdm:Deviation is asserted: the HAZOP entries are
 # failure modes carrying their guidewords, and Deviations appear only when a
 # runtime DetectionEvent detects one.
 #
@@ -1264,6 +1265,48 @@ plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
     obs:monitorsNode plt:TrackKeepingL ;
     obs:hasMonitoringLevel obs:FUNCTION_LEVEL ;
     obs:consumes plt:TrackErrorMetricL .
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FRAMEWORK SERVICES
+# Runtime records name their producer by IRI and SHACL checks the producer's
+# class, so every service that writes records has a typed node here. The node
+# health monitors above are the per-node instances of plt:Service_Monitors;
+# plt:PlatoonDependabilitySupervisor (DI section) is the Supervisor.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+plt:Service_DataAdapter a obs:APIConnector ;
+    warrant:hasIdentifier "SVC-S3" ;
+    warrant:hasName "Runtime data source adapter" ;
+    warrant:hasDescription "Replays both vessels' trial data at 10 Hz, or forwards the vessel simulator's outputs, as normalised measurements." .
+
+plt:Service_Monitors a obs:AnalyticalService ;
+    warrant:hasIdentifier "SVC-S5" ;
+    warrant:hasName "Health event generation" ;
+    warrant:hasDescription "Runs the generic checks; the node health monitors are its per-node instances." .
+
+plt:Service_Propagation a obs:AnalyticalService ;
+    warrant:hasIdentifier "SVC-S6" ;
+    warrant:hasName "Risk propagation" ;
+    warrant:hasDescription "Typed per-hazard-class propagation over the dependency graph." .
+
+plt:Service_DigitalTwin a dt:DigitalTwin ;
+    warrant:hasIdentifier "SVC-S4B" ;
+    warrant:hasName "Platoon Digital Twin" ;
+    warrant:hasDescription "Estimator and predictor on a mismatched vessel model; gap and track forecasts and what-if per candidate response." .
+
+plt:Service_REDS a mit:DecisionSupportService ;
+    warrant:hasIdentifier "SVC-S8" ;
+    warrant:hasName "Risk Evaluation and Decision Support (REDS)" .
+
+plt:Service_IRDS a mit:ResilienceSupervisor ;
+    warrant:hasIdentifier "SVC-S9" ;
+    warrant:hasName "Intelligent Resilience and Dependability Supervisor (IRDS)" .
+
+plt:RemoteOperatorConsole a davom:OperatorInterface ;
+    warrant:hasIdentifier "IF-ROC" ;
+    warrant:hasName "Safety officer console" ;
+    warrant:hasDescription "Where the remote control operation safety officer receives alerts and ranked responses and records approvals, rejections and overrides." .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

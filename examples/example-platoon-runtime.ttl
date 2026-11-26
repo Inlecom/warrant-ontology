@@ -1,0 +1,136 @@
+##############################################################################
+# WARRaNT Example: Platoon runtime sample
+# File: examples/example-platoon-runtime.ttl
+# Instance namespace: https://warrant-project.eu/data/platoon#
+# Ontology version: 0.11-poc
+#
+# A small, synthetic sample of the runtime records the platoon services write,
+# kept apart from example-platoon.ttl (design-time knowledge only). It shows
+# the 0.11-poc record terms in use:
+#   - one scenario execution with its run manifest (seeds, hashes, modes,
+#     configuration versions, source commits, package versions);
+#   - three evaluations of resilience-trigger terms with their three-valued
+#     result: NOT_EVALUABLE (with the missing inputs), FALSE, and TRUE (a
+#     firing, typed di:ResilienceTrigger);
+#   - an attribute forecast over a target interval (the follower's
+#     gap-keeping safety attribute through a bridge passage);
+#   - the three times of a record (event, receipt, record) and the method that
+#     produced each result.
+# Times are simulated-clock times of the sample run, not trial dates. Hashes
+# and commits are placeholders.
+##############################################################################
+
+@prefix plt:     <https://warrant-project.eu/data/platoon#> .
+@prefix warrant: <https://warrant-project.eu/ontology/core#> .
+@prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+# ── Scenario execution and run manifest ─────────────────────────────────────
+
+plt:SCN_P2_LeaderFrozenFix scen:hasScenarioExecution plt:ScenarioRun_sample-p2-s1_000000 .
+
+plt:ScenarioRun_sample-p2-s1_000000 a scen:ScenarioExecution ;
+    warrant:hasIdentifier "sample-p2-s1" ;
+    scen:hasExecutionState scen:COMPLETED ;
+    scen:hasExecutionMode scen:LOCKSTEP ;
+    scen:hasExecutionTimestamp "2026-01-01T00:00:00.000Z"^^xsd:dateTime ;
+    scen:startedAt "2026-01-01T00:00:00.000Z"^^xsd:dateTime ;
+    scen:finishedAt "2026-01-01T00:20:00.000Z"^^xsd:dateTime ;
+    scen:hasRandomSeed 1 ;
+    scen:hasScenarioFile "scenarios/p2_leader_frozen_fix.yaml" ;
+    scen:hasScenarioHash "0000000000000000000000000000000000000000000000000000000000000000" ;
+    scen:hasManifestEntry plt:ScenarioRun_sample-p2-s1_000000_config ,
+                          plt:ScenarioRun_sample-p2-s1_000000_ontology ,
+                          plt:ScenarioRun_sample-p2-s1_000000_schemas .
+
+plt:ScenarioRun_sample-p2-s1_000000_config a scen:ManifestEntry ;
+    scen:hasEntryKind scen:CONFIGURATION_VERSION ;
+    warrant:hasName "platoon-supervision-bridge" ;
+    warrant:hasVersion "1.0" .
+
+plt:ScenarioRun_sample-p2-s1_000000_ontology a scen:ManifestEntry ;
+    scen:hasEntryKind scen:SOURCE_COMMIT ;
+    warrant:hasName "warrant-ontology" ;
+    warrant:hasVersion "0000000" .
+
+plt:ScenarioRun_sample-p2-s1_000000_schemas a scen:ManifestEntry ;
+    scen:hasEntryKind scen:PACKAGE_VERSION ;
+    warrant:hasName "warrant-schemas" ;
+    warrant:hasVersion "0.1.0" .
+
+# ── Calculation methods ─────────────────────────────────────────────────────
+
+plt:CalculationMethod_warrant_supervisor.triggers.evaluate--0.1.0 a warrant:CalculationMethod ;
+    warrant:hasName "warrant_supervisor.triggers.evaluate" ;
+    warrant:hasVersion "0.1.0" .
+
+plt:CalculationMethod_warrant_dt.forecast.attribute--0.1.0 a warrant:CalculationMethod , di:DICalculationMethod ;
+    warrant:hasName "warrant_dt.forecast.attribute" ;
+    warrant:hasVersion "0.1.0" .
+
+# ── Trigger evaluations ─────────────────────────────────────────────────────
+
+# T_attr for the follower's gap keeping could not be evaluated: the leader
+# state over V2V was stale, so the gap measurement was not trusted. Recorded
+# as NOT_EVALUABLE, never as FALSE.
+plt:ResilienceTrigger_sample-p2-s1_000001 a di:TriggerEvaluation ;
+    di:hasTriggerType di:ATTRIBUTE_BREACH ;
+    di:hasEvaluationResult di:NOT_EVALUABLE ;
+    di:evaluatedFor plt:GapKeepingF ;
+    di:evaluatedAt "2026-01-01T00:05:10.000Z"^^xsd:dateTime ;
+    di:hasMissingInput "leader state over V2V older than 2 s" ,
+                       "follower gap measurement without a trusted leader position" ;
+    di:raisedBy plt:PlatoonDependabilitySupervisor ;
+    di:usesConfiguration plt:SupervisionConfig_Bridge ;
+    di:isRecordedIn plt:PlatoonLDC ;
+    warrant:usesCalculationMethod plt:CalculationMethod_warrant_supervisor.triggers.evaluate--0.1.0 ;
+    warrant:receivedAt "2026-01-01T00:05:10.020Z"^^xsd:dateTime ;
+    warrant:recordedAt "2026-01-01T00:05:10.050Z"^^xsd:dateTime .
+
+# T_trend for the system: enough DI history and no sustained decline.
+plt:ResilienceTrigger_sample-p2-s1_000002 a di:TriggerEvaluation ;
+    di:hasTriggerType di:SUSTAINED_DECLINE ;
+    di:hasEvaluationResult di:FALSE ;
+    di:evaluatedFor plt:PlatoonSystem ;
+    di:evaluatedAt "2026-01-01T00:05:10.000Z"^^xsd:dateTime ;
+    di:raisedBy plt:PlatoonDependabilitySupervisor ;
+    di:usesConfiguration plt:SupervisionConfig_Bridge ;
+    di:isRecordedIn plt:PlatoonLDC ;
+    warrant:usesCalculationMethod plt:CalculationMethod_warrant_supervisor.triggers.evaluate--0.1.0 ;
+    warrant:recordedAt "2026-01-01T00:05:10.050Z"^^xsd:dateTime .
+
+# ── Attribute forecast and the firing it causes ─────────────────────────────
+
+# The Digital Twin predicts the minimum of the follower's gap-keeping safety
+# attribute over the coming bridge passage.
+plt:DIForecast_sample-p2-s1_000001 a di:DIForecast ;
+    di:forecastsAttribute plt:GapKeepingSafetyAttribute ;
+    di:hasForecastValue "0.40"^^xsd:decimal ;
+    di:forecastIssuedAt "2026-01-01T00:04:40.000Z"^^xsd:dateTime ;
+    di:forecastValidAt "2026-01-01T00:05:00.000Z"^^xsd:dateTime ;
+    di:forecastValidUntil "2026-01-01T00:05:20.000Z"^^xsd:dateTime ;
+    di:hasForecastHorizon "PT30S"^^xsd:duration ;
+    di:hasForecastConfidence "0.7"^^xsd:decimal ;
+    di:forecastProducedBy plt:Service_DigitalTwin ;
+    di:usesCalculationMethod plt:CalculationMethod_warrant_dt.forecast.attribute--0.1.0 ;
+    warrant:recordedAt "2026-01-01T00:04:40.030Z"^^xsd:dateTime .
+
+# T_pred fires on the forecast: a TriggerEvaluation with result TRUE.
+plt:ResilienceTrigger_sample-p2-s1_000000 a di:ResilienceTrigger ;
+    di:hasTriggerType di:PREDICTED_FLOOR_CROSSING ;
+    di:hasEvaluationResult di:TRUE ;
+    di:evaluatedFor plt:GapKeepingF ;
+    di:evaluatedAt "2026-01-01T00:04:40.100Z"^^xsd:dateTime ;
+    di:triggeredAt "2026-01-01T00:04:40.100Z"^^xsd:dateTime ;
+    di:triggeredByForecast plt:DIForecast_sample-p2-s1_000001 ;
+    di:raisedBy plt:PlatoonDependabilitySupervisor ;
+    di:usesConfiguration plt:SupervisionConfig_Bridge ;
+    di:isRecordedIn plt:PlatoonLDC ;
+    warrant:usesCalculationMethod plt:CalculationMethod_warrant_supervisor.triggers.evaluate--0.1.0 ;
+    warrant:receivedAt "2026-01-01T00:04:40.120Z"^^xsd:dateTime ;
+    warrant:recordedAt "2026-01-01T00:04:40.150Z"^^xsd:dateTime .
+
+##############################################################################
+# END example-platoon-runtime.ttl
+##############################################################################

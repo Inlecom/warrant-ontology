@@ -95,6 +95,16 @@ def _qname(term) -> str:
     return s
 
 
+def companion_base(ex: pathlib.Path):
+    """A runtime sample ``example-X-runtime.ttl`` references the design-time
+    instance ``example-X.ttl``; it is checked together with it."""
+    if ex.stem.endswith("-runtime"):
+        base = ex.with_name(ex.stem[: -len("-runtime")] + ".ttl")
+        if base.exists():
+            return base
+    return None
+
+
 def run_domain_range() -> bool:
     """Check example assertions against declared domains and ranges."""
     from rdflib import RDF, RDFS, OWL
@@ -138,6 +148,10 @@ def run_domain_range() -> bool:
         types = collections.defaultdict(set)
         for s, o in data.subject_objects(RDF.type):
             types[s].add(o)
+        base = companion_base(ex)
+        if base is not None:
+            for s, o in rdflib.Graph().parse(str(base), format="turtle").subject_objects(RDF.type):
+                types[s].add(o)
         for s, o in ont.subject_objects(RDF.type):
             types[s].add(o)
 
@@ -203,6 +217,9 @@ def run_shacl() -> bool:
         data = rdflib.Graph()
         data += ont
         data.parse(str(ex), format="turtle")
+        base = companion_base(ex)
+        if base is not None:
+            data.parse(str(base), format="turtle")
         conforms, report, _ = pyshacl.validate(
             data, shacl_graph=shapes,
             inference="none", abort_on_first=False,
