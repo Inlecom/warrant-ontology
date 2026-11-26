@@ -65,6 +65,7 @@ def shorten(val):
         "https://warrant-project.eu/data/ll2#":                    "ll2:",
         "https://warrant-project.eu/data/ll3#":                    "ll3:",
         "https://warrant-project.eu/data/ll4#":                    "ll4:",
+        "https://warrant-project.eu/data/platoon#":                "plt:",
     }
     s = str(val)
     for ns, prefix in NS.items():
