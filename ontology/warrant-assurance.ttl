@@ -102,7 +102,7 @@ assr:AssuranceScore a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
     rdfs:label "Node Dependability Score (ND)"@en ;
     skos:altLabel "Assurance Score"@en ;
-    rdfs:comment "The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Feeds into the node DI via di:contributesTo (DI_i = clip(ND_i − β_i·R_i)). Computed externally; timestamp via di:calculatedAt."@en .
+    rdfs:comment "The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Linked to the node DI via di:contributesTo as the assurance write-back of the same attribute values; it is not an input to the DI, which uses the risk-adjusted attribute scores d̃_i,a = clip(d_i,a − β_i·R_i,a) (DI paper, Eq. A.17; see di:DependabilityIndex). Computed externally; timestamp via di:calculatedAt."@en .
 
 assr:AssuranceWeight a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
