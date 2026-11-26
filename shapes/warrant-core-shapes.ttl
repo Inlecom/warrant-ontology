@@ -20,6 +20,9 @@
 #  11. di:ResilienceTrigger
 #  12. mit:ResponseEvaluation
 #  13. mit:ResponseExecution
+#  14. di:TriggerEvaluation (0.11-poc)
+#  15. di:DIForecast (0.11-poc)
+#  16. scen:ScenarioExecution and scen:ManifestEntry (0.11-poc)
 #
 # The deprecation shape on cdm:Deviation warns but does not block validation.
 ##############################################################################
@@ -33,6 +36,7 @@
 @prefix assr:    <https://warrant-project.eu/ontology/assurance#> .
 @prefix di:      <https://warrant-project.eu/ontology/dependability-index#> .
 @prefix mit:     <https://warrant-project.eu/ontology/mitigation#> .
+@prefix scen:    <https://warrant-project.eu/ontology/scenario#> .
 @prefix owl:     <http://www.w3.org/2002/07/owl#> .
 @prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
@@ -358,6 +362,11 @@
         sh:path [ sh:alternativePath ( di:triggeredByAttributeValue di:triggeredByIndex di:triggeredByForecast ) ] ;
         sh:minCount 1 ;
         sh:message "ResilienceTrigger must record what fired it: an attribute value, an index trend, or a forecast." ;
+    ] ;
+    sh:property [
+        sh:path di:hasEvaluationResult ;
+        sh:in ( di:TRUE ) ;
+        sh:message "A ResilienceTrigger is a firing: its di:hasEvaluationResult, when stated, is di:TRUE." ;
     ] .
 
 
@@ -417,6 +426,123 @@
         sh:maxCount 1 ;
         sh:message "ResponseExecution may have at most one mit:hasResiliencePosture." ;
     ] .
+
+
+##############################################################################
+# Shape 14: di:TriggerEvaluation (also applies to di:ResilienceTrigger)
+##############################################################################
+
+:TriggerEvaluationShape a sh:NodeShape ;
+    sh:targetClass di:TriggerEvaluation ;
+    rdfs:label "TriggerEvaluation Shape" ;
+    sh:property [
+        sh:path di:hasTriggerType ;
+        sh:class di:ResilienceTriggerType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "TriggerEvaluation must evaluate exactly one di:hasTriggerType." ;
+    ] ;
+    sh:property [
+        sh:path di:hasEvaluationResult ;
+        sh:class di:TriggerEvaluationResult ;
+        sh:maxCount 1 ;
+        sh:message "TriggerEvaluation has at most one di:hasEvaluationResult (TRUE, FALSE or NOT_EVALUABLE)." ;
+    ] ;
+    sh:property [
+        sh:path di:evaluatedAt ;
+        sh:datatype xsd:dateTime ;
+        sh:maxCount 1 ;
+        sh:message "TriggerEvaluation has at most one di:evaluatedAt (xsd:dateTime)." ;
+    ] ;
+    sh:property [
+        sh:path di:evaluatedFor ;
+        sh:class warrant:OperationalEntity ;
+        sh:maxCount 1 ;
+        sh:message "TriggerEvaluation is evaluated for at most one node or system." ;
+    ] ;
+    # A recorded non-firing must say what it found and when; a firing may keep
+    # the 0.10-poc form (di:triggeredAt, no explicit result).
+    sh:or (
+        [ sh:class di:ResilienceTrigger ]
+        [ sh:property [ sh:path di:hasEvaluationResult ; sh:minCount 1 ] ;
+          sh:property [ sh:path di:evaluatedAt ; sh:minCount 1 ] ]
+    ) ;
+    sh:message "A TriggerEvaluation that is not a ResilienceTrigger must state its di:hasEvaluationResult and di:evaluatedAt." ;
+    # R6: NOT_EVALUABLE must name what was missing.
+    sh:or (
+        [ sh:not [ sh:property [ sh:path di:hasEvaluationResult ; sh:hasValue di:NOT_EVALUABLE ] ] ]
+        [ sh:property [ sh:path di:hasMissingInput ; sh:minCount 1 ; sh:datatype xsd:string ] ]
+    ) .
+
+:NonFiringEvaluationShape a sh:NodeShape ;
+    sh:targetClass di:TriggerEvaluation ;
+    rdfs:label "Non-firing TriggerEvaluation Shape" ;
+    sh:or (
+        [ sh:class di:ResilienceTrigger ]
+        [ sh:property [ sh:path di:hasEvaluationResult ; sh:in ( di:FALSE di:NOT_EVALUABLE ) ] ]
+    ) ;
+    sh:message "A TriggerEvaluation with result TRUE is a firing and must be typed di:ResilienceTrigger." .
+
+
+##############################################################################
+# Shape 15: di:DIForecast
+##############################################################################
+
+:DIForecastShape a sh:NodeShape ;
+    sh:targetClass di:DIForecast ;
+    rdfs:label "DIForecast Shape" ;
+    sh:xone (
+        [ sh:property [ sh:path di:forecastsIndex ; sh:minCount 1 ; sh:maxCount 1 ] ;
+          sh:property [ sh:path di:forecastsAttribute ; sh:maxCount 0 ] ]
+        [ sh:property [ sh:path di:forecastsAttribute ; sh:minCount 1 ; sh:maxCount 1 ; sh:class assr:AssuranceAttribute ] ;
+          sh:property [ sh:path di:forecastsIndex ; sh:maxCount 0 ] ]
+    ) ;
+    sh:message "DIForecast targets exactly one DI (di:forecastsIndex) or exactly one attribute (di:forecastsAttribute)." ;
+    sh:property [
+        sh:path di:hasForecastValue ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 1 ;
+        sh:message "DIForecast must have exactly one di:hasForecastValue in [0,1]." ;
+    ] ;
+    sh:property [
+        sh:path di:forecastValidUntil ;
+        sh:datatype xsd:dateTime ;
+        sh:maxCount 1 ;
+        sh:message "DIForecast has at most one di:forecastValidUntil." ;
+    ] .
+
+
+##############################################################################
+# Shape 16: scen:ScenarioExecution and scen:ManifestEntry
+##############################################################################
+
+:ScenarioExecutionShape a sh:NodeShape ;
+    sh:targetClass scen:ScenarioExecution ;
+    rdfs:label "ScenarioExecution Shape" ;
+    sh:property [ sh:path scen:hasExecutionState ; sh:class scen:ScenarioExecutionState ; sh:maxCount 1 ;
+        sh:message "ScenarioExecution has at most one scen:hasExecutionState." ] ;
+    sh:property [ sh:path scen:hasExecutionMode ; sh:class scen:ExecutionMode ; sh:maxCount 1 ;
+        sh:message "ScenarioExecution has at most one scen:hasExecutionMode." ] ;
+    sh:property [ sh:path scen:startedAt ; sh:datatype xsd:dateTime ; sh:maxCount 1 ;
+        sh:message "ScenarioExecution has at most one scen:startedAt." ] ;
+    sh:property [ sh:path scen:finishedAt ; sh:datatype xsd:dateTime ; sh:maxCount 1 ;
+        sh:message "ScenarioExecution has at most one scen:finishedAt." ] ;
+    sh:property [ sh:path scen:hasRandomSeed ; sh:datatype xsd:integer ;
+        sh:message "scen:hasRandomSeed values are xsd:integer." ] ;
+    sh:property [ sh:path scen:hasManifestEntry ; sh:class scen:ManifestEntry ;
+        sh:message "scen:hasManifestEntry must point at a scen:ManifestEntry." ] .
+
+:ManifestEntryShape a sh:NodeShape ;
+    sh:targetClass scen:ManifestEntry ;
+    rdfs:label "ManifestEntry Shape" ;
+    sh:property [ sh:path scen:hasEntryKind ; sh:class scen:ManifestEntryKind ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "ManifestEntry must have exactly one scen:hasEntryKind." ] ;
+    sh:property [ sh:path warrant:hasName ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "ManifestEntry must have exactly one key (warrant:hasName)." ] ;
+    sh:property [ sh:path warrant:hasVersion ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "ManifestEntry must have exactly one value (warrant:hasVersion)." ] .
 
 ##############################################################################
 # END shapes/warrant-core-shapes.ttl
