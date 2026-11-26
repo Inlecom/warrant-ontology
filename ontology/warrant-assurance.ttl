@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Assurance Ontology Module
-# Version: 0.10-poc
+# Version: 0.11-poc
 # IRI: https://warrant-project.eu/ontology/assurance
 # Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-observation.ttl
 #
@@ -69,8 +69,8 @@ All formulas are metadata only; computation is external and results are written 
 their method identity and timestamp."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-09-06"^^xsd:date ;
-    owl:versionInfo "0.10-poc" .
+    dcterms:modified "2026-11-26"^^xsd:date ;
+    owl:versionInfo "0.11-poc" .
 
 
 ##############################################################################
@@ -355,6 +355,7 @@ assr:derivesFromAssuranceLevel a owl:ObjectProperty ;
     rdfs:label "derives from assurance level"@en .
 
 assr:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:subPropertyOf warrant:usesCalculationMethod ;
     rdfs:domain [ owl:unionOf ( assr:AssuranceScore assr:AssuranceAttributeValue assr:AssuranceLevel assr:CertificationReadiness ) ] ;
     rdfs:range warrant:CalculationMethod ;
     rdfs:label "uses calculation method"@en ;
