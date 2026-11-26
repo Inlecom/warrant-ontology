@@ -199,7 +199,7 @@ See [docs/modelling-conventions.md](docs/modelling-conventions.md) for all namin
 
 ## Version
 
-`0.10-poc` — Pre-consortium-baseline proof of concept, aligned with the framework paper (September 2026). See [CHANGELOG.md](CHANGELOG.md).
+`0.11-poc` — Pre-consortium-baseline proof of concept: the 0.10-poc framework-paper alignment plus the platoon example and the runtime-record terms (trigger evaluations, attribute forecasts, run manifests, record provenance), November 2026. See [CHANGELOG.md](CHANGELOG.md).
 Target consortium baseline release: `v0.1.0` (planned).
 
 <img src="https://warrant-project.eu/wp-content/uploads/2025/07/europeanlogo.png" alt="Co-funded by the European Union" width="366" height="83">

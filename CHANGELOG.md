@@ -4,11 +4,60 @@ All notable changes to this repository are documented here.
 
 ---
 
-## [Unreleased] — Gaps found while modelling the platoon example
+## [0.11-poc] — 2026-11-26 — Platoon example and runtime record terms
+
+Release that bundles the LL1 rework, the platoon example and its design-time gaps (the three
+sections below), and the runtime-record terms that the platoon proof of concept needed to write
+its results into the Knowledge Graph. All changes are additive: no term is removed or renamed and
+data valid under 0.10-poc stays valid. The deprecated terms listed under 0.10-poc stay until the
+v0.1.0 baseline instead of being removed in this minor release.
+
+### Added — runtime records
+- **Trigger evaluations with a three-valued result.** `di:TriggerEvaluation` records one evaluation of
+  one resilience-trigger term for one node or system (`di:evaluatedFor`, `di:evaluatedAt`) with
+  `di:hasEvaluationResult` → `di:TriggerEvaluationResult` (`di:TRUE`, `di:FALSE`,
+  `di:NOT_EVALUABLE`). A NOT_EVALUABLE evaluation names what it lacked (`di:hasMissingInput`).
+  `di:ResilienceTrigger` is now a subclass: a firing is an evaluation whose result is TRUE.
+  `di:hasTriggerType`, `di:raisedBy`, `di:usesConfiguration` and `di:isRecordedIn` accept any
+  evaluation. Before this, only firings could be recorded, so the methodology's safeguard that
+  missing information is never evidence of no fault was invisible in the Living Dependability Case.
+- **Attribute forecasts and target intervals.** `di:forecastsAttribute` (DIForecast → the node's
+  `assr:AssuranceAttribute`) lets a forecast predict one attribute value instead of a DI, which the
+  attribute subterm of PREDICTED_FLOOR_CROSSING needs. `di:forecastValidUntil` closes a target
+  interval, for a forecast minimum over e.g. a bridge passage.
+- **Run manifest on scenario executions.** `scen:hasExecutionMode` → `scen:ExecutionMode`
+  (`LOCKSTEP`, `SERVICE`, `REPLAY`), `scen:hasRandomSeed`, `scen:hasScenarioFile`,
+  `scen:hasScenarioHash`, `scen:hasDatasetHash`, `scen:startedAt`, `scen:finishedAt`, and
+  `scen:hasManifestEntry` → `scen:ManifestEntry` (`scen:hasEntryKind` CONFIGURATION_VERSION,
+  SOURCE_COMMIT or PACKAGE_VERSION; key `warrant:hasName`, value `warrant:hasVersion`).
+- **Record provenance in core.** `warrant:receivedAt` and `warrant:recordedAt` give every runtime
+  record its receipt and record time next to the class's event time. `warrant:usesCalculationMethod`
+  (range `warrant:CalculationMethod`) names the method of any computed result, including monitor,
+  trigger and response outputs; `assr:usesCalculationMethod` and `di:usesCalculationMethod` are
+  now its sub-properties.
+- **Platoon framework services** (`plt:Service_DataAdapter`, `plt:Service_Monitors`,
+  `plt:Service_Propagation`, `plt:Service_DigitalTwin`, `plt:Service_REDS`, `plt:Service_IRDS`,
+  `plt:RemoteOperatorConsole`) in `examples/example-platoon.ttl`, so runtime records can name their
+  producer.
+- `examples/example-platoon-runtime.ttl`: a small synthetic sample of platoon runtime records using
+  the terms above. `scripts/validate_turtle.py` validates a `*-runtime.ttl` file together with the
+  design-time instance it references.
+- Shapes 14–16: `di:TriggerEvaluation` (one type, at most one result and time; a non-firing states
+  its result and time; NOT_EVALUABLE names a missing input; a TRUE result is typed
+  `di:ResilienceTrigger`), `di:DIForecast` (exactly one target, a DI or an attribute; value in
+  [0,1]), `scen:ScenarioExecution` and `scen:ManifestEntry`. The ResilienceTrigger shape accepts only
+  `di:TRUE` as a stated result.
+- Competency queries 11–13: trigger evaluations by result with the missing inputs and method; the run
+  manifest of each scenario execution; attribute forecasts below the Normal minimum and the
+  triggers they raised.
+
+---
+
+## 0.11-poc (continued) — Gaps found while modelling the platoon example
 
 Additive changes found while building `examples/example-platoon.ttl`. They add new terms, widen
-domains or ranges, and correct comments; no term is removed or renamed, and `owl:versionInfo`
-stays `0.10-poc`. Data valid under 0.10-poc stays valid.
+domains or ranges, and correct comments; no term is removed or renamed. Data valid under 0.10-poc
+stays valid.
 
 ### Added
 - `davom:spansVessel` (System → Vessel), for a system distributed over several vessels, such as a platoon.
@@ -37,7 +86,7 @@ stays `0.10-poc`. Data valid under 0.10-poc stays valid.
 
 ---
 
-## [Unreleased] — LL1 reworked around area-wide GNSS spoofing
+## 0.11-poc (continued) — LL1 reworked around area-wide GNSS spoofing
 
 Renames `examples/example-ecdis-spoofing.ttl` to `examples/example-gnss-spoofing.ttl`
 and makes one primary business use case of it: area-wide GNSS spoofing degrading
@@ -82,7 +131,7 @@ the bridge's navigation situational awareness. 2,450 → 2,902 triples.
 
 ---
 
-## [Unreleased] — LL1 modernisation to the 0.10 vocabulary
+## 0.11-poc (continued) — LL1 modernisation to the 0.10 vocabulary
 
 Rewrites `examples/example-ecdis-spoofing.ttl` (LL1, Danaos CATHERINE C) to use
 the 0.10 vocabulary. In 0.10-poc the file validated and its causal model was

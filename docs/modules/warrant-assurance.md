@@ -6,7 +6,7 @@
 **Prefix:** `assr:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/assurance`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-observation`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -133,7 +133,7 @@ container.
 | `assr:supportsClaim` | `assr:Evidence` | `assr:AssuranceClaim` | First link of the chain Evidence → AssuranceClaim → Requirement: this evidence item supports the claim. |
 | `assr:updatesAssuranceScore` | `assr:AssuranceDegradation` ∪ `assr:CalculationInput` | `assr:AssuranceScore` | updates assurance score |
 | `assr:usesAssuranceLevelWeights` | `assr:AssuranceLevel` | `assr:AssuranceLevelWeightSet` | uses assurance level weights |
-| `assr:usesCalculationMethod` | `assr:AssuranceScore` ∪ `assr:AssuranceAttributeValue` ∪ `assr:AssuranceLevel` ∪ `assr:CertificationReadiness` | `warrant:CalculationMethod` | Identity and version of the external method that produced this score, fused value, Assurance Level, or readiness indicator. |
+| `assr:usesCalculationMethod` | `assr:AssuranceScore` ∪ `assr:AssuranceAttributeValue` ∪ `assr:AssuranceLevel` ∪ `assr:CertificationReadiness` | `warrant:CalculationMethod` | Identity and version of the external method that produced this score, fused value, Assurance Level, or readiness indicator. (sub-property of `warrant:usesCalculationMethod`) |
 | `assr:wasTriggeredBy` | `assr:AssuranceDegradation` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `cdm:UnsafeControlAction` | Traceability: the Deviation, Hazard, or UnsafeControlAction that triggered this AssuranceDegradation. |
 
 ## Datatype properties (31)

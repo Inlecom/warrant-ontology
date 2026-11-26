@@ -6,7 +6,7 @@
 **Prefix:** `cdm:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/cdm`  
 **Imports:** `warrant-core`, `warrant-davom`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 

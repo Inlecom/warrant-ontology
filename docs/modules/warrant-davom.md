@@ -6,7 +6,7 @@
 **Prefix:** `davom:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/davom`  
 **Imports:** `warrant-core`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 

@@ -1,6 +1,6 @@
 # WARRaNT KG Ontology — KG Boundary
 
-Version 0.10-poc | 2026-09-06
+Version 0.11-poc | 2026-11-26
 
 This document clarifies the boundary between what is represented inside the WARRaNT Knowledge Graph, what belongs to external project context, and what belongs to external runtime systems.
 

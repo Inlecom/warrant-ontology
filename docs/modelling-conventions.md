@@ -1,6 +1,6 @@
 # WARRaNT KG Ontology — Modelling Conventions
 
-Version 0.10-poc | 2026-09-06
+Version 0.11-poc | 2026-11-26
 
 ---
 

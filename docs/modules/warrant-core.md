@@ -6,7 +6,7 @@
 **Prefix:** `warrant:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/core`  
 **Imports:** (none)  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -67,15 +67,16 @@ identity/version, validity, and configuration governance (`approvedBy`,
 | `warrant:ManualOperationMode` | Manual Operation Mode | Vessel is under direct manual control by onboard crew. |
 | `warrant:RemoteOperationMode` | Remote Operation Mode | Vessel is under control of a remote operator via a Remote Operation Centre (ROC). Relevant to LL4 Seafar ROS. |
 
-## Object properties (3)
+## Object properties (4)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
 | `warrant:appliesUnder` | `owl:Thing` | `warrant:ContextEntity` | Scopes a configured artefact (attribute weight, aggregation weight, state threshold, DI management floor, supervision configuration, requirement, control) to the operational context in which it is valid: an OperationalMode, a VoyageSegment, or another ContextEntity. Weights, thresholds and floors are configured per vessel and mode/mission phase and are not comparable across contexts; an artefact with no appliesUnder triple is context-independent. |
 | `warrant:derivedFrom` | `owl:Thing` | `owl:Thing` | Generic lineage relation: the subject was produced from the object by filtering, correlation, fusion, aggregation, or calculation. Used for health events enriched from other health events, fused attribute values derived from per-source estimates, evidence derived from observations, and calculated values that must retain provenance to their design-time source, analytical model, or runtime observation. Informative alignment: warrant:derivedFrom ≈ prov:wasDerivedFrom. |
 | `warrant:supersedes` | `owl:Thing` | `owl:Thing` | Links a version of a governed configuration artefact (threshold set, weight, floor, approved control, claim wording, configuration) to the earlier version it replaces. The newer version points at the older one; each keeps its own warrant:hasVersion and warrant:hasApprovalStatus, and the older one becomes SUPERSEDED only once the newer one is APPROVED. A PROPOSED version that supersedes the baseline does not displace it until approved. |
+| `warrant:usesCalculationMethod` | `owl:Thing` | `warrant:CalculationMethod` | Identity and version of the external method that produced a runtime result: a derived measurement, a health event from a monitor, a trigger evaluation, a response evaluation or execution, or an evidence item. assr:usesCalculationMethod and di:usesCalculationMethod are its sub-properties for the assurance and DI results, so a query on this property finds the method of every computed result. |
 
-## Datatype properties (11)
+## Datatype properties (13)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
@@ -88,6 +89,8 @@ identity/version, validity, and configuration governance (`approvedBy`,
 | `warrant:hasName` | `owl:Thing` | `xsd:string` | has name |
 | `warrant:hasSoftwareVersion` | `warrant:OperationalEntity` | `xsd:string` | Software or firmware version string as recorded in the equipment cybersecurity inventory (e.g. '2450074-05.12', '0359377-03.02'). Supports vulnerability tracking and patch management queries. |
 | `warrant:hasVersion` | `owl:Thing` | `xsd:string` | has version |
+| `warrant:receivedAt` | `owl:Thing` | `xsd:dateTime` | When the consuming service received the record or the observation it is based on. Not later than warrant:recordedAt and not earlier than the record's event time. |
+| `warrant:recordedAt` | `owl:Thing` | `xsd:dateTime` | When the record was written to the Knowledge Graph or the Living Dependability Case. With warrant:receivedAt and the class-specific event time (obs:hasTimestamp, di:calculatedAt, di:triggeredAt, di:evaluatedAt, mit:evaluatedAt, ...) it gives every runtime record its three times: when it happened, when the consumer got it, and when it was written. Keeping them apart lets an audit separate a late observation from a late reaction. |
 | `warrant:validFrom` | `owl:Thing` | `xsd:dateTime` | valid from |
 | `warrant:validTo` | `owl:Thing` | `xsd:dateTime` | valid to |
 
