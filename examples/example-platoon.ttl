@@ -342,7 +342,10 @@ plt:LeaderSkipperRole a davom:HumanOperatorRole ;
 plt:VesselL davom:hasOperatorRole plt:LeaderSkipperRole .
 
 # ── Typed dependencies (source = provider → target = consumer) ─────────────
-# The cross-vessel chain is DEP-01 → DEP-03 → DEP-04 → DEP-05 → DEP-12/DEP-13.
+# The cross-vessel chain is DEP-01 → DEP-03 → DEP-04 → DEP-12/DEP-13.
+# Incoming DATA and FUNCTIONAL weights sum to 1 per target, and every edge of
+# an admissible type carries a weight: a missing weight is not read as zero,
+# so it would make propagation over that type unavailable.
 # All its edges are DATA or FUNCTIONAL, the admissible types of DATA_LOSS, so
 # typed propagation of a leader GNSS fault reaches the follower's functions.
 # Actuator edges are CONTROL (commands) and FUNCTIONAL+PHYSICAL (actuation),
@@ -386,7 +389,7 @@ plt:DEP04_V2V_PlatooningControllerF a davom:CommunicationDependency ;
     davom:dependencySource plt:V2VLink ;
     davom:dependencyTarget plt:PlatooningControllerF ;
     davom:hasDependencyType davom:DATA ;
-    davom:hasDependencyWeight "0.5"^^xsd:decimal ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
     davom:hasCriticality "High" ;
     davom:hasRedundancyLevel 0 ;
     davom:isBidirectional false .
@@ -435,7 +438,7 @@ plt:DEP09_EstimatorF_PlatooningControllerF a davom:DataDependency ;
     davom:dependencySource plt:EstimatorF ;
     davom:dependencyTarget plt:PlatooningControllerF ;
     davom:hasDependencyType davom:DATA ;
-    davom:hasDependencyWeight "0.5"^^xsd:decimal ;
+    davom:hasDependencyWeight "0.4"^^xsd:decimal ;
     davom:hasCriticality "High" .
 
 # Vessel F: actuation and feedback
@@ -445,6 +448,7 @@ plt:DEP10_RudderFeedbackF_PlatooningControllerF a davom:DataDependency ;
     davom:dependencySource plt:RudderFeedbackF ;
     davom:dependencyTarget plt:PlatooningControllerF ;
     davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.1"^^xsd:decimal ;
     davom:hasCriticality "Medium" .
 
 plt:DEP11_PropulsionFeedbackF_PlatooningControllerF a davom:DataDependency ;
@@ -453,6 +457,7 @@ plt:DEP11_PropulsionFeedbackF_PlatooningControllerF a davom:DataDependency ;
     davom:dependencySource plt:PropulsionFeedbackF ;
     davom:dependencyTarget plt:PlatooningControllerF ;
     davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.1"^^xsd:decimal ;
     davom:hasCriticality "Medium" .
 
 plt:DEP12_PlatooningControllerF_GapKeepingF a davom:FunctionalDependency ;
@@ -518,7 +523,7 @@ plt:DEP18_EstimatorL_RouteAutopilotL a davom:DataDependency ;
     davom:dependencySource plt:EstimatorL ;
     davom:dependencyTarget plt:RouteAutopilotL ;
     davom:hasDependencyType davom:DATA ;
-    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
+    davom:hasDependencyWeight "0.8"^^xsd:decimal ;
     davom:hasCriticality "High" .
 
 plt:DEP19_RudderFeedbackL_RouteAutopilotL a davom:DataDependency ;
@@ -527,6 +532,7 @@ plt:DEP19_RudderFeedbackL_RouteAutopilotL a davom:DataDependency ;
     davom:dependencySource plt:RudderFeedbackL ;
     davom:dependencyTarget plt:RouteAutopilotL ;
     davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.1"^^xsd:decimal ;
     davom:hasCriticality "Medium" .
 
 plt:DEP20_PropulsionFeedbackL_RouteAutopilotL a davom:DataDependency ;
@@ -535,6 +541,7 @@ plt:DEP20_PropulsionFeedbackL_RouteAutopilotL a davom:DataDependency ;
     davom:dependencySource plt:PropulsionFeedbackL ;
     davom:dependencyTarget plt:RouteAutopilotL ;
     davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.1"^^xsd:decimal ;
     davom:hasCriticality "Medium" .
 
 plt:DEP21_RouteAutopilotL_RudderActuatorL a davom:ControlDependency ;
@@ -590,7 +597,7 @@ plt:DEP26_GNSSL_HeadingL a davom:DataDependency ;
     davom:dependencySource plt:GNSSReceiverL ;
     davom:dependencyTarget plt:HeadingSensorL ;
     davom:hasDependencyType davom:DATA ;
-    davom:hasDependencyWeight "0.9"^^xsd:decimal ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
     davom:hasCriticality "High" ;
     davom:hasRedundancyLevel 0 .
 
@@ -601,7 +608,7 @@ plt:DEP27_GNSSF_HeadingF a davom:DataDependency ;
     davom:dependencySource plt:GNSSReceiverF ;
     davom:dependencyTarget plt:HeadingSensorF ;
     davom:hasDependencyType davom:DATA ;
-    davom:hasDependencyWeight "0.9"^^xsd:decimal ;
+    davom:hasDependencyWeight "1.0"^^xsd:decimal ;
     davom:hasCriticality "High" ;
     davom:hasRedundancyLevel 0 .
 
@@ -1447,6 +1454,7 @@ plt:THR_Bridge_TrackKeepingLSafety a di:DIThreshold ;
 #   5–60 s; the floor is higher because the margin is smaller.
 plt:SupervisionConfig_Open a di:SupervisionConfiguration ;
     warrant:hasName "Platoon supervision configuration — open waterway" ;
+    warrant:hasDescription "Trend test: a DI decline steeper than 0.10 DI per hour over the 5 min window. Prediction test over a 2 min horizon against the management floor of 0.50." ;
     di:hasTrendWindow "PT5M"^^xsd:duration ;
     di:hasTrendSlopeThreshold "0.10"^^xsd:decimal ;
     di:hasPredictionHorizon "PT2M"^^xsd:duration ;
@@ -1460,6 +1468,7 @@ plt:SupervisionConfig_Open a di:SupervisionConfiguration ;
 
 plt:SupervisionConfig_Bridge a di:SupervisionConfiguration ;
     warrant:hasName "Platoon supervision configuration — bridge passage" ;
+    warrant:hasDescription "Trend test: a DI decline steeper than 0.05 DI per hour over the 1 min window. Prediction test over a 30 s horizon against the management floor of 0.65." ;
     di:hasTrendWindow "PT1M"^^xsd:duration ;
     di:hasTrendSlopeThreshold "0.05"^^xsd:decimal ;
     di:hasPredictionHorizon "PT30S"^^xsd:duration ;
@@ -1717,7 +1726,7 @@ plt:TrackKeepingLSafetyAttribute       assr:hasWeight plt:W_Open_TrackKeepingLSa
 #   absorb an upstream fault is smaller.
 plt:RiskPropagationDIMethod a di:DICalculationMethod ;
     warrant:hasName "Typed risk propagation and risk-adjusted DI" ;
-    warrant:hasDescription "DI_i = clip(ND_i − β_i·R_i); R_i = max_h R_i^h after damped fixed-point propagation over the dependency types admissible for each hazard class. Computed externally; inputs, weights and results are stored in the KG." ;
+    warrant:hasDescription "Risk adjustment per attribute, then aggregation: d̃_i,a = clip(d_i,a − β_i·R_i,a), DI_i = Σ_a w̄_i,a·c_i,a·d̃_i,a / Σ_a w̄_i,a·c_i,a (DI paper, Eq. A.17). R_i,a = max_h R_i,a^h after damped fixed-point propagation over the dependency types admissible for each hazard class. Computed externally; inputs, weights and results are stored in the KG." ;
     warrant:hasVersion "1.0" ;
     di:hasAggregationOperator "MAX" .
 
