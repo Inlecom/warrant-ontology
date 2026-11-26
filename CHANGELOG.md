@@ -29,6 +29,11 @@ stays `0.10-poc`. Data valid under 0.10-poc stays valid.
 
 ### Fixed
 - The comments on `davom:FUNCTIONAL`, `davom:DATA` and `davom:CONTROL` described the direction consumer-first ("the source needs the target"), contrary to the `davom:Dependency` convention (source = provider). They now read provider-first, matching how every example uses them.
+- `warrant-di.ttl` comments aligned with the DI paper and the methodology (found by the T11 propagation and supervisor implementation):
+  - The damping condition is now ρ_h ≥ 0 with the spectral-radius certificate spr(ρ_h·W^h) < 1 deciding convergence, instead of 0 ≤ ρ_h < 1. This affects the header, `di:RiskPropagationParameter` and `di:hasDampingFactor`.
+  - The node DI follows the DI paper's Eq. A.17: risk applied per attribute, d̃_i,a = clip(d_i,a − β_i·R_i,a), then DI_i = Σ_a w̄_i,a·c_i,a·d̃_i,a / Σ_a w̄_i,a·c_i,a. ND_i (`assr:AssuranceScore`) stays as the assurance write-back and is no longer described as an input. This affects the header, `di:DependabilityIndex`, `di:hasAggregatedRiskValue`, `di:hasBetaWeight` and `di:contributesTo`.
+  - The trigger formulas follow methodology §4.4.2, Eqs. 3–6: three-valued terms combined by strong Kleene disjunction, history eligibility H_W and persistence P_W in T_trend, and the attribute-forecast subterm in T_pred.
+  - `di:hasTrendSlopeThreshold` states its unit, DI per hour.
 
 ---
 

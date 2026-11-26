@@ -15,7 +15,8 @@
 # are written back with method identity and timestamp):
 #
 #   Node Dependability Score (stored as assr:AssuranceScore; weights alpha in
-#   assr:AssuranceWeight):
+#   assr:AssuranceWeight). Kept for the assurance write-back; it is not an
+#   input to the node DI below:
 #     ND_i(t) = Σ_k α_i,k^{m(t)} · d_i,k(t)
 #
 #   Typed risk propagation for hazard class h (iterated to a fixed point):
@@ -24,14 +25,21 @@
 #     typed dependency weight (di:hasRiskPropagationWeight on the edge for h),
 #     N_i^{-,h} the in-neighbourhood over dependencies of a type admissible
 #     for h (cdm:propagatesOverDependencyType), ρ_h the damping factor
-#     (di:hasDampingFactor), 0 ≤ ρ_h < 1 and spr(ρ_h W^h) < 1; iteration stops
+#     (di:hasDampingFactor), ρ_h ≥ 0 and spr(ρ_h W^h) < 1 (the spectral-radius
+#     certificate decides convergence; ρ_h = 1 is admissible); iteration stops
 #     when the maximum node-wise change is below di:hasConvergenceTolerance.
 #
-#   Conservative per-node aggregation over hazard classes:
-#     R_i(t) = max_h R_i^h(t)              (di:hasAggregatedRiskValue)
+#   Conservative aggregation over hazard classes, per node and attribute:
+#     R_i,a(t) = max_{h ∈ H(a)} ι_h · R_i^h(t)   (H(a) the hazard classes relevant
+#     to attribute a; with every class relevant and ι_h = 1 this is the node
+#     aggregate R_i(t) = max_h R_i^h(t), di:hasAggregatedRiskValue)
 #
-#   Risk-adjusted node Dependability Index:
-#     DI_i(t) = clip( ND_i(t) − β_i · R_i(t), 0, 1 )     (di:hasDIValue, β_i = di:hasBetaWeight)
+#   Risk-adjusted node Dependability Index (DI paper, Eq. A.17): the risk is
+#   applied per attribute, then the attributes are aggregated with their
+#   normalised weights w̄_i,a = w_a / Σ_b w_b and confidences c_i,a:
+#     d̃_i,a(t) = clip( d_i,a(t) − β_i · R_i,a(t), 0, 1 )      (β_i = di:hasBetaWeight)
+#     DI_i(t)  = Σ_a w̄_i,a · c_i,a · d̃_i,a(t) / Σ_a w̄_i,a · c_i,a      (di:hasDIValue)
+#     The operational state and T_attr always use the unadjusted d_i,a.
 #
 #   Hierarchical aggregation through the declared hierarchy (parent p, children ch(p)):
 #     DI_p(t) = Σ_{i ∈ ch(p)} γ_p,i^{m(t)} · DI_i(t),   Σ_i γ_p,i = 1     (γ in di:DIWeight)
@@ -46,14 +54,31 @@
 #     Normal ≺ Degraded ≺ Critical ≺ Failed ≺ Unsafe.
 #     THE DI DOES NOT DETERMINE THE STATE; it is reported alongside it.
 #
-#   Resilience trigger (any term initiates graph diagnosis and REDS):
-#     T_res(t) = T_attr(t) ∨ T_trend(t) ∨ T_pred(t)
-#     T_attr : ∃ i,k : d_i,k(t) < τ_i,k^D                         (ATTRIBUTE_BREACH)
-#     T_trend: slope_W(DI_sys)(t) ≤ −ε_W over window W            (SUSTAINED_DECLINE)
-#     T_pred : min_{ξ ∈ [t, t+T_p]} DI_sys(ξ) < φ_DI^{m(t)}      (PREDICTED_FLOOR_CROSSING)
+#   Resilience trigger (methodology §4.4.2, Eqs. 3–6). Every term is
+#   three-valued: TRUE, FALSE or NOT_EVALUABLE. A TRUE result initiates graph
+#   diagnosis and REDS; it authorises nothing.
+#     T_res(t) = ∨_{j ∈ J_m} T_j(t), j ∈ {attr, trend, pred}, combined by
+#       strong Kleene disjunction: TRUE if any term is TRUE, FALSE only if all
+#       are FALSE, otherwise NOT_EVALUABLE.                              (Eq. 3)
+#     T_attr (ATTRIBUTE_BREACH, Eq. 4): TRUE if some valid d_i,k(t) < τ_i,k^D
+#       over the required set A_m; FALSE if every required cell is valid
+#       (V_m = A_m ≠ ∅) and meets its minimum; otherwise NOT_EVALUABLE.
+#     T_trend (SUSTAINED_DECLINE, Eq. 5): NOT_EVALUABLE unless the history
+#       is eligible, H_W(t): the points in [t − W, t] cover the window, have
+#       strictly increasing timestamps, are all available, are enough, have
+#       no gap above the configured limit, and share one calculation basis
+#       (no change of mode or weights within W). If H_W(t) holds, TRUE iff
+#       the persistence condition P_W(t) holds (e.g. every successive
+#       difference negative) and slope_W(DI_sys)(t) ≤ −ε_W; FALSE otherwise.
+#     T_pred (PREDICTED_FLOOR_CROSSING, Eq. 6a) = T_pred,attr ∨ T_pred,DI over
+#       the enabled subterms, on forecast grids within (t, t + T_p]:
+#       T_pred,attr (Eq. 6b): some forecast attribute ẑ_i,k(ξ | t) < τ_i,k^D
+#         for a cell of the predictive set A_m^p;
+#       T_pred,DI   (Eq. 6c): min_{ξ ∈ Ξ_m(t)} DI_sys(ξ | t) < φ_DI^{m(t)}.
+#       A subterm whose forecasts are missing or come from an invalid run is
+#       NOT_EVALUABLE.
 #     W, ε_W, T_p, φ_DI are vessel- and mode-specific controlled parameters
-#     (di:SupervisionConfiguration). The trend test is evaluated only while
-#     the weighting configuration is unchanged over the window.
+#     (di:SupervisionConfiguration); ε_W is in DI units per hour.
 #
 #   Resilience margin (anticipatory management quantity, not a state):
 #     MR(t) = DI_sys(t) − φ_DI^{m(t)}                              (di:hasResilienceMargin)
@@ -109,7 +134,7 @@ di:DependabilityIndex a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:VisualisableEntity ;
     rdfs:label "Dependability Index"@en ;
-    rdfs:comment "Node-level DI for any node of the declared hierarchy (component, subsystem, function, system, or vessel): DI_i(t) = clip(ND_i(t) − β_i·R_i(t), 0, 1), where ND_i is the Node Dependability Score (assr:AssuranceScore via di:contributesTo) and R_i the aggregated propagated risk. Computed externally; inputs, weights and result stored in the KG with timestamp and method identity. The DI is a management-oriented composite: its primary value lies in its trend and in its decomposition through the graph (contributing attributes, source evidence, local hazards, typed dependency paths). It does not determine the operational state (di:hasDIState), which is assigned attribute-wise; the same DI value may accompany different states. Absolute values are not comparable across vessels or differently weighted modes."@en .
+    rdfs:comment "Node-level DI for any node of the declared hierarchy (component, subsystem, function, system, or vessel): DI_i(t) = Σ_a w̄_i,a·c_i,a·d̃_i,a(t) / Σ_a w̄_i,a·c_i,a with the risk-adjusted attribute scores d̃_i,a = clip(d_i,a − β_i·R_i,a, 0, 1) (DI paper, Eq. A.17), where w̄_i,a are the normalised attribute weights, c_i,a the confidences and R_i,a the propagated risk relevant to attribute a. The Node Dependability Score (assr:AssuranceScore via di:contributesTo) is kept for the assurance write-back and is not an input. Computed externally; inputs, weights and result stored in the KG with timestamp and method identity. The DI is a management-oriented composite: its primary value lies in its trend and in its decomposition through the graph (contributing attributes, source evidence, local hazards, typed dependency paths). It does not determine the operational state (di:hasDIState), which is assigned attribute-wise; the same DI value may accompany different states. Absolute values are not comparable across vessels or differently weighted modes."@en .
 
 di:DependabilityIndexValue a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
@@ -159,7 +184,7 @@ di:RiskPropagationParameter a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
     rdfs:subClassOf warrant:CalculationEntity ;
     rdfs:label "Risk Propagation Parameter"@en ;
-    rdfs:comment "Controlled, versioned propagation parameters for one hazard class (di:forHazardClass) under one context: the damping factor ρ_h (di:hasDampingFactor, 0 ≤ ρ_h < 1; convergence also requires the spectral radius condition, checked externally) and the stopping tolerance (di:hasConvergenceTolerance). Derived from design-time hazard, asset, interface and dependency analyses and calibrated with Living Lab evidence only through controlled validation and change management (warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy)."@en .
+    rdfs:comment "Controlled, versioned propagation parameters for one hazard class (di:forHazardClass) under one context: the damping factor ρ_h (di:hasDampingFactor, ρ_h ≥ 0; convergence is decided by the spectral-radius certificate spr(ρ_h·W^h) < 1, checked externally) and the stopping tolerance (di:hasConvergenceTolerance). Derived from design-time hazard, asset, interface and dependency analyses and calibrated with Living Lab evidence only through controlled validation and change management (warrant:appliesUnder, warrant:hasVersion, warrant:approvedBy)."@en .
 
 di:SystemDependabilityIndex a owl:Class ;
     rdfs:subClassOf di:DependabilityEntity ;
@@ -196,8 +221,8 @@ di:ResilienceTriggerType a owl:Class ;
     rdfs:comment "Closed controlled vocabulary of the three terms of the resilience criterion. Named individuals only."@en .
 
 di:ATTRIBUTE_BREACH          a di:ResilienceTriggerType ; rdfs:label "ATTRIBUTE_BREACH"@en ;          rdfs:comment "T_attr: some relevant attribute value fell below its Normal minimum. Implements the ontology's definition of Normal and is independent of the aggregate DI."@en .
-di:SUSTAINED_DECLINE         a di:ResilienceTriggerType ; rdfs:label "SUSTAINED_DECLINE"@en ;         rdfs:comment "T_trend: the system DI showed a negative slope of at least ε_W sustained over the configured window W (DI used as a trend signal)."@en .
-di:PREDICTED_FLOOR_CROSSING  a di:ResilienceTriggerType ; rdfs:label "PREDICTED_FLOOR_CROSSING"@en ;  rdfs:comment "T_pred: a Digital Twin or predictive forecast places the system DI below the configured management floor within the planning horizon (anticipatory warning before an observed breach)."@en .
+di:SUSTAINED_DECLINE         a di:ResilienceTriggerType ; rdfs:label "SUSTAINED_DECLINE"@en ;         rdfs:comment "T_trend: over the configured window W, with eligible history, the system DI declined persistently with a negative slope of at least ε_W per hour (DI used as a trend signal)."@en .
+di:PREDICTED_FLOOR_CROSSING  a di:ResilienceTriggerType ; rdfs:label "PREDICTED_FLOOR_CROSSING"@en ;  rdfs:comment "T_pred: within the planning horizon, a Digital Twin or predictive forecast places the system DI below the configured management floor, or a forecast attribute value below its Normal minimum (anticipatory warning before an observed breach)."@en .
 
 
 ##############################################################################
@@ -233,7 +258,7 @@ di:contributesTo a owl:ObjectProperty ;
     rdfs:domain assr:AssuranceScore ;
     rdfs:range di:DependabilityIndex ;
     rdfs:label "contributes to"@en ;
-    rdfs:comment "The Node Dependability Score ND_i (assr:AssuranceScore) that is the intrinsic input to this node's DI. For index-to-index hierarchical aggregation use di:aggregatesInto, not this property."@en .
+    rdfs:comment "Links the Node Dependability Score ND_i (assr:AssuranceScore) to the node's DI, as the assurance write-back of the same attribute values. ND_i is not an input to the DI, which uses the risk-adjusted attribute scores (Eq. A.17, see di:DependabilityIndex). For index-to-index hierarchical aggregation use di:aggregatesInto, not this property."@en .
 
 di:appliesTo a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( di:DependabilityIndex di:SystemDependabilityIndex ) ] ;
@@ -494,13 +519,13 @@ di:hasAggregatedRiskValue a owl:DatatypeProperty ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range xsd:decimal ;
     rdfs:label "has aggregated risk value"@en ;
-    rdfs:comment "R_i(t) = max_h R_i^h(t) (or another configured aggregator recorded in the method): the node's conservative aggregate over hazard classes that enters DI_i = clip(ND_i − β_i·R_i)."@en .
+    rdfs:comment "R_i(t) = max_h R_i^h(t) (or another configured aggregator recorded in the method): the node's conservative aggregate over hazard classes. With every class relevant to every attribute it equals R_i,a, which enters d̃_i,a = clip(d_i,a − β_i·R_i,a)."@en .
 
 di:hasBetaWeight a owl:DatatypeProperty ;
     rdfs:domain di:DependabilityIndex ;
     rdfs:range xsd:decimal ;
     rdfs:label "has beta weight"@en ;
-    rdfs:comment "The risk sensitivity coefficient β_i for this node in DI_i = clip(ND_i − β_i·R_i, 0, 1). Configured so that the risk penalty does not duplicate degradation already embedded in an attribute value."@en .
+    rdfs:comment "The risk sensitivity coefficient β_i for this node in d̃_i,a = clip(d_i,a − β_i·R_i,a, 0, 1). Configured so that the risk penalty does not duplicate degradation already embedded in an attribute value."@en .
 
 di:hasRiskPropagationWeight a owl:DatatypeProperty ;
     rdfs:domain di:RiskPropagationEdge ;
@@ -578,7 +603,7 @@ di:hasTrendSlopeThreshold a owl:DatatypeProperty ;
     rdfs:domain di:SupervisionConfiguration ;
     rdfs:range xsd:decimal ;
     rdfs:label "has trend slope threshold"@en ;
-    rdfs:comment "ε_W: the magnitude of negative slope (per hour) that constitutes a sustained decline."@en .
+    rdfs:comment "ε_W: the magnitude of negative slope that constitutes a sustained decline, in DI units per hour (e.g. 0.10 means a decline of 0.10 DI per hour). A caller working per second divides by 3600."@en .
 
 di:hasPredictionHorizon a owl:DatatypeProperty ;
     rdfs:domain di:SupervisionConfiguration ;
@@ -611,7 +636,7 @@ di:hasDampingFactor a owl:DatatypeProperty ;
     rdfs:domain di:RiskPropagationParameter ;
     rdfs:range xsd:decimal ;
     rdfs:label "has damping factor"@en ;
-    rdfs:comment "ρ_h in [0,1): the damping factor of the propagation recurrence for hazard class h. Necessary but not sufficient for convergence; the spectral-radius condition spr(ρ_h·W^h) < 1 is checked by the external calculation."@en .
+    rdfs:comment "ρ_h ≥ 0: the damping factor of the propagation recurrence for hazard class h. Convergence is decided by the spectral-radius certificate spr(ρ_h·W^h) < 1, checked by the external calculation; ρ_h = 1 (no damping) is admissible when the certificate holds."@en .
 
 di:hasConvergenceTolerance a owl:DatatypeProperty ;
     rdfs:domain di:RiskPropagationParameter ;
