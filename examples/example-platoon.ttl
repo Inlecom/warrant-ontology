@@ -183,15 +183,15 @@ plt:PropulsionSystemF a davom:TechnicalSystem ;
 plt:GNSSReceiverL a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-GNSS-L" ;
     warrant:hasName "GNSS receiver (Vessel L)" ;
-    warrant:hasDescription "Dual-antenna GNSS RTK receiver; position at 10 Hz. The antenna is offset from midship, so the reported position is corrected by the lever arm to the midship reference point. Under bridges it has been observed to repeat its last position, COG and SOG unchanged (not null) and to step on recovery." ;
+    warrant:hasDescription "Dual-antenna GNSS compass with gyro coasting (RTK); position at 10 Hz. The same receiver and antennas also give heading, from the carrier-phase difference between the two antennas (plt:HeadingSensorL), so position and heading share a common cause. The antenna is offset from midship, so the reported position is corrected by the lever arm to the midship reference point. Under bridges it has been observed to repeat its last position, COG and SOG unchanged (not null) and to step on recovery." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingL ;
     davom:isCriticalNode true .
 
 plt:HeadingSensorL a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-HDG-L" ;
-    warrant:hasName "Heading sensor (Vessel L)" ;
-    warrant:hasDescription "Heading from the dual-antenna GNSS installation. Whether it is independent of the GNSS position solution is not established: in the trial data heading kept updating while position froze, which suggests it is. Treated as independent only under plt:ASM_PLT_05_HeadingIndependence." ;
+    warrant:hasName "Heading output of the GNSS compass (Vessel L)" ;
+    warrant:hasDescription "Heading output of the same dual-antenna GNSS compass as plt:GNSSReceiverL, computed from the carrier-phase difference between its two antennas. It is not independent of the GNSS position solution (DEP-26, FM-PLT-11). When the satellite solution is lost, the unit's internal gyro and tilt sensors coast the heading: a time-limited degraded mode in which heading stays usable only within the coasting window and drift of plt:ASM_PLT_05_HeadingCoasting. Beyond the window the heading is untrusted (FM-PLT-13). In the trial data heading kept updating at 10 Hz through the frozen-fix outages, consistent with coasting." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingL .
 
@@ -241,15 +241,15 @@ plt:PropulsionFeedbackL a davom:SensorComponent ;
 plt:GNSSReceiverF a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-GNSS-F" ;
     warrant:hasName "GNSS receiver (Vessel F)" ;
-    warrant:hasDescription "Dual-antenna GNSS RTK receiver of the follower; position at 10 Hz, corrected by the antenna lever arm to the midship reference point." ;
+    warrant:hasDescription "Dual-antenna GNSS compass with gyro coasting (RTK) of the follower; position at 10 Hz, corrected by the antenna lever arm to the midship reference point. The same receiver and antennas also give heading (plt:HeadingSensorF), so position and heading share a common cause." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingF ;
     davom:isCriticalNode true .
 
 plt:HeadingSensorF a davom:SensorComponent ;
     warrant:hasIdentifier "COMP-HDG-F" ;
-    warrant:hasName "Heading sensor (Vessel F)" ;
-    warrant:hasDescription "Heading from the dual-antenna GNSS installation. Whether it is independent of the GNSS position solution is not established: in the trial data heading kept updating while position froze, which suggests it is. Treated as independent only under plt:ASM_PLT_05_HeadingIndependence." ;
+    warrant:hasName "Heading output of the GNSS compass (Vessel F)" ;
+    warrant:hasDescription "Heading output of the same dual-antenna GNSS compass as plt:GNSSReceiverF, computed from the carrier-phase difference between its two antennas. It is not independent of the GNSS position solution (DEP-27, FM-PLT-12). When the satellite solution is lost, the unit's internal gyro and tilt sensors coast the heading: a time-limited degraded mode in which heading stays usable only within the coasting window and drift of plt:ASM_PLT_05_HeadingCoasting. Beyond the window the heading is untrusted (FM-PLT-14). In the trial data heading kept updating at 10 Hz through the frozen-fix outages, consistent with coasting." ;
     davom:hasAssetRole davom:SUPPORTING_ASSET ;
     davom:supportsAsset plt:PositionFixingF .
 
@@ -580,6 +580,31 @@ plt:DEP25_RemoteOperator_PlatoonSystem a davom:HumanSupervisionDependency ;
     davom:hasDependencyType davom:CONTROL ;
     davom:hasCriticality "Medium" .
 
+# Heading comes from the same GNSS compass as position. These edges make the
+# common cause visible to typed propagation: a DATA_LOSS fault of the receiver
+# reaches the heading output and, through DEP-02/DEP-07, the estimator twice.
+plt:DEP26_GNSSL_HeadingL a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-26" ;
+    warrant:hasName "GNSS receiver (L) → Heading output (L)" ;
+    warrant:hasDescription "Same receiver and antennas: heading is derived from the carrier phase between the two antennas. During a short loss of the satellite solution the heading coasts on the internal gyro (plt:ASM_PLT_05_HeadingCoasting), so the dependency is masked for that window, not removed." ;
+    davom:dependencySource plt:GNSSReceiverL ;
+    davom:dependencyTarget plt:HeadingSensorL ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.9"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
+plt:DEP27_GNSSF_HeadingF a davom:DataDependency ;
+    warrant:hasIdentifier "DEP-27" ;
+    warrant:hasName "GNSS receiver (F) → Heading output (F)" ;
+    warrant:hasDescription "Same receiver and antennas: heading is derived from the carrier phase between the two antennas, and coasts on the internal gyro during a short loss of the satellite solution (plt:ASM_PLT_05_HeadingCoasting)." ;
+    davom:dependencySource plt:GNSSReceiverF ;
+    davom:dependencyTarget plt:HeadingSensorF ;
+    davom:hasDependencyType davom:DATA ;
+    davom:hasDependencyWeight "0.9"^^xsd:decimal ;
+    davom:hasCriticality "High" ;
+    davom:hasRedundancyLevel 0 .
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # OBSERVATION (minimal, declared with the structure)
@@ -740,6 +765,43 @@ plt:FM_FollowerGNSSHoldLastFix a cdm:FailureMode ;
     cdm:hasDeviationType cdm:UNTRUSTED ;
     cdm:affectsComponent plt:GNSSReceiverF ;
     cdm:degrades plt:GNSSReceiverF , plt:PositionFixingF ;
+    cdm:hasHazardClass cdm:DATA_LOSS .
+
+# — GNSS compass: common cause of position and heading
+plt:FM_LeaderGNSSCompassCommonCause a cdm:FailureMode ;
+    warrant:hasIdentifier "FM-PLT-11" ;
+    warrant:hasName "Leader GNSS compass common-cause fault" ;
+    warrant:hasDescription "A fault of the leader's GNSS compass that takes position and heading together, because both come from the same receiver and antennas: receiver, power or firmware fault, antenna obstruction (bridge), or jamming. Once the gyro coasting window is spent, no independent heading is left. Spoofing would corrupt both together as well; it is not modelled here (see the spoofing example)." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE ;
+    cdm:affectsComponent plt:GNSSReceiverL , plt:HeadingSensorL ;
+    cdm:degrades plt:GNSSReceiverL , plt:HeadingSensorL , plt:PositionFixingL , plt:LeaderStateDataFlow ;
+    cdm:hasHazardClass cdm:DATA_LOSS .
+
+plt:FM_FollowerGNSSCompassCommonCause a cdm:FailureMode ;
+    warrant:hasIdentifier "FM-PLT-12" ;
+    warrant:hasName "Follower GNSS compass common-cause fault" ;
+    warrant:hasDescription "As FM-PLT-11, on the follower's own GNSS compass: position and heading are lost together." ;
+    cdm:hasDeviationType cdm:UNAVAILABLE ;
+    cdm:affectsComponent plt:GNSSReceiverF , plt:HeadingSensorF ;
+    cdm:degrades plt:GNSSReceiverF , plt:HeadingSensorF , plt:PositionFixingF ;
+    cdm:hasHazardClass cdm:DATA_LOSS .
+
+plt:FM_LeaderHeadingCoastingExceeded a cdm:FailureMode ;
+    warrant:hasIdentifier "FM-PLT-13" ;
+    warrant:hasName "Leader heading coasting beyond its window" ;
+    warrant:hasDescription "The satellite solution stays lost for longer than the gyro coasting window, and the leader's heading output keeps updating on gyro alone while its drift grows unbounded. The value still looks live, so the guideword is UNTRUSTED. Within the window the heading is usable (plt:ASM_PLT_05_HeadingCoasting)." ;
+    cdm:hasDeviationType cdm:UNTRUSTED ;
+    cdm:affectsComponent plt:HeadingSensorL ;
+    cdm:degrades plt:HeadingSensorL , plt:PositionFixingL , plt:LeaderStateDataFlow ;
+    cdm:hasHazardClass cdm:DATA_LOSS .
+
+plt:FM_FollowerHeadingCoastingExceeded a cdm:FailureMode ;
+    warrant:hasIdentifier "FM-PLT-14" ;
+    warrant:hasName "Follower heading coasting beyond its window" ;
+    warrant:hasDescription "As FM-PLT-13, on the follower's own heading output." ;
+    cdm:hasDeviationType cdm:UNTRUSTED ;
+    cdm:affectsComponent plt:HeadingSensorF ;
+    cdm:degrades plt:HeadingSensorF , plt:PositionFixingF ;
     cdm:hasHazardClass cdm:DATA_LOSS .
 
 # — V2V link
@@ -911,6 +973,10 @@ plt:FM_LeaderGNSSSignalObstruction      cdm:mayCause plt:PMF_MissingLeaderState 
 plt:FM_V2VLinkDropout           cdm:mayCause plt:PMF_MissingLeaderState .
 plt:FM_LeaderGNSSReacquisitionStep cdm:mayCause plt:PMF_LeaderPositionStep .
 plt:FM_FollowerGNSSHoldLastFix     cdm:mayCause plt:PMF_WrongFollowerOwnPosition .
+plt:FM_LeaderGNSSCompassCommonCause   cdm:mayCause plt:PMF_MissingLeaderState .
+plt:FM_FollowerGNSSCompassCommonCause cdm:mayCause plt:PMF_WrongFollowerOwnPosition .
+plt:FM_LeaderHeadingCoastingExceeded   cdm:mayCause plt:PMF_StaleLeaderState , plt:PMF_WrongLeaderOwnPosition .
+plt:FM_FollowerHeadingCoastingExceeded cdm:mayCause plt:PMF_WrongFollowerOwnPosition .
 
 # Process-model flaw → UCA
 plt:PMF_StaleLeaderState         cdm:mayCause plt:UCA_FollowerSpeedOnStaleLeader , plt:UCA_FollowerSteerOnStaleLeader .
@@ -966,13 +1032,15 @@ plt:SC_FixValidity a cdm:SafetyConstraint ;
 plt:CTRL_FixAgeMonitoring a cdm:Control ;
     warrant:hasIdentifier "CTRL-PLT-01" ;
     warrant:hasName "Fix-age monitoring on both vessels" ;
-    warrant:hasDescription "Generic freshness check: the age of each GNSS fix, and whether it changes at all while the vessel is under way, is monitored against a maximum age. Catches dropouts and frozen fixes." ;
-    cdm:mitigates plt:FM_LeaderGNSSHoldLastFix , plt:FM_LeaderGNSSSignalObstruction , plt:FM_FollowerGNSSHoldLastFix .
+    warrant:hasDescription "Generic freshness check: the age of each GNSS fix, and whether it changes at all while the vessel is under way, is monitored against a maximum age. Catches dropouts and frozen fixes. The same fix age, held against the gyro coasting window, tells when the heading output stops being trusted." ;
+    cdm:mitigates plt:FM_LeaderGNSSHoldLastFix , plt:FM_LeaderGNSSSignalObstruction , plt:FM_FollowerGNSSHoldLastFix ,
+        plt:FM_LeaderGNSSCompassCommonCause , plt:FM_FollowerGNSSCompassCommonCause ,
+        plt:FM_LeaderHeadingCoastingExceeded , plt:FM_FollowerHeadingCoastingExceeded .
 
 plt:CTRL_FixPlausibilityGate a cdm:Control ;
     warrant:hasIdentifier "CTRL-PLT-02" ;
     warrant:hasName "Kinematic plausibility gate on position fixes" ;
-    warrant:hasDescription "A new fix is rejected if it implies a displacement the vessel's heading and last speed over ground cannot explain over the interval: the check that tells a legitimate manoeuvre from a sensor anomaly. Uses heading and speed only, not rudder or propulsion data (D2). Relies on heading being independent of the GNSS position (plt:ASM_PLT_05_HeadingIndependence)." ;
+    warrant:hasDescription "A new fix is rejected if it implies a displacement the vessel's heading and last speed over ground cannot explain over the interval: the check that tells a legitimate manoeuvre from a sensor anomaly. Uses heading and speed only, not rudder or propulsion data (D2). Heading comes from the same GNSS compass, so the gate holds only while heading is valid: live, or coasting within its window (plt:ASM_PLT_05_HeadingCoasting)." ;
     cdm:mitigates plt:FM_LeaderGNSSReacquisitionStep .
 
 plt:CTRL_V2VMessageAgeMonitoring a cdm:Control ;
@@ -1202,7 +1270,7 @@ plt:NHM_TrackKeepingL a obs:NodeHealthMonitor ;
 plt:DR_FixFrozen a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-01" ;
     warrant:hasName "Frozen fix" ;
-    warrant:hasDescription "Position repeated for longer than the maximum fix age (illustrative: 3 s, i.e. about 30 epochs at the 10 Hz position rate) while records keep arriving and heading keeps updating. An exactly repeated position is itself the indication, since a live fix always jitters. The heading condition separates a frozen fix from a logger-side gap, in which every channel stops at once and which fix age alone would also flag." .
+    warrant:hasDescription "Position repeated for longer than the maximum fix age (illustrative: 3 s, i.e. about 30 epochs at the 10 Hz position rate) while records keep arriving and heading keeps updating. An exactly repeated position is itself the indication, since a live fix always jitters. The heading condition separates a frozen fix from a logger-side gap, in which every channel stops at once and which fix age alone would also flag. Heading comes from the same GNSS compass and keeps updating on the internal gyro, so the condition holds only within the coasting window; beyond it HET-PLT-10 applies." .
 
 plt:DR_FixDropout a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-02" ;
@@ -1224,6 +1292,11 @@ plt:DR_V2VStale a obs:DetectionRule ;
     warrant:hasName "V2V leader-state late or stale" ;
     warrant:hasDescription "Message age above the staleness limit (illustrative: 1 s), or a repeated sequence number." .
 
+plt:DR_HeadingCoastingExceeded a obs:DetectionRule ;
+    warrant:hasIdentifier "HET-PLT-10" ;
+    warrant:hasName "Heading coasting beyond window" ;
+    warrant:hasDescription "Fix age (frozen or missing fix) above the gyro coasting window while heading keeps updating (illustrative: 180 s, from plt:ASM_PLT_05_HeadingCoasting). From then on the heading is untrusted, and the frozen-fix rule loses its heading condition. Inferred from fix age, because no heading-source flag is logged." .
+
 plt:DR_RudderNoResponse a obs:DetectionRule ;
     warrant:hasIdentifier "HET-PLT-06" ;
     warrant:hasName "Rudder does not respond" ;
@@ -1244,8 +1317,8 @@ plt:DR_PropulsionShortfall a obs:DetectionRule ;
     warrant:hasName "Propulsion shortfall" ;
     warrant:hasDescription "Reported propulsion output below the commanded setpoint by more than the allowance for longer than the settling time." .
 
-plt:GNSSFixObserverL obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout , plt:DR_FixStep .
-plt:GNSSFixObserverF obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout .
+plt:GNSSFixObserverL obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout , plt:DR_FixStep , plt:DR_HeadingCoastingExceeded .
+plt:GNSSFixObserverF obs:supportsDetectionOf plt:DR_FixFrozen , plt:DR_FixDropout , plt:DR_HeadingCoastingExceeded .
 plt:V2VMessageProbe  obs:supportsDetectionOf plt:DR_V2VLoss , plt:DR_V2VStale .
 plt:ActuatorFeedbackObserverF obs:supportsDetectionOf plt:DR_RudderNoResponse , plt:DR_RudderDeadband , plt:DR_RudderSlow , plt:DR_PropulsionShortfall .
 
@@ -1256,12 +1329,16 @@ plt:DR_FixFrozen obs:detectsDeviationType cdm:UNTRUSTED ;
     obs:hasRuleThreshold "3.0"^^xsd:decimal ; obs:hasUnit "s" ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
 plt:DR_FixDropout obs:detectsDeviationType cdm:UNAVAILABLE ;
-    obs:indicatesCondition plt:FM_LeaderGNSSSignalObstruction ;
+    obs:indicatesCondition plt:FM_LeaderGNSSSignalObstruction , plt:FM_LeaderGNSSCompassCommonCause , plt:FM_FollowerGNSSCompassCommonCause ;
     obs:hasRuleThreshold "3.0"^^xsd:decimal ; obs:hasUnit "s" ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
 plt:DR_FixStep obs:detectsDeviationType cdm:INCONSISTENT ;
     obs:indicatesCondition plt:FM_LeaderGNSSReacquisitionStep ;
     obs:hasRuleThreshold "10.0"^^xsd:decimal ; obs:hasUnit "m" ;
+    warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
+plt:DR_HeadingCoastingExceeded obs:detectsDeviationType cdm:UNTRUSTED ;
+    obs:indicatesCondition plt:FM_LeaderHeadingCoastingExceeded , plt:FM_FollowerHeadingCoastingExceeded ;
+    obs:hasRuleThreshold "180.0"^^xsd:decimal ; obs:hasUnit "s" ;
     warrant:hasVersion "0.1" ; warrant:hasApprovalStatus "PROPOSED" .
 plt:DR_V2VLoss obs:detectsDeviationType cdm:UNAVAILABLE ;
     obs:indicatesCondition plt:FM_V2VLinkDropout ;
@@ -1471,10 +1548,10 @@ plt:REQ_PLT_07_ActuatorSmoothness a assr:Requirement ;
     assr:hasRequirementCategory "SYSTEM" ;
     assr:expectsEvidence plt:OBL_GapTrackUnderInjection .
 
-plt:ASM_PLT_05_HeadingIndependence a assr:Assumption ;
+plt:ASM_PLT_05_HeadingCoasting a assr:Assumption ;
     warrant:hasIdentifier "ASM-PLT-05" ;
-    warrant:hasName "Heading is independent of the GNSS position solution" ;
-    warrant:hasDescription "Heading comes from the dual-antenna GNSS installation, so it may share a common cause with the position fix. In the trial data heading kept updating through every frozen-fix outage while position, COG and SOG froze (T04 data survey), which supports independence. To be confirmed with the trials team. If it fails, the frozen-fix rule loses its heading condition and the kinematic plausibility gate its reference." ;
+    warrant:hasName "Heading coasts on the compass gyro for about 3 min with at most about 1°/min drift" ;
+    warrant:hasDescription "Both vessels carry a dual-antenna GNSS compass and no standalone gyro, so heading is not independent of the GNSS position solution: it shares the receiver and antennas (FM-PLT-11/12). Through a short loss of the satellite solution the unit's internal gyro and tilt sensors coast the heading. Assumed: coasting window about 3 min, drift at most about 1°/min. The manufacturer gives no figure for the installed unit; the values are taken from sibling models (newer: below 0.5°/min for up to 3 min; older: about 1°/min for up to 3 min), not from a specification of this unit. Observed outages under way lasted 6–14 s (T08), so coasting drift stays below about 0.25°; even the 60 s upper end of the injected outage profile (ASM-PLT-04) stays near 1°. In the trial data heading kept updating at 10 Hz through the frozen fixes (T04, T08), consistent with coasting. Within the window the frozen-fix rule keeps its heading condition and the plausibility gate its reference; beyond it heading is untrusted (HET-PLT-10). The unit can report whether heading comes from GNSS or the gyro, but that output is not logged; it is a possible future observation source, not present data." ;
     assr:assumptionAppliesTo plt:HeadingSensorL , plt:HeadingSensorF , plt:CTRL_FixPlausibilityGate , plt:CLM_PLT_03_FaultyInputsDetected ;
     assr:hasValidityStatus "UNDER_REVIEW" .
 
@@ -1596,7 +1673,7 @@ plt:PlatoonLDC a assr:LivingDependabilityCase ;
         plt:REQ_PLT_07_ActuatorSmoothness ;
     assr:includesClaim plt:CLM_PLT_01_GapKeeping , plt:CLM_PLT_02_TrackKeeping , plt:CLM_PLT_03_FaultyInputsDetected , plt:CLM_PLT_04_ActuatorFaultsDetected ;
     assr:includesAssumption plt:ASM_PLT_01_GapBounds , plt:ASM_PLT_02_TrackTolerance , plt:ASM_PLT_03_LeaderStateAge , plt:ASM_PLT_04_GNSSOutageProfile ,
-        plt:ASM_PLT_05_HeadingIndependence .
+        plt:ASM_PLT_05_HeadingCoasting .
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1789,7 +1866,7 @@ plt:PlatoonALWeights a assr:AssuranceLevelWeightSet ;
 plt:R01_RejectInvalidFixes a mit:MachineActionableAction ;
     warrant:hasIdentifier "RSP-PLT-01" ;
     warrant:hasName "Reject frozen or jumping fixes and bridge them kinematically" ;
-    warrant:hasDescription "Fixes that fail the freshness or plausibility check are not passed to the estimator; the estimator bridges the gap from heading and the last speed over ground, and the next accepted fix is blended in rather than stepped to. Bounded in time: after the maximum bridging time the response hands over to R06 or R07. Depends on heading being independent of the GNSS position (plt:ASM_PLT_05_HeadingIndependence)." ;
+    warrant:hasDescription "Fixes that fail the freshness or plausibility check are not passed to the estimator; the estimator bridges the gap from heading and the last speed over ground, and the next accepted fix is blended in rather than stepped to. Bounded in time: after the maximum bridging time the response hands over to R06 or R07. Heading comes from the same GNSS compass, so the bridging time can never exceed the gyro coasting window (plt:ASM_PLT_05_HeadingCoasting); beyond it heading is untrusted too." ;
     mit:hasStrategyType mit:LOGICAL_ISOLATION ;
     mit:hasDefaultPosture mit:FAIL_OPERATIONAL ;
     mit:implementsControl plt:CTRL_FixAgeMonitoring , plt:CTRL_FixPlausibilityGate ;
@@ -1885,12 +1962,12 @@ plt:LeaderSkipperRole mit:performsMitigation plt:R03_LeaderConstantSpeed .
 
 # — Rules: which responses the decision support considers for which condition
 plt:RULE_LeaderGNSSUntrusted a mit:MitigationRule ;
-    warrant:hasName "Leader GNSS frozen, missing or jumping" ;
+    warrant:hasName "Leader GNSS frozen, missing or jumping, or heading coasting too long" ;
     mit:recommends plt:R01_RejectInvalidFixes , plt:R02_DynamicGapIncrease , plt:R04_DampedFollowerTuning ,
         plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer .
 
 plt:RULE_FollowerGNSSUntrusted a mit:MitigationRule ;
-    warrant:hasName "Follower GNSS frozen" ;
+    warrant:hasName "Follower GNSS frozen or lost, or heading coasting too long" ;
     mit:recommends plt:R01_RejectInvalidFixes , plt:R06_DegradedPlatoonMode , plt:R08_AlertSafetyOfficer , plt:R09_DissolvePlatoon .
 
 plt:RULE_V2VDegraded a mit:MitigationRule ;
@@ -1909,6 +1986,10 @@ plt:FM_LeaderGNSSHoldLastFix       mit:matchesRule plt:RULE_LeaderGNSSUntrusted 
 plt:FM_LeaderGNSSSignalObstruction      mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
 plt:FM_LeaderGNSSReacquisitionStep mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
 plt:FM_FollowerGNSSHoldLastFix     mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
+plt:FM_LeaderGNSSCompassCommonCause    mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:FM_LeaderHeadingCoastingExceeded   mit:matchesRule plt:RULE_LeaderGNSSUntrusted .
+plt:FM_FollowerGNSSCompassCommonCause  mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
+plt:FM_FollowerHeadingCoastingExceeded mit:matchesRule plt:RULE_FollowerGNSSUntrusted .
 plt:FM_V2VLinkDropout           mit:matchesRule plt:RULE_V2VDegraded .
 plt:FM_V2VLinkCongestion          mit:matchesRule plt:RULE_V2VDegraded .
 plt:FM_RudderActuatorSeized          mit:matchesRule plt:RULE_ActuatorFault .
