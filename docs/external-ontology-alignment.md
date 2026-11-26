@@ -1,6 +1,6 @@
 # WARRaNT KG Ontology — External Ontology Alignment (Informative)
 
-Version 0.10-poc | 2026-09-06
+Version 0.11-poc | 2026-11-26
 
 **Status: INFORMATIVE ONLY**
 

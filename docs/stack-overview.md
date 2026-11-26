@@ -2,7 +2,7 @@
 
 > Prepared for WARRaNT consortium partners · September 2026
 > Repository: https://github.com/Inlecom/warrant-ontology
-> Version: 0.10-poc
+> Version: 0.11-poc
 
 ---
 
@@ -269,16 +269,17 @@ python scripts/merge_ontology.py
 | Version | Status | Notes |
 |---------|--------|-------|
 | 0.9-poc | Superseded | 9 modules · 5 LL examples · CI pipeline · interactive graph · WIDOCO docs |
-| **0.10-poc** | Current | Aligned with the framework paper (Sept 2026): health events and node health monitors, attribute-wise state, typed propagation, forecasts and triggers, REDS/IRDS records, Living Dependability Case; 14 shapes · 10 queries · generated module docs |
+| 0.10-poc | Superseded | Aligned with the framework paper (Sept 2026): health events and node health monitors, attribute-wise state, typed propagation, forecasts and triggers, REDS/IRDS records, Living Dependability Case; 14 shapes · 10 queries · generated module docs |
+| **0.11-poc** | Current | LL1 GNSS-spoofing rework, two-vessel platoon example, runtime-record terms: three-valued trigger evaluations, attribute forecasts, run manifests, record times and calculation method on every result (Nov 2026); 19 shapes · 13 queries |
 | **v0.1.0** | Planned | First consortium baseline release · removal of deprecated terms · LL3 example |
 | **v0.2.0** | Planned | Normative SOSA/SSN/SACM alignment · additional SPARQL queries |
 
-**Known limitations in 0.10-poc:**
+**Known limitations in 0.11-poc:**
 - All numerical computation is external; the KG stores inputs, governed configuration and results only
 - The mission-phase / operating-mode axis is expressed by scoping weights and thresholds with `warrant:appliesUnder` to an `OperationalMode` or `VoyageSegment`; the schema does not yet fix which, pending clarification of the paper's terminology
 - LL3 (NOVA) examples not yet included; only the LL4 GNSS example exercises the full loop
 - DLT-based identity management (KNT contribution) not yet modelled
-- Deprecated terms (ten `cdm:*Deviation` subclasses, `di:hasThreshold`/`hasLowerThreshold`/`hasUpperThreshold`/`hasSystemWeight`, `dt:ScenarioExecutionState`) remain for one minor release
+- Deprecated terms (ten `cdm:*Deviation` subclasses, `di:hasThreshold`/`hasLowerThreshold`/`hasUpperThreshold`/`hasSystemWeight`, `dt:ScenarioExecutionState`) remain until the v0.1.0 baseline
 
 ---
 

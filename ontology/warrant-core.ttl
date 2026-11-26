@@ -1,16 +1,17 @@
 ##############################################################################
 # WARRaNT Core Ontology Module
-# Version: 0.10-poc
+# Version: 0.11-poc
 # IRI: https://warrant-project.eu/ontology/core
 # Project: WAterborne fedeRated systems and models for secuRe and resilieNt
 #          operations — Horizon Europe RIA 101202581
-# Date: 2026-09-06
+# Date: 2026-11-26
 #
 # This module defines shared superclasses, common properties, context classes,
 # OperationalMode controlled vocabulary, VisualisableEntity / AgentEntity,
 # the CalculationMethod identity class, context scoping (appliesUnder),
-# lineage (derivedFrom), and configuration governance (approvedBy,
-# hasApprovalStatus). All other modules import this module.
+# lineage (derivedFrom), configuration governance (approvedBy,
+# hasApprovalStatus), and record provenance (recordedAt, receivedAt,
+# usesCalculationMethod). All other modules import this module.
 ##############################################################################
 
 @prefix warrant: <https://warrant-project.eu/ontology/core#> .
@@ -27,8 +28,8 @@
     dcterms:title "WARRaNT Core Module" ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-09-06"^^xsd:date ;
-    owl:versionInfo "0.10-poc" .
+    dcterms:modified "2026-11-26"^^xsd:date ;
+    owl:versionInfo "0.11-poc" .
 
 
 ##############################################################################
@@ -228,6 +229,35 @@ warrant:hasApprovalStatus a owl:DatatypeProperty ;
     rdfs:range xsd:string ;
     rdfs:label "has approval status"@en ;
     rdfs:comment "Governance status of a configuration artefact, e.g. PROPOSED, APPROVED, SUPERSEDED. Operational learning may propose a change (PROPOSED); it enters the operational baseline only when APPROVED."@en .
+
+warrant:supersedes a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range owl:Thing ;
+    rdfs:label "supersedes"@en ;
+    rdfs:comment "Links a version of a governed configuration artefact (threshold set, weight, floor, approved control, claim wording, configuration) to the earlier version it replaces. The newer version points at the older one; each keeps its own warrant:hasVersion and warrant:hasApprovalStatus, and the older one becomes SUPERSEDED only once the newer one is APPROVED. A PROPOSED version that supersedes the baseline does not displace it until approved."@en .
+
+##############################################################################
+# Record provenance (0.11-poc): the three times of a runtime record and the
+# method that produced it
+##############################################################################
+
+warrant:recordedAt a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "recorded at"@en ;
+    rdfs:comment "When the record was written to the Knowledge Graph or the Living Dependability Case. With warrant:receivedAt and the class-specific event time (obs:hasTimestamp, di:calculatedAt, di:triggeredAt, di:evaluatedAt, mit:evaluatedAt, ...) it gives every runtime record its three times: when it happened, when the consumer got it, and when it was written. Keeping them apart lets an audit separate a late observation from a late reaction."@en .
+
+warrant:receivedAt a owl:DatatypeProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "received at"@en ;
+    rdfs:comment "When the consuming service received the record or the observation it is based on. Not later than warrant:recordedAt and not earlier than the record's event time."@en .
+
+warrant:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:domain owl:Thing ;
+    rdfs:range warrant:CalculationMethod ;
+    rdfs:label "uses calculation method"@en ;
+    rdfs:comment "Identity and version of the external method that produced a runtime result: a derived measurement, a health event from a monitor, a trigger evaluation, a response evaluation or execution, or an evidence item. assr:usesCalculationMethod and di:usesCalculationMethod are its sub-properties for the assurance and DI results, so a query on this property finds the method of every computed result."@en .
 
 ##############################################################################
 # END warrant-core.ttl

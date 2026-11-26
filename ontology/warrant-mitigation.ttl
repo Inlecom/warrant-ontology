@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Mitigation and Resilience Response Ontology Module
-# Version: 0.10-poc
+# Version: 0.11-poc
 # IRI: https://warrant-project.eu/ontology/mitigation
 # Imports: warrant-core.ttl, warrant-davom.ttl, warrant-cdm.ttl,
 #          warrant-observation.ttl, warrant-di.ttl, warrant-scenario.ttl
@@ -56,8 +56,8 @@
     rdfs:comment "Mitigation rules, actions, failover procedures, redundant resources and recovery effects (the response library); REDS response evaluations with expected effect, cost, penalty, admissibility and rank; IRDS response executions with authorisation, posture and outcome; the response strategy, resilience posture and authorisation status vocabularies. Ranking and expected-effect estimation are external computations; the KG stores their inputs, configured weights and results."@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-09-06"^^xsd:date ;
-    owl:versionInfo "0.10-poc" .
+    dcterms:modified "2026-11-26"^^xsd:date ;
+    owl:versionInfo "0.11-poc" .
 
 
 ##############################################################################
@@ -186,10 +186,10 @@ mit:ResponseExecution a owl:Class ;
 ##############################################################################
 
 mit:matchesRule a owl:ObjectProperty ;
-    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState di:ResilienceTrigger ) ] ;
+    rdfs:domain [ owl:unionOf ( cdm:Deviation cdm:FailureMode cdm:Hazard di:DependabilityIndexState di:ResilienceTrigger ) ] ;
     rdfs:range mit:MitigationRule ;
     rdfs:label "matches rule"@en ;
-    rdfs:comment "A deviation, hazard, resilience trigger, or operational state matches a rule of the response library. Prefer matching on a ResilienceTrigger or attribute-wise state; matching on a DI-node state is retained for compatibility but the DI value itself never triggers a response."@en .
+    rdfs:comment "A deviation, failure mode, hazard, resilience trigger, or operational state matches a rule of the response library. A FailureMode is the design-time form: a runtime deviation matches the rules of the failure mode that produces it. Prefer matching on a ResilienceTrigger or attribute-wise state; matching on a DI-node state is retained for compatibility but the DI value itself never triggers a response."@en .
 
 mit:recommends a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( mit:MitigationRule cdm:Risk ) ] ;
@@ -228,6 +228,12 @@ mit:isTriggeredBy a owl:ObjectProperty ;
     rdfs:range [ owl:unionOf ( cdm:Deviation cdm:Hazard di:DependabilityIndexState di:ResilienceTrigger obs:HealthEvent ) ] ;
     rdfs:label "is triggered by"@en ;
     rdfs:comment "The deviation, hazard, health event, resilience trigger, or state in response to which the action was recommended or executed."@en .
+
+mit:targetsConfiguration a owl:ObjectProperty ;
+    rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;
+    rdfs:range davom:ControlConfiguration ;
+    rdfs:label "targets configuration"@en ;
+    rdfs:comment "The governed control configuration a RECONFIGURATION response switches to, such as a damped controller tuning or a more conservative safety-distance logic level."@en .
 
 mit:hasStrategyType a owl:ObjectProperty ;
     rdfs:domain [ owl:unionOf ( mit:MitigationAction mit:FailoverProcedure ) ] ;

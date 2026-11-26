@@ -1,6 +1,6 @@
 ##############################################################################
 # WARRaNT Assurance Ontology Module
-# Version: 0.10-poc
+# Version: 0.11-poc
 # IRI: https://warrant-project.eu/ontology/assurance
 # Imports: warrant-core.ttl, warrant-cdm.ttl, warrant-observation.ttl
 #
@@ -69,8 +69,8 @@ All formulas are metadata only; computation is external and results are written 
 their method identity and timestamp."""@en ;
     dcterms:creator "WARRaNT Consortium (Horizon Europe RIA 101202581)" ;
     dcterms:issued "2026-06-05"^^xsd:date ;
-    dcterms:modified "2026-09-06"^^xsd:date ;
-    owl:versionInfo "0.10-poc" .
+    dcterms:modified "2026-11-26"^^xsd:date ;
+    owl:versionInfo "0.11-poc" .
 
 
 ##############################################################################
@@ -102,7 +102,7 @@ assr:AssuranceScore a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
     rdfs:label "Node Dependability Score (ND)"@en ;
     skos:altLabel "Assurance Score"@en ;
-    rdfs:comment "The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Feeds into the node DI via di:contributesTo (DI_i = clip(ND_i − β_i·R_i)). Computed externally; timestamp via di:calculatedAt."@en .
+    rdfs:comment "The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Linked to the node DI via di:contributesTo as the assurance write-back of the same attribute values; it is not an input to the DI, which uses the risk-adjusted attribute scores d̃_i,a = clip(d_i,a − β_i·R_i,a) (DI paper, Eq. A.17; see di:DependabilityIndex). Computed externally; timestamp via di:calculatedAt."@en .
 
 assr:AssuranceWeight a owl:Class ;
     rdfs:subClassOf assr:AssuranceEntity ;
@@ -317,9 +317,15 @@ assr:hasObligationStatus a owl:ObjectProperty ;
 
 assr:assumptionAppliesTo a owl:ObjectProperty ;
     rdfs:domain assr:Assumption ;
-    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:CausalEntity assr:AssuranceClaim warrant:ContextEntity ) ] ;
+    rdfs:range [ owl:unionOf ( warrant:OperationalEntity cdm:CausalEntity assr:AssuranceClaim assr:Requirement warrant:ContextEntity ) ] ;
     rdfs:label "assumption applies to"@en ;
-    rdfs:comment "The element, hazard analysis artefact, claim, or context the assumption underpins."@en .
+    rdfs:comment "The element, hazard analysis artefact, claim, requirement, or context the assumption underpins. On a requirement it typically carries an assumed value the requirement refers to."@en .
+
+assr:refinesConstraint a owl:ObjectProperty ;
+    rdfs:domain assr:Requirement ;
+    rdfs:range cdm:SafetyConstraint ;
+    rdfs:label "refines constraint"@en ;
+    rdfs:comment "The STPA safety constraint a requirement makes verifiable."@en .
 
 assr:isChallengedBy a owl:ObjectProperty ;
     rdfs:domain assr:Assumption ;
@@ -349,6 +355,7 @@ assr:derivesFromAssuranceLevel a owl:ObjectProperty ;
     rdfs:label "derives from assurance level"@en .
 
 assr:usesCalculationMethod a owl:ObjectProperty ;
+    rdfs:subPropertyOf warrant:usesCalculationMethod ;
     rdfs:domain [ owl:unionOf ( assr:AssuranceScore assr:AssuranceAttributeValue assr:AssuranceLevel assr:CertificationReadiness ) ] ;
     rdfs:range warrant:CalculationMethod ;
     rdfs:label "uses calculation method"@en ;

@@ -6,7 +6,7 @@
 **Prefix:** `davom:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/davom`  
 **Imports:** `warrant-core`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -31,7 +31,7 @@ dependencies over which risk propagates.
 
 ---
 
-## Classes (40)
+## Classes (42)
 
 | Class | Subclass of | Label | Description |
 |---|---|---|---|
@@ -43,7 +43,9 @@ dependencies over which risk propagates.
 | `davom:CommunicationSystem` | `davom:System` | Communication System |  |
 | `davom:Component` | `warrant:OperationalEntity` | Component | A physical, software, cyber, data, communication, or sensor element. Human operators are NOT components; use warrant:AgentEntity subclasses instead. |
 | `davom:Conduit` | `davom:CommunicationLink` | Conduit | A communication link that crosses a security-zone boundary in the IEC 62443-3-2 sense (e.g. the ship-shore wireless conduit). Declare the zones it joins with davom:connectsZone. Cyber effects propagate over conduits and over cyber/data/control dependencies, never over physical dependencies. |
+| `davom:ConfigurationParameter` | `warrant:CalculationEntity` | Configuration Parameter | One named parameter of a davom:ControlConfiguration, with either a numeric value (davom:hasParameterValue, unit in davom:hasParameterUnit) or a categorical setting (davom:hasParameterSetting). |
 | `davom:ControlAction` | `warrant:OperationalEntity` | Control Action | A command or intervention issued by a controller or authorised operator. |
+| `davom:ControlConfiguration` | `warrant:CalculationEntity` | Control Configuration | A governed, versioned parameter set of a controller or other configurable element: for example a controller tuning (conservative, balanced, aggressive) or a selectable control policy such as a safety-distance logic level. Carries warrant:appliesUnder, warrant:hasVersion, warrant:hasApprovalStatus and warrant:approvedBy like any governed artefact. A RECONFIGURATION response names the configuration it switches to with mit:targetsConfiguration. The control law itself stays outside the KG. |
 | `davom:ControlDependency` | `davom:Dependency` | Control Dependency | Canonical type: davom:CONTROL. |
 | `davom:CyberComponent` | `davom:Component` | Cyber Component |  |
 | `davom:CyberDependency` | `davom:Dependency` | Cyber Dependency | Canonical type: davom:CYBER. |
@@ -89,10 +91,10 @@ dependencies over which risk propagates.
 
 | Individual | Label | Description |
 |---|---|---|
-| `davom:CONTROL` | CONTROL | The source is commanded, supervised, or authorised by the target. |
+| `davom:CONTROL` | CONTROL | The target is commanded, supervised, or authorised by the source (a controller and the actuator it commands; a human role and the system it supervises). Effects propagate from source to target. |
 | `davom:CYBER` | CYBER | Access, trust, or network reachability. May be bidirectional where the conduit permits reverse access, control, or trust exploitation; not assumed bidirectional in every case (see davom:isBidirectional). |
-| `davom:DATA` | DATA | The source consumes a data product of the target. Effects normally propagate from provider to consumer. |
-| `davom:FUNCTIONAL` | FUNCTIONAL | The source needs the target to deliver its function. Effects normally propagate from provider to consumer. |
+| `davom:DATA` | DATA | The target consumes a data product of the source. Effects propagate from source (provider) to target (consumer). |
+| `davom:FUNCTIONAL` | FUNCTIONAL | The target needs the source to deliver its function. Effects propagate from source (provider) to target (consumer). |
 | `davom:PHYSICAL` | PHYSICAL | Mechanical, thermal, electrical, or spatial coupling. May be directed or symmetric depending on the mechanism. |
 
 ### `davom:InterfaceType`
@@ -107,13 +109,14 @@ dependencies over which risk propagates.
 | `davom:VIDEO` | VIDEO | Analogue or digital video signal (e.g. RADAR image feed into VDR). |
 | `davom:WIRELESS` | WIRELESS | Radio-frequency wireless link (e.g. container gateway to vessel gateway, AIS VHF broadcast). |
 
-## Object properties (28)
+## Object properties (31)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
 | `davom:authorizes` | `davom:HumanOperatorRole` | `davom:ControlAction` | authorizes |
 | `davom:belongsToZone` | `warrant:OperationalEntity` | `davom:SecurityZone` | Assigns a component, system, link, or data flow to an IEC 62443 security zone. |
 | `davom:carriesDataFlow` | `davom:CommunicationLink` ∪ `davom:System` ∪ `davom:Component` | `davom:DataFlow` | carries data flow |
+| `davom:configuresElement` | `davom:ControlConfiguration` | `davom:Component` ∪ `davom:System` ∪ `davom:Subsystem` | The component, system or subsystem the configuration applies to. |
 | `davom:connectsZone` | `davom:Conduit` | `davom:SecurityZone` | A Conduit joins two or more security zones; assert one triple per zone. |
 | `davom:controls` | `davom:Component` ∪ `davom:HumanOperatorRole` | `davom:Component` | controls |
 | `davom:dependencySource` | `davom:Dependency` | `warrant:OperationalEntity` ∪ `warrant:AgentEntity` | The upstream entity (provider) of the dependency: the entity depended upon. Effects propagate from source to target. Human operator roles are admissible at either end, which is what davom:HumanSupervisionDependency requires. |
@@ -127,6 +130,7 @@ dependencies over which risk propagates.
 | `davom:hasFunction` | `davom:Vessel` | `davom:VesselFunction` | has function |
 | `davom:hasInterfaceType` | `davom:CommunicationLink` ∪ `davom:DataFlow` | `davom:InterfaceType` | Tags a CommunicationLink or DataFlow with a physical/logical interface technology from the davom:InterfaceType controlled vocabulary (LAN, SERIAL, CONTACT, SERIAL_CONTACT, VIDEO, AUDIO, WIRELESS). |
 | `davom:hasOperatorRole` | `davom:Vessel` | `davom:HumanOperatorRole` | has operator role |
+| `davom:hasParameter` | `davom:ControlConfiguration` | `davom:ConfigurationParameter` | has parameter |
 | `davom:hasSubsystem` | `davom:System` | `davom:Subsystem` | has subsystem |
 | `davom:isSupportedBy` | `davom:VesselFunction` | `davom:System` | is supported by |
 | `davom:operates` | `davom:HumanOperatorRole` | `davom:System` | operates |
@@ -134,13 +138,14 @@ dependencies over which risk propagates.
 | `davom:performsRole` | `davom:HumanOperator` | `davom:HumanOperatorRole` | performs role |
 | `davom:providesDataTo` | `davom:Component` | `davom:Component` | provides data to |
 | `davom:requiresOperatorRole` | `davom:VesselFunction` ∪ `davom:System` | `davom:HumanOperatorRole` | requires operator role |
+| `davom:spansVessel` | `davom:System` | `davom:Vessel` | Names each vessel a distributed system extends over, such as a platooning or convoy system whose components sit on several vessels. Not needed for a system on one vessel, which is reached from the vessel through its functions (davom:hasFunction, davom:isSupportedBy). |
 | `davom:supervises` | `davom:HumanOperatorRole` | `davom:System` | supervises |
 | `davom:supportsAsset` | `warrant:OperationalEntity` ∪ `warrant:AgentEntity` | `warrant:OperationalEntity` | Links a supporting asset to the primary asset it stores, processes, transmits, or executes. A primary asset with no incoming supportsAsset link is an incomplete asset inventory. |
 | `davom:supportsDecisionOf` | `davom:System` | `davom:HumanOperatorRole` | supports decision of |
 | `davom:supportsFunction` | — | — | supports function |
 | `davom:usesCommunicationLink` | `davom:VesselFunction` ∪ `davom:System` ∪ `davom:DataFlow` | `davom:CommunicationLink` | uses communication link |
 
-## Datatype properties (7)
+## Datatype properties (10)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
@@ -148,6 +153,9 @@ dependencies over which risk propagates.
 | `davom:hasCriticality` | `davom:Dependency` | `xsd:string` | has criticality |
 | `davom:hasDependencyWeight` | `davom:Dependency` | `xsd:decimal` | Structural weight of this dependency, mirrored at the DI level by di:hasRiskPropagationWeight on a RiskPropagationEdge. |
 | `davom:hasLatency` | `davom:Dependency` | `xsd:decimal` | has latency |
+| `davom:hasParameterSetting` | `davom:ConfigurationParameter` | `xsd:string` | Categorical value of a parameter, e.g. FIXED, ELASTIC_MARGIN or OPTIMISED for a safety-distance logic level. |
+| `davom:hasParameterUnit` | `davom:ConfigurationParameter` | `xsd:string` | has parameter unit |
+| `davom:hasParameterValue` | `davom:ConfigurationParameter` | `xsd:decimal` | has parameter value |
 | `davom:hasRedundancyLevel` | `davom:Dependency` | `xsd:integer` | has redundancy level |
 | `davom:isBidirectional` | `davom:Dependency` | `xsd:boolean` | True when effects may propagate in both directions over this dependency (e.g. a cyber path whose conduit permits reverse access, or a symmetric physical coupling). Default when absent: directed from dependencySource (upstream provider) to dependencyTarget (downstream consumer). |
 | `davom:isCriticalNode` | `warrant:OperationalEntity` | `xsd:boolean` | True when this node belongs to the critical node set whose attribute states determine the system operational state (the system state is the most severe attribute state across critical nodes). Node criticality also informs attribute and aggregation weights. Configured per vessel and mode (see warrant:appliesUnder on the weight and threshold artefacts). |

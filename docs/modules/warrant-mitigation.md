@@ -6,7 +6,7 @@
 **Prefix:** `mit:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/mitigation`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-davom`, `warrant-di`, `warrant-observation`, `warrant-scenario`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -90,7 +90,7 @@ regulatory and human-authority constraints.
 | `mit:SAFE_DEGRADED_MODE` | SAFE_DEGRADED_MODE | Transition to a safe-degraded operating mode with reduced capability. |
 | `mit:VIRTUAL_SENSOR_SUBSTITUTION` | VIRTUAL_SENSOR_SUBSTITUTION | Replace a failed, degraded or untrusted physical sensor by a virtual-sensor estimate (obs:substitutesFor). |
 
-## Object properties (28)
+## Object properties (29)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
@@ -112,13 +112,14 @@ regulatory and human-authority constraints.
 | `mit:implementsControl` | `mit:MitigationAction` ∪ `mit:FailoverProcedure` | `cdm:Control` | The design-time control (safeguard) that this runtime action activates or relies on. Links the runtime response back to the hazard analysis and to the claims the Living Dependability Case holds about the control. |
 | `mit:isRecordedIn` | `mit:ResponseExecution` ∪ `mit:ResponseEvaluation` | `assr:LivingDependabilityCase` | Records the evaluation or execution (action, rationale, authority, timing, posture, outcome) in the Living Dependability Case. |
 | `mit:isTriggeredBy` | `mit:MitigationAction` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `di:DependabilityIndexState` ∪ `di:ResilienceTrigger` ∪ `obs:HealthEvent` | The deviation, hazard, health event, resilience trigger, or state in response to which the action was recommended or executed. |
-| `mit:matchesRule` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `di:DependabilityIndexState` ∪ `di:ResilienceTrigger` | `mit:MitigationRule` | A deviation, hazard, resilience trigger, or operational state matches a rule of the response library. Prefer matching on a ResilienceTrigger or attribute-wise state; matching on a DI-node state is retained for compatibility but the DI value itself never triggers a response. |
+| `mit:matchesRule` | `cdm:Deviation` ∪ `cdm:FailureMode` ∪ `cdm:Hazard` ∪ `di:DependabilityIndexState` ∪ `di:ResilienceTrigger` | `mit:MitigationRule` | A deviation, failure mode, hazard, resilience trigger, or operational state matches a rule of the response library. A FailureMode is the design-time form: a runtime deviation matches the rules of the failure mode that produces it. Prefer matching on a ResilienceTrigger or attribute-wise state; matching on a DI-node state is retained for compatibility but the DI value itself never triggers a response. |
 | `mit:performsMitigation` | `davom:HumanOperatorRole` | `mit:MitigationAction` | performs mitigation |
 | `mit:recommends` | `mit:MitigationRule` ∪ `cdm:Risk` | `mit:MitigationAction` ∪ `mit:FailoverProcedure` | A rule (or a design-time risk evaluation) names a candidate response: either a MitigationAction, or a FailoverProcedure where the rule points straight at an existing procedure rather than at an advisory wrapping it. The runtime recommendation among candidates is mit:isRecommended on a ResponseEvaluation. |
 | `mit:recordedOperatorInput` | `mit:ResponseExecution` | `obs:OperatorInput` | The operator approval, rejection, override, or intervention associated with this execution. Operator actions are part of the evolving dependability case and admissible as evidence. |
 | `mit:requiresAuthorisationFrom` | `mit:MitigationAction` ∪ `mit:FailoverProcedure` | `davom:HumanOperatorRole` | The human operator role whose authorisation is a precondition for executing this action or procedure. A response with no such triple may be authorised automatically within the configured authority allocation. |
 | `mit:respondsToTrigger` | `mit:ResponseEvaluation` | `di:ResilienceTrigger` | The resilience trigger that invoked this evaluation. All evaluations for one trigger form the ranked alternative set. |
 | `mit:selectedFrom` | `mit:ResponseExecution` | `mit:ResponseEvaluation` | The evaluation whose action was selected; preserves the evidence trail from trigger to recommendation to execution. |
+| `mit:targetsConfiguration` | `mit:MitigationAction` ∪ `mit:FailoverProcedure` | `davom:ControlConfiguration` | The governed control configuration a RECONFIGURATION response switches to, such as a damped controller tuning or a more conservative safety-distance logic level. |
 | `mit:uses` | `mit:FailoverProcedure` | `mit:RedundantResource` | uses |
 | `mit:usesDecisionConfiguration` | `mit:ResponseEvaluation` | `mit:DecisionConfiguration` | uses decision configuration |
 | `mit:violatesConstraint` | `mit:ResponseEvaluation` | `cdm:SafetyConstraint` ∪ `assr:Requirement` | For an inadmissible alternative: the operational, safety, cybersecurity, regulatory, or authority constraint that excludes it from U_safe. |

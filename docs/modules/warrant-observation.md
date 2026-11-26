@@ -6,7 +6,7 @@
 **Prefix:** `obs:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/observation`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-davom`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -56,7 +56,7 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:DataSource` | `obs:EvidenceEntity` | Data Source | A source of measurements, observations, operator inputs, analytical outputs, or evidence. Subclasses include Observer, AnalyticalService, and system-level data producers. |
 | `obs:DependabilityMetric` | `obs:Metric` | Dependability Metric |  |
 | `obs:DetectionEvent` | `obs:HealthEvent` | Detection Event | A HealthEvent produced by a DetectionRule, AnalyticalService, NodeHealthMonitor, or VirtualSensor indicating that a Deviation has been detected. This is the ONLY production path to Deviation: AnalyticalService → producesDetectionEvent → DetectionEvent → detectionEventDetects → Deviation. obs:detects is a SPARQL shortcut only. Inherits the full health-event record from obs:HealthEvent. |
-| `obs:DetectionRule` | `obs:EvidenceEntity` | Detection Rule |  |
+| `obs:DetectionRule` | `obs:EvidenceEntity` | Detection Rule | A design-time health event type: the check that, when it fires, produces a DetectionEvent. It names the guideword it detects (obs:detectsDeviationType), the condition it is classified under (obs:indicatesCondition), and its limit (obs:hasRuleThreshold, obs:hasUnit). The limit is governed configuration (warrant:hasVersion, warrant:hasApprovalStatus); evaluating the rule is external. |
 | `obs:DiagnosticService` | `obs:Observer` | Diagnostic Service |  |
 | `obs:EvidenceEntity` | `warrant:EvidenceEntity` | Evidence Entity (Observation) | Observation-module superclass for all observation and evidence entities. |
 | `obs:HealthEvent` | `obs:EvidenceEntity` | Health Event | The structured health-event record into which runtime observations are transformed (detected, filtered, correlated, fused, contextualised, and classified against the hazard and remedy knowledge in the graph) and which Node Health Monitors exchange along dependency paths. It describes a detected fault, a predicted failure, or an abnormal operating condition. Its named fields map to properties as follows: eventId → warrant:hasIdentifier; time → obs:hasTimestamp; source/provenance → obs:hasSource and warrant:derivedFrom; affectedAsset → obs:affectsAsset; condition → obs:indicatesCondition (and, for a DetectionEvent, obs:detectionEventDetects); confidence → obs:hasConfidenceValue; severity → obs:hasSeverityLevel; duration/persistence → obs:hasDuration, obs:isPersistent; operationalImpact → obs:hasOperationalImpact; rootCause → obs:hasRootCause; missionContext → obs:hasMissionContext; controlStatus → obs:hasControlStatus; trend → obs:hasTrendIndicator. Fields may be unknown when the event is first created and enriched as diagnosis proceeds. A HealthEvent is admissible as the source of an assr:Evidence item and may challenge an assr:AssuranceClaim. Interpreted events reside in the graph; raw telemetry stays in the external store. |
@@ -89,7 +89,7 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:FUNCTION_LEVEL` | FUNCTION_LEVEL | Monitor responsible for a VesselFunction. |
 | `obs:SYSTEM_LEVEL` | SYSTEM_LEVEL | Monitor responsible for a System, the Vessel, or a system of systems. |
 
-## Object properties (26)
+## Object properties (27)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
@@ -98,6 +98,7 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:consumes` | `obs:AnalyticalService` ∪ `obs:VirtualSensor` | `obs:Metric` | consumes |
 | `obs:detectionEventDetects` | `obs:DetectionEvent` | `cdm:Deviation` | The terminal step of the production chain. A DetectionEvent identifies a specific Deviation individual. |
 | `obs:detects` | `obs:DetectionEvent` | `cdm:Deviation` | SPARQL shortcut traversal property only. Domain is DetectionEvent (not AnalyticalService or Measurement directly). Production pattern: use obs:producesDetectionEvent + obs:detectionEventDetects. |
+| `obs:detectsDeviationType` | `obs:DetectionRule` | `cdm:DeviationType` | The HAZOP guideword of the deviations this rule detects; the DetectionEvents it produces detect Deviations of this type. |
 | `obs:estimates` | `obs:VirtualSensor` | `obs:Metric` | estimates |
 | `obs:exchangesHealthEventWith` | `obs:NodeHealthMonitor` | `obs:NodeHealthMonitor` | Peer exchange of interpreted health assessments between Node Health Monitors. Which monitors receive updates is determined by the dependency topology in the graph: a monitor exchanges with the monitors of the nodes its node depends on and of the nodes that depend on it. |
 | `obs:hasDataQuality` | `obs:Measurement` ∪ `obs:HumanObservation` ∪ `obs:OperatorInput` | `obs:DataQualityIndicator` | has data quality |
@@ -108,7 +109,7 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:hasRootCause` | `obs:HealthEvent` | `cdm:CausalEntity` ∪ `obs:HealthEvent` ∪ `warrant:OperationalEntity` | Root-cause information when known (health-event field rootCause): the originating deviation, failure mode, upstream health event, or upstream node identified by diagnosis (e.g. observer-based fault isolation) or by graph traversal along the dependency path. |
 | `obs:hasSource` | `obs:EvidenceEntity` | `obs:DataSource` | Source of a measurement, observation, or analytical output. |
 | `obs:indicates` | `obs:Measurement` | `obs:Status` | indicates |
-| `obs:indicatesCondition` | `obs:HealthEvent` | `cdm:Hazard` ∪ `cdm:FailureMode` ∪ `cdm:Deviation` ∪ `cdm:ThreatScenario` | The condition or hazard class the event has been classified against in the design-time knowledge (health-event field condition). For a DetectionEvent the detected Deviation is asserted with obs:detectionEventDetects; this property may additionally name the Hazard or FailureMode the event was classified under. |
+| `obs:indicatesCondition` | `obs:HealthEvent` ∪ `obs:DetectionRule` | `cdm:Hazard` ∪ `cdm:FailureMode` ∪ `cdm:Deviation` ∪ `cdm:ThreatScenario` | The condition or hazard class the event has been classified against in the design-time knowledge (health-event field condition). For a DetectionEvent the detected Deviation is asserted with obs:detectionEventDetects; this property may additionally name the Hazard or FailureMode the event was classified under. |
 | `obs:measures` | `obs:Observer` | `obs:Metric` | measures |
 | `obs:monitorsNode` | `obs:NodeHealthMonitor` | `warrant:OperationalEntity` | The component, subsystem, function, system, or vessel for which this Node Health Monitor is responsible. |
 | `obs:observes` | `obs:Observer` ∪ `obs:HumanObservation` | `obs:Metric` ∪ `obs:Status` | observes |
@@ -120,7 +121,7 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:supportsDetection` | `obs:Measurement` | `obs:DetectionEvent` | A measurement provides evidence contributing to a detection event. |
 | `obs:supportsDetectionOf` | `obs:Observer` | `obs:DetectionRule` | supports detection of |
 
-## Datatype properties (14)
+## Datatype properties (15)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
@@ -131,11 +132,12 @@ A `Deviation` is reached only through a `DetectionEvent`. `obs:produces` ranges 
 | `obs:hasExternalTimeSeriesId` | `obs:Metric` | `xsd:string` | Identifier of the metric's data stream in the external telemetry platform. |
 | `obs:hasOperationalImpact` | `obs:HealthEvent` | `xsd:string` | Expected operational impact of the condition as assessed by the monitor (health-event field operationalImpact). |
 | `obs:hasQualityValue` | `obs:DataQualityIndicator` | `xsd:decimal` | has quality value |
+| `obs:hasRuleThreshold` | `obs:DetectionRule` | `xsd:decimal` | The limit at which the rule fires, in the unit given by obs:hasUnit. Governed configuration; how the limit is compared is described by the rule and evaluated externally. |
 | `obs:hasSamplingRate` | `obs:Metric` ∪ `obs:Observer` | `xsd:decimal` | has sampling rate |
 | `obs:hasSeverityLevel` | `obs:HealthEvent` | `xsd:string` | Severity classification of the event (health-event field severity), e.g. LOW, MEDIUM, HIGH, CRITICAL. Distinct from cdm:hasSeverity (a design-time risk score) and from the operational state, which is assigned attribute-wise by the Dependability Supervisor. |
 | `obs:hasTimestamp` | `obs:Measurement` ∪ `obs:HumanObservation` ∪ `obs:OperatorInput` ∪ `obs:HealthEvent` | `xsd:dateTime` | has timestamp |
 | `obs:hasTrendIndicator` | `obs:HealthEvent` | `xsd:string` | Direction of the monitored node's health as assessed by the monitor: IMPROVING, STABLE, or DECLINING. |
-| `obs:hasUnit` | `obs:Measurement` ∪ `obs:Metric` | `xsd:string` | Unit of measurement as a string. Future alignment: obs:hasUnit ≈ qudt:unit. |
+| `obs:hasUnit` | `obs:Measurement` ∪ `obs:Metric` ∪ `obs:DetectionRule` | `xsd:string` | Unit of measurement as a string. Future alignment: obs:hasUnit ≈ qudt:unit. |
 | `obs:hasValue` | `obs:Measurement` | `xsd:decimal` | has value |
 | `obs:isPersistent` | `obs:HealthEvent` | `xsd:boolean` | True when the condition has persisted beyond the configured transient window and should be treated as a sustained degradation rather than a temporary disturbance. |
 

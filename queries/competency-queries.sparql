@@ -10,7 +10,9 @@
 # reaches metrics held by supporting components and links; Q3 now keys on
 # resilience triggers as well as operational states). Queries 7–10 cover the
 # methodology layers added for continuous assurance: evidence traceability,
-# trigger-to-outcome, attribute-wise state, and forecasts.
+# trigger-to-outcome, attribute-wise state, and forecasts. Queries 11–13
+# (0.11-poc) cover non-firing trigger evaluations, run manifests, and
+# attribute forecasts.
 #
 # Prefixes used throughout:
 ##############################################################################
@@ -305,6 +307,89 @@ WHERE {
     ?config di:hasManagementFloor ?floor .
   }
   FILTER ( !BOUND(?floor) || ?forecastValue < ?floor )
+}
+ORDER BY ?forecastValue
+
+##############################################################################
+# QUERY 11: Trigger evaluations by result, including those that did not fire
+#
+# Competency question: Which resilience-trigger terms were evaluated for which
+# node, with what result, and which inputs were missing when a term was
+# NOT_EVALUABLE? (Methodology safeguard: missing information is never
+# evidence of no fault, so NOT_EVALUABLE must stay visible in the LDC.)
+#
+# Expected result columns: evaluation, triggerType, node, result, evaluatedAt,
+#   missingInputs, method
+##############################################################################
+
+SELECT ?evaluation ?triggerType ?node ?result ?evaluatedAt
+       (GROUP_CONCAT(DISTINCT COALESCE(?missing, ""); separator=" | ") AS ?missingInputs) ?method
+WHERE {
+  ?evaluation a/rdfs:subClassOf* di:TriggerEvaluation ;
+              di:hasTriggerType ?triggerType ;
+              di:hasEvaluationResult ?result .
+  OPTIONAL { ?evaluation di:evaluatedFor ?node . }
+  OPTIONAL { ?evaluation di:evaluatedAt ?evaluatedAt . }
+  OPTIONAL { ?evaluation di:hasMissingInput ?missing . }
+  OPTIONAL { ?evaluation warrant:usesCalculationMethod ?m . ?m warrant:hasName ?mName ; warrant:hasVersion ?mVer .
+             BIND(CONCAT(?mName, "@", ?mVer) AS ?method) }
+}
+GROUP BY ?evaluation ?triggerType ?node ?result ?evaluatedAt ?method
+ORDER BY ?evaluatedAt ?evaluation
+
+
+##############################################################################
+# QUERY 12: Run manifest of a scenario execution
+#
+# Competency question: For each scenario execution, what is needed to
+# reproduce it: mode, seeds, scenario file and hash, dataset hash, and the
+# configuration versions, source commits and package versions it used?
+#
+# Expected result columns: execution, runId, scenario, mode, seeds,
+#   scenarioHash, entryKind, key, value
+##############################################################################
+
+SELECT ?execution ?runId ?scenario ?mode
+       (GROUP_CONCAT(DISTINCT STR(?seed); separator=",") AS ?seeds)
+       ?scenarioHash ?entryKind ?key ?value
+WHERE {
+  ?execution a scen:ScenarioExecution .
+  OPTIONAL { ?execution warrant:hasIdentifier ?runId . }
+  OPTIONAL { ?scenario scen:hasScenarioExecution ?execution . }
+  OPTIONAL { ?execution scen:hasExecutionMode ?mode . }
+  OPTIONAL { ?execution scen:hasRandomSeed ?seed . }
+  OPTIONAL { ?execution scen:hasScenarioHash ?scenarioHash . }
+  OPTIONAL { ?execution scen:hasManifestEntry ?entry .
+             ?entry scen:hasEntryKind ?entryKind ; warrant:hasName ?key ; warrant:hasVersion ?value . }
+}
+GROUP BY ?execution ?runId ?scenario ?mode ?scenarioHash ?entryKind ?key ?value
+ORDER BY ?execution ?entryKind ?key
+
+
+##############################################################################
+# QUERY 13: Attribute forecasts and the triggers they raised
+#
+# Competency question: Which forecasts predict a node attribute value (not a
+# DI) below the attribute's Normal minimum over their target interval, who
+# produced them, and did they raise a PREDICTED_FLOOR_CROSSING trigger?
+#
+# Expected result columns: forecast, node, attribute, forecastValue,
+#   normalMin, thresholdContext, validAt, validUntil, producedBy, trigger
+##############################################################################
+
+SELECT ?forecast ?node ?attribute ?forecastValue ?normalMin ?thresholdContext ?validAt ?validUntil ?producedBy ?trigger
+WHERE {
+  ?forecast a di:DIForecast ;
+            di:forecastsAttribute ?attribute ;
+            di:hasForecastValue ?forecastValue .
+  OPTIONAL { ?node assr:hasAssuranceAttribute ?attribute . }
+  OPTIONAL { ?forecast di:forecastValidAt ?validAt . }
+  OPTIONAL { ?forecast di:forecastValidUntil ?validUntil . }
+  OPTIONAL { ?forecast di:forecastProducedBy ?producedBy . }
+  OPTIONAL { ?trigger di:triggeredByForecast ?forecast . }
+  OPTIONAL { ?th di:thresholdAppliesToAttribute ?attribute ; di:hasNormalMinimum ?normalMin .
+             OPTIONAL { ?th warrant:appliesUnder ?thresholdContext . } }
+  FILTER ( !BOUND(?normalMin) || ?forecastValue < ?normalMin )
 }
 ORDER BY ?forecastValue
 

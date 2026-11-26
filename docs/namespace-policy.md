@@ -1,6 +1,6 @@
 # WARRaNT KG Ontology — Namespace Policy
 
-Version 0.10-poc | 2026-09-06
+Version 0.11-poc | 2026-11-26
 
 ---
 
@@ -53,7 +53,7 @@ Prefixes must be lowercase, short (≤ 6 characters), and stable across all file
 
 ## Version IRI Policy
 
-Version IRIs follow the pattern: `https://warrant-project.eu/ontology/{module}/{major}.{minor}`. Version-specific IRIs are not used until v1.0.0. Until then, `owl:versionInfo` carries the version string (e.g. `"0.10-poc"`), and all nine module files carry the same string as the repository version in `CHANGELOG.md`.
+Version IRIs follow the pattern: `https://warrant-project.eu/ontology/{module}/{major}.{minor}`. Version-specific IRIs are not used until v1.0.0. Until then, `owl:versionInfo` carries the version string (e.g. `"0.11-poc"`), and all nine module files carry the same string as the repository version in `CHANGELOG.md`.
 
 A module never declares a term in another module's namespace (e.g. warrant-assurance does not declare `di:` properties); it may assert additional axioms about another module's terms (such as `rdfs:subClassOf warrant:VisualisableEntity` or a widened domain) only for modules it imports.
 

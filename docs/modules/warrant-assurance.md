@@ -6,7 +6,7 @@
 **Prefix:** `assr:`  
 **Ontology IRI:** `https://warrant-project.eu/ontology/assurance`  
 **Imports:** `warrant-cdm`, `warrant-core`, `warrant-observation`  
-**Version:** `0.10-poc`
+**Version:** `0.11-poc`
 
 ---
 
@@ -59,7 +59,7 @@ container.
 | `assr:AssuranceEntity` | — | Assurance Entity | Abstract superclass for all assurance-related entities. |
 | `assr:AssuranceLevel` | `assr:AssuranceEntity` , `warrant:CalculationEntity` , `warrant:VisualisableEntity` | Assurance Level (AL) | Confidence in the evidence supporting the dependability assessment: AL(t) = ω_EC·EC(t) + ω_EF·EF(t) + ω_EQ·EQ(t) + ω_MC·MC(t) + ω_TC·TC(t), where EC is evidence completeness against the declared obligations, EF evidence freshness, EQ evidence quality (validity, confidence, operating-domain coverage, uncertainty, agreement between independent sources), MC monitoring coverage, and TC traceability coverage. The component values, the result, the weight set used (assr:usesAssuranceLevelWeights) and the method identity (assr:usesCalculationMethod) are stored; the calculation is external; timestamp via di:calculatedAt. AL describes confidence in the evidence, not operational condition: it must always be reported together with the system DI (di:isReportedWith). A high DI with low AL is apparently satisfactory operation on weak evidence; a low DI with high AL is a well-supported finding of degradation. Neither changes the attribute-wise operational state. AL is a management indicator, not a regulatory or classification decision. |
 | `assr:AssuranceLevelWeightSet` | `assr:AssuranceEntity` , `warrant:CalculationEntity` | Assurance Level Weight Set | The stakeholder-defined weights ω_EC, ω_EF, ω_EQ, ω_MC, ω_TC (non-negative, summing to one) and any mandatory gates used to compute an AssuranceLevel. Controlled configuration: warrant:hasVersion, warrant:approvedBy, warrant:appliesUnder. |
-| `assr:AssuranceScore` | `assr:AssuranceEntity` | Node Dependability Score (ND) (alt: Assurance Score) | The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Feeds into the node DI via di:contributesTo (DI_i = clip(ND_i − β_i·R_i)). Computed externally; timestamp via di:calculatedAt. |
+| `assr:AssuranceScore` | `assr:AssuranceEntity` | Node Dependability Score (ND) (alt: Assurance Score) | The intrinsic Node Dependability Score ND_i(t) = Σ_k α_i,k·d_i,k(t): the mode-weighted combination of a node's six attribute values before the explicit scenario-risk penalty. The IRI retains its historical local name (AssuranceScore); the concept is the node dependability score of the WARRaNT methodology and must not be confused with the Assurance Level (assr:AssuranceLevel), which measures confidence in the evidence rather than operational condition. Linked to the node DI via di:contributesTo as the assurance write-back of the same attribute values; it is not an input to the DI, which uses the risk-adjusted attribute scores d̃_i,a = clip(d_i,a − β_i·R_i,a) (DI paper, Eq. A.17; see di:DependabilityIndex). Computed externally; timestamp via di:calculatedAt. |
 | `assr:AssuranceWeight` | `assr:AssuranceEntity` , `warrant:CalculationEntity` | Assurance Weight | The attribute weight α_i,k in the Node Dependability Score. Weights depend on mission phase or operating mode, node criticality and approved operating policy: scope with warrant:appliesUnder, and record warrant:hasVersion, warrant:approvedBy, warrant:validFrom/validTo. They are configured for a defined vessel and mode and controlled rather than learned; consequently neither node scores nor the system DI are comparable across vessels or differently weighted modes. |
 | `assr:Availability` | `assr:AssuranceAttribute` | Availability |  |
 | `assr:CalculationInput` | `assr:AssuranceEntity` , `warrant:CalculationEntity` | Calculation Input | An input to the external assurance calculation (e.g. a normalised attribute value, weight). |
@@ -97,12 +97,12 @@ container.
 | `assr:STALE` | STALE | Fulfilling evidence exists but is outside its validity period. |
 | `assr:UNTRACEABLE` | UNTRACEABLE | Fulfilling evidence exists but its source or provenance cannot be traced. |
 
-## Object properties (33)
+## Object properties (34)
 
 | Property | Domain | Range | Description |
 |---|---|---|---|
 | `assr:addressesRequirement` | `assr:AssuranceClaim` | `assr:Requirement` | The requirement this claim argues is satisfied. Second link of the chain Evidence → AssuranceClaim → Requirement. |
-| `assr:assumptionAppliesTo` | `assr:Assumption` | `warrant:OperationalEntity` ∪ `cdm:CausalEntity` ∪ `assr:AssuranceClaim` ∪ `warrant:ContextEntity` | The element, hazard analysis artefact, claim, or context the assumption underpins. |
+| `assr:assumptionAppliesTo` | `assr:Assumption` | `warrant:OperationalEntity` ∪ `cdm:CausalEntity` ∪ `assr:AssuranceClaim` ∪ `assr:Requirement` ∪ `warrant:ContextEntity` | The element, hazard analysis artefact, claim, requirement, or context the assumption underpins. On a requirement it typically carries an assumed value the requirement refers to. |
 | `assr:caseAppliesTo` | `assr:LivingDependabilityCase` | `warrant:OperationalEntity` | The vessel or system of systems this Living Dependability Case is maintained for. |
 | `assr:causesAssuranceDegradation` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `cdm:UnsafeControlAction` | `assr:AssuranceDegradation` | causes assurance degradation |
 | `assr:challengesClaim` | `assr:Evidence` ∪ `obs:HealthEvent` ∪ `assr:Assumption` | `assr:AssuranceClaim` | An evidence item, a health event (e.g. GNSS spoofing detected), or a changed/invalidated assumption challenges a previously supported claim, prompting its re-evaluation. |
@@ -128,11 +128,12 @@ container.
 | `assr:includesRequirement` | `assr:LivingDependabilityCase` | `assr:Requirement` | includes requirement |
 | `assr:isChallengedBy` | `assr:Assumption` | `obs:HealthEvent` ∪ `assr:Evidence` | The health event or evidence that indicates the assumption may no longer hold. This is how an assumption's invalidation becomes a monitored condition. |
 | `assr:isFulfilledBy` | `assr:EvidenceObligation` | `assr:Evidence` | The evidence item(s) currently satisfying this obligation. |
+| `assr:refinesConstraint` | `assr:Requirement` | `cdm:SafetyConstraint` | The STPA safety constraint a requirement makes verifiable. |
 | `assr:relatesToRequirement` | `assr:Nonconformity` | `assr:Requirement` | relates to requirement |
 | `assr:supportsClaim` | `assr:Evidence` | `assr:AssuranceClaim` | First link of the chain Evidence → AssuranceClaim → Requirement: this evidence item supports the claim. |
 | `assr:updatesAssuranceScore` | `assr:AssuranceDegradation` ∪ `assr:CalculationInput` | `assr:AssuranceScore` | updates assurance score |
 | `assr:usesAssuranceLevelWeights` | `assr:AssuranceLevel` | `assr:AssuranceLevelWeightSet` | uses assurance level weights |
-| `assr:usesCalculationMethod` | `assr:AssuranceScore` ∪ `assr:AssuranceAttributeValue` ∪ `assr:AssuranceLevel` ∪ `assr:CertificationReadiness` | `warrant:CalculationMethod` | Identity and version of the external method that produced this score, fused value, Assurance Level, or readiness indicator. |
+| `assr:usesCalculationMethod` | `assr:AssuranceScore` ∪ `assr:AssuranceAttributeValue` ∪ `assr:AssuranceLevel` ∪ `assr:CertificationReadiness` | `warrant:CalculationMethod` | Identity and version of the external method that produced this score, fused value, Assurance Level, or readiness indicator. (sub-property of `warrant:usesCalculationMethod`) |
 | `assr:wasTriggeredBy` | `assr:AssuranceDegradation` | `cdm:Deviation` ∪ `cdm:Hazard` ∪ `cdm:UnsafeControlAction` | Traceability: the Deviation, Hazard, or UnsafeControlAction that triggered this AssuranceDegradation. |
 
 ## Datatype properties (31)
